@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -23,10 +24,16 @@ export default function RegisterPage() {
       const user = data.user;
       if (user) {
         await supabase.from("users").insert([
-          { id: user.id, email, name }
+          { id: user.id, email, display_name: name }
         ]);
       }
-      setSuccess("Check your email to confirm registration.");
+      
+      const redirect = searchParams.get('redirect');
+      if (redirect) {
+        setSuccess("Registration successful! Please check your email to confirm, then you'll be redirected to accept the invite.");
+      } else {
+        setSuccess("Check your email to confirm registration.");
+      }
     }
   }
 

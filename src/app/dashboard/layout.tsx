@@ -5,6 +5,7 @@ import Link from "next/link";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { cn } from "@/lib/utils";
 import { SessionProvider } from "@/components/auth/session-context";
+import NotificationCenter from "@/components/notifications/notification-center";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -47,6 +48,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <header className="flex items-center justify-between px-4 py-3 border-b bg-card/80 backdrop-blur">
             <div className="font-bold text-lg">Nesternity CRM</div>
             <div className="flex items-center gap-4">
+              <NotificationCenter />
               <UserAvatar />
               <Link href="/auth/logout">
                 <Button size="sm" variant="outline">Logout</Button>
