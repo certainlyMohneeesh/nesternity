@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Session } from "@supabase/supabase-js";
+import type { Session, AuthChangeEvent } from "@supabase/supabase-js";
 
 interface SessionContextType {
   session: Session | null;
@@ -15,11 +15,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-    supabase.auth.getSession().then(({ data }) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setSession(session);
+        setLoading(false);
+      }
+    );
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       setSession(data.session);
       setLoading(false);
     });
