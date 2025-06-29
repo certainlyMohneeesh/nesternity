@@ -62,15 +62,41 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteEmail) return;
-    // Find user by email
-    const { data: user } = await supabase.from("users").select("id").eq("email", inviteEmail).single();
-    if (user) {
-      await supabase.from("team_users").insert([
-        { team_id: teamId, user_id: user.id, role: "member" },
-      ]);
-      setInviteEmail("");
-      fetchTeam();
+    // Find user by email in auth.users
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", inviteEmail)
+      .single();
+
+    if (error || !user) {
+      alert("User not found. They must register first.");
+      return;
     }
+
+    // Check if already a member
+    const { data: existing } = await supabase
+      .from("team_users")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (existing) {
+      alert("User is already a member of this team.");
+      return;
+    }
+
+    // Add as member
+    const { error: addError } = await supabase.from("team_users").insert([
+      { team_id: teamId, user_id: user.id, role: "member", accepted_at: new Date().toISOString() },
+    ]);
+    if (addError) {
+      alert("Failed to add member: " + addError.message);
+      return;
+    }
+    setInviteEmail("");
+    fetchTeam();
   }
 
   async function handleRemove(user_id: string) {
@@ -118,7 +144,12 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
                 <form onSubmit={handleInvite} className="space-y-4 mt-4">
                   <div>
                     <Label>Email</Label>
-                    <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required />
+                    <Input
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                      required
+                      type="email"
+                    />
                   </div>
                   <Button type="submit" className="w-full">Invite</Button>
                 </form>
