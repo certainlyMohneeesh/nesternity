@@ -1,0 +1,86 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String      @id @default(uuid())
+  email       String      @unique
+  password    String
+  name        String?
+  createdAt   DateTime    @default(now())
+  teams       TeamUser[]
+  clients     Client[]
+}
+
+model Team {
+  id         String      @id @default(uuid())
+  name       String
+  createdBy  String
+  createdAt  DateTime    @default(now())
+  users      TeamUser[]
+  boards     Board[]
+  clients    Client[]
+}
+
+model TeamUser {
+  id        String      @id @default(uuid())
+  team      Team        @relation(fields: [teamId], references: [id])
+  teamId    String
+  user      User        @relation(fields: [userId], references: [id])
+  userId    String
+  role      String      // 'admin' | 'member'
+  acceptedAt DateTime
+}
+
+model Board {
+  id        String      @id @default(uuid())
+  name      String
+  team      Team        @relation(fields: [teamId], references: [id])
+  teamId    String
+  columns   BoardColumn[]
+  tasks     Task[]
+  createdAt DateTime    @default(now())
+}
+
+model BoardColumn {
+  id        String      @id @default(uuid())
+  name      String
+  board     Board       @relation(fields: [boardId], references: [id])
+  boardId   String
+  order     Int
+  tasks     Task[]
+}
+
+model Task {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  board       Board       @relation(fields: [boardId], references: [id])
+  boardId     String
+  column      BoardColumn @relation(fields: [columnId], references: [id])
+  columnId    String
+  assignee    User?       @relation(fields: [assigneeId], references: [id])
+  assigneeId  String?
+  status      String      // e.g. 'todo', 'in_progress', 'done'
+  priority    String?     // e.g. 'low', 'medium', 'high'
+  dueDate     DateTime?
+  createdAt   DateTime    @default(now())
+}
+
+model Client {
+  id        String      @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  team      Team        @relation(fields: [teamId], references: [id])
+  teamId    String
+  user      User        @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime    @default(now())
+}
