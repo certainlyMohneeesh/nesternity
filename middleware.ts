@@ -1,0 +1,1 @@
+// Route protection middleware placeholder
