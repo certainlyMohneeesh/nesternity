@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/components/auth/session-context";
 import { Button } from "@/components/ui/button";
@@ -18,14 +18,14 @@ interface TeamUser {
   } | null;
 }
 
-export default function TeamSettingsPage({ params }: { params: { teamId: string } }) {
+export default function TeamSettingsPage({ params }: { params: Promise<{ teamId: string }> }) {
+  const { teamId } = use(params);
   const { session } = useSession();
   const userId = session?.user.id;
-  const teamId = params.teamId;
   const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); 
 
   useEffect(() => {
     if (userId && teamId) fetchTeamUsers();

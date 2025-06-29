@@ -20,7 +20,6 @@ interface TeamUser {
   user_id: string;
   role: string;
   accepted_at: string;
-  users: { email: string };
 }
 
 export default function TeamOverviewPage({ params }: { params: Promise<{ teamId: string }> }) {
@@ -36,9 +35,9 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
   const isAdmin = members.find(m => m.user_id === userId)?.role === "admin";
 
   useEffect(() => {
-    fetchTeam();
+    if (userId) fetchTeam();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId]);
+  }, [teamId, userId]);
 
   async function fetchTeam() {
     setLoading(true);
@@ -46,23 +45,16 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
     setTeam(teamData);
     const { data: memberData } = await supabase
       .from("team_users")
-      .select("id, user_id, role, accepted_at, users(email)")
+      .select("id, user_id, role, accepted_at")
       .eq("team_id", teamId);
-
-    // Map users to extract the first user object from the array
-    const normalizedMembers = (memberData || []).map((member: any) => ({
-      ...member,
-      users: member.users && Array.isArray(member.users) ? member.users[0] : member.users,
-    }));
-
-    setMembers(normalizedMembers);
+    setMembers(memberData || []);
     setLoading(false);
   }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteEmail) return;
-    // Find user by email in auth.users
+    // Find user by email in auth.users (requires a public users table or RPC)
     const { data: user, error } = await supabase
       .from("users")
       .select("id")
@@ -104,6 +96,12 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
     fetchTeam();
   }
 
+  useEffect(() => {
+    console.log("members", members);
+    console.log("userId", userId);
+    console.log("isAdmin", isAdmin);
+  }, [members, userId, isAdmin]);
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Team Overview</h2>
@@ -122,7 +120,7 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
           <ul className="mb-4">
             {members.map(member => (
               <li key={member.id} className="flex items-center gap-2 mb-1">
-                <span>{member.users?.email || member.user_id}</span>
+                <span>{member.user_id}</span>
                 <span className="text-xs text-muted-foreground">({member.role})</span>
                 {isAdmin && member.user_id !== userId && (
                   <Button size="sm" variant="destructive" onClick={() => handleRemove(member.user_id)}>

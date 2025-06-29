@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState(""); // New state for display name
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
@@ -14,15 +15,33 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) setError(error.message);
-    else setSuccess("Check your email to confirm registration.");
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setError(error.message);
+    } else {
+      // Insert display name into public users table
+      const user = data.user;
+      if (user) {
+        await supabase.from("users").insert([
+          { id: user.id, email, name }
+        ]);
+      }
+      setSuccess("Check your email to confirm registration.");
+    }
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <form onSubmit={handleRegister} className="max-w-sm mx-auto mt-20 flex flex-col gap-4">
         <h2 className="text-2xl font-bold">Register</h2>
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="input input-bordered"
+          required
+        />
         <input
           type="email"
           placeholder="Email"
