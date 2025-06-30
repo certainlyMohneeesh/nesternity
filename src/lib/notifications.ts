@@ -117,8 +117,6 @@ export async function getTeamActivities(
     return [];
   }
 }
-  }));
-}
 
 export async function getUserNotifications(
   userId?: string,
