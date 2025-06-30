@@ -33,9 +33,17 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
   const handleOpenChange = async (newOpen: boolean) => {
     setOpen(newOpen);
     if (newOpen) {
-      // Load pending invites when opening
-      const invites = await getTeamInvites(teamId);
-      setPendingInvites(invites);
+      try {
+        // Load pending invites when opening
+        console.log('📨 Loading pending invites for team:', teamId);
+        const invites = await getTeamInvites(teamId);
+        setPendingInvites(invites);
+        console.log('✅ Successfully loaded invites:', invites);
+      } catch (error) {
+        console.error('❌ Failed to load pending invites:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load pending invites');
+        setPendingInvites([]);
+      }
     } else {
       // Reset form when closing
       setInviteEmail("");
@@ -67,27 +75,21 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
         return;
       }
 
-      // Check if already a member
-      const { data: existing } = await supabase
-        .from("team_users")
-        .select("id")
-        .eq("team_id", teamId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (existing) {
-        setError("User is already a member of this team.");
+      // Use the secure function to add member
+      const { data: result, error: addError } = await supabase.rpc('add_team_member', {
+        team_uuid: teamId,
+        new_user_id: user.id,
+        member_role: inviteRole
+      });
+      
+      if (addError) {
+        setError("Failed to add member: " + addError.message);
         setLoading(false);
         return;
       }
 
-      // Add as member
-      const { error: addError } = await supabase.from("team_users").insert([
-        { team_id: teamId, user_id: user.id, role: inviteRole, accepted_at: new Date().toISOString() },
-      ]);
-      
-      if (addError) {
-        setError("Failed to add member: " + addError.message);
+      if (!result.success) {
+        setError(result.error || "Failed to add member");
         setLoading(false);
         return;
       }
@@ -144,8 +146,13 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
       setInviteEmail("");
       
       // Refresh pending invites
-      const invites = await getTeamInvites(teamId);
-      setPendingInvites(invites);
+      try {
+        const invites = await getTeamInvites(teamId);
+        setPendingInvites(invites);
+      } catch (error) {
+        console.error('Failed to refresh invites after sending:', error);
+        // Don't show error to user here, invite was successful
+      }
       
     } catch (err) {
       console.error("Error sending invite:", err);
@@ -161,8 +168,13 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
     
     if (result.success) {
       setSuccess(`Invite to ${email} has been cancelled.`);
-      const invites = await getTeamInvites(teamId);
-      setPendingInvites(invites);
+      try {
+        const invites = await getTeamInvites(teamId);
+        setPendingInvites(invites);
+      } catch (error) {
+        console.error('Failed to refresh invites after cancelling:', error);
+        // Still show success for the cancellation
+      }
     } else {
       setError("Failed to cancel invite: " + result.error);
     }

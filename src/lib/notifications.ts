@@ -60,24 +60,63 @@ export async function getTeamActivities(
   teamId: string,
   limit: number = 50
 ): Promise<Activity[]> {
-  const { data, error } = await supabase
-    .from('activities')
-    .select(`
-      id, user_id, team_id, board_id, task_id, action_type, title, description, metadata, created_at,
-      users:user_id (display_name, email)
-    `)
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    // First, get activities without trying to join users
+    const { data: activities, error: activitiesError } = await supabase
+      .from('activities')
+      .select('id, user_id, team_id, board_id, task_id, action_type, title, description, metadata, created_at')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    console.error('Error fetching team activities:', error);
+    if (activitiesError) {
+      console.error('Error fetching team activities:', activitiesError);
+      return [];
+    }
+
+    if (!activities || activities.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(activities.map(a => a.user_id).filter(Boolean))];
+    
+    if (userIds.length === 0) {
+      return activities.map(activity => ({
+        ...activity,
+        users: undefined
+      }));
+    }
+
+    // Fetch user data separately
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, display_name, email')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.warn('Error fetching user data for activities:', usersError);
+      // Return activities without user data
+      return activities.map(activity => ({
+        ...activity,
+        users: undefined
+      }));
+    }
+
+    // Create a map for quick user lookup
+    const userMap = new Map(users?.map(user => [user.id, user]) || []);
+
+    // Combine activities with user data
+    return activities.map(activity => ({
+      ...activity,
+      users: activity.user_id ? userMap.get(activity.user_id) : undefined
+    }));
+
+  } catch (error) {
+    console.error('Unexpected error fetching team activities:', error);
     return [];
   }
-
-  return (data || []).map((row: any) => ({
-    ...row,
-    users: Array.isArray(row.users) ? row.users[0] : row.users
+}
   }));
 }
 

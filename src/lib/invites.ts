@@ -1,6 +1,40 @@
 import { supabase } from './supabase';
 import crypto from 'crypto';
 
+// Diagnostic function to test if functions exist
+export async function testFunctionExists(): Promise<{[key: string]: boolean}> {
+  const functions = [
+    'get_team_invites_secure',
+    'create_team_invite_secure', 
+    'cancel_team_invite_secure',
+    'add_team_member',
+    'get_user_teams_ultimate'
+  ];
+  
+  const results: {[key: string]: boolean} = {};
+  
+  for (const funcName of functions) {
+    try {
+      // Try to call with invalid params to see if function exists
+      const { error } = await supabase.rpc(funcName, {});
+      
+      // If we get a 42883 error, function doesn't exist
+      if (error?.code === '42883') {
+        results[funcName] = false;
+        console.log(`❌ Function ${funcName} does NOT exist`);
+      } else {
+        results[funcName] = true;  
+        console.log(`✅ Function ${funcName} exists`);
+      }
+    } catch (e) {
+      results[funcName] = false;
+      console.log(`❌ Function ${funcName} test failed:`, e);
+    }
+  }
+  
+  return results;
+}
+
 export interface PendingInvite {
   id: string;
   team_id: string;
@@ -23,82 +57,129 @@ export async function createTeamInvite(
   role: string = 'member'
 ): Promise<{ success: boolean; error?: string; invite?: PendingInvite }> {
   try {
-    // Check if user is already registered
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    console.log('🔍 Attempting to create team invite:', { teamId, email, role });
+    
+    // Use the secure function instead of direct table access
+    const { data, error } = await supabase.rpc('create_team_invite_secure', {
+      team_uuid: teamId,
+      invite_email: email,
+      invite_role: role
+    });
 
-    if (existingUser) {
-      return { success: false, error: 'User is already registered. Use the direct invite feature instead.' };
-    }
-
-    // Check if invite already exists
-    const { data: existingInvite } = await supabase
-      .from('team_invites')
-      .select('*')
-      .eq('team_id', teamId)
-      .eq('email', email)
-      .is('used_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-
-    if (existingInvite) {
-      return { success: false, error: 'An active invite already exists for this email.' };
-    }
-
-    // Create new invite
-    const token = generateInviteToken();
-    const { data, error } = await supabase
-      .from('team_invites')
-      .insert([{
-        team_id: teamId,
-        email,
-        role,
-        token,
-      }])
-      .select()
-      .single();
+    console.log('📊 Create invite response:', { data, error });
 
     if (error) {
+      console.error('❌ Function error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+        return { success: false, error: 'Database functions not set up. Please run the ultimate_recursion_fix.sql script.' };
+      }
+      
       return { success: false, error: error.message };
     }
 
-    return { success: true, invite: data };
+    if (!data || !data.success) {
+      console.log('❌ Function returned failure:', data);
+      return { success: false, error: data?.error || 'Unknown error' };
+    }
+
+    console.log('✅ Successfully created invite');
+    
+    // Return in expected format
+    return { 
+      success: true, 
+      invite: {
+        id: '', // Not returned by function
+        team_id: teamId,
+        email,
+        invited_by: '', // Not needed for response
+        role,
+        token: data.token,
+        expires_at: data.expires_at,
+        created_at: new Date().toISOString()
+      }
+    };
   } catch (error) {
+    console.error('🔥 Unexpected error creating invite:', error);
     return { success: false, error: 'Failed to create invite' };
   }
 }
 
 export async function getTeamInvites(teamId: string): Promise<PendingInvite[]> {
-  const { data, error } = await supabase
-    .from('team_invites')
-    .select('*')
-    .eq('team_id', teamId)
-    .is('used_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false });
+  try {
+    console.log('🔍 Attempting to get team invites for:', teamId);
+    
+    // Use the secure function instead of direct table access
+    const { data, error } = await supabase.rpc('get_team_invites_secure', {
+      team_uuid: teamId
+    });
 
-  if (error) {
-    console.error('Error fetching team invites:', error);
-    return [];
+    console.log('📊 Function response:', { data, error });
+    console.log('📊 Full error object:', JSON.stringify(error, null, 2));
+
+    if (error) {
+      console.error('❌ Function error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        fullError: error
+      });
+      
+      // Check for function existence error
+      if (error.code === '42883' || (error.message && error.message.includes('function') && error.message.includes('does not exist'))) {
+        console.error('🚫 Function get_team_invites_secure does not exist - please run the ultimate_recursion_fix.sql script');
+        throw new Error('Database functions not set up. Please run the ultimate_recursion_fix.sql script.');
+      }
+      
+      // Handle specific error cases
+      if (error.message?.includes('Access denied')) {
+        console.log('🔒 Access denied to team invites - user is not team creator');
+        return [];
+      }
+      
+      if (error.message?.includes('infinite recursion')) {
+        console.error('♻️ Database recursion error - please run the ultimate_recursion_fix.sql script');
+        throw new Error('Database recursion detected. Please run the ultimate_recursion_fix.sql script.');
+      }
+      
+      console.error('💥 Error fetching team invites:', error);
+      throw new Error(`Failed to fetch team invites: ${error.message || 'Unknown error'}`);
+    }
+
+    console.log('✅ Successfully fetched invites:', data);
+    return data || [];
+  } catch (error) {
+    console.error('🔥 Unexpected error fetching team invites:', error);
+    // Re-throw the error so it can be handled by the calling component
+    throw error;
   }
-
-  return data || [];
 }
 
 export async function cancelInvite(inviteId: string): Promise<{ success: boolean; error?: string }> {
-  const { error } = await supabase
-    .from('team_invites')
-    .delete()
-    .eq('id', inviteId);
+  try {
+    // Use the secure function instead of direct table access
+    const { data, error } = await supabase.rpc('cancel_team_invite_secure', {
+      invite_id: inviteId
+    });
 
-  if (error) {
-    return { success: false, error: error.message };
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (!data.success) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: 'Failed to cancel invite' };
   }
-
-  return { success: true };
 }
 
 export async function acceptInvite(token: string): Promise<{ success: boolean; error?: string; teamId?: string }> {

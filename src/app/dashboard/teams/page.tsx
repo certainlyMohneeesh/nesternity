@@ -50,13 +50,13 @@ export default function TeamsPage() {
     }
     
     try {
-      // Method 1: Use the comprehensive helper function
-      const { data: accessibleTeams, error: functionError } = await supabase
-        .rpc('get_accessible_teams', { user_uuid: userId });
+      // Use the ultimate secure function (no RLS recursion possible)
+      const { data: secureTeams, error: secureError } = await supabase
+        .rpc('get_user_teams_ultimate', { user_uuid: userId });
       
-      if (!functionError && accessibleTeams) {
-        console.log('✅ Successfully fetched teams via function:', accessibleTeams);
-        setTeams(accessibleTeams.map((team: any) => ({
+      if (!secureError && secureTeams) {
+        console.log('✅ Successfully fetched teams via secure function:', secureTeams);
+        setTeams(secureTeams.map((team: any) => ({
           id: team.id,
           name: team.name,
           created_by: team.created_by,
@@ -65,27 +65,11 @@ export default function TeamsPage() {
         setLoading(false);
         return;
       } else {
-        console.log('❌ Function method failed:', functionError);
+        console.log('❌ Secure function failed:', secureError);
       }
       
-      // Method 2: Direct teams query with RLS
-      console.log('🔄 Trying direct teams query...');
-      const { data: directTeams, error: directError } = await supabase
-        .from('teams')
-        .select('id, name, created_by, created_at')
-        .order('created_at', { ascending: false });
-      
-      if (!directError && directTeams) {
-        console.log('✅ Direct query successful:', directTeams);
-        setTeams(directTeams);
-        setLoading(false);
-        return;
-      } else {
-        console.log('❌ Direct query failed:', directError);
-      }
-      
-      // Method 3: Get teams user created (always works)
-      console.log('🔄 Trying creator-only query...');
+      // Fallback: Direct teams query (only shows created teams)
+      console.log('🔄 Using fallback: creator-only query...');
       const { data: createdTeams, error: createdError } = await supabase
         .from('teams')
         .select('id, name, created_by, created_at')
@@ -93,17 +77,17 @@ export default function TeamsPage() {
         .order('created_at', { ascending: false });
       
       if (!createdError) {
-        console.log('✅ Creator query successful:', createdTeams);
+        console.log('✅ Fallback query successful:', createdTeams);
         setTeams(createdTeams || []);
       } else {
-        console.log('❌ All methods failed');
-        setError(`Failed to fetch teams. Please check your permissions.`);
+        console.log('❌ All methods failed:', createdError);
+        setError(`Database access issue. Please run the ultimate_recursion_fix.sql script.`);
         setTeams([]);
       }
       
     } catch (err) {
       console.error('💥 Unexpected error:', err);
-      setError('An unexpected error occurred while fetching teams.');
+      setError('Please run the database fix script to enable team management.');
       setTeams([]);
     }
     
