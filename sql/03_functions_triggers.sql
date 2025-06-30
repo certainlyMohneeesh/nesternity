@@ -1,6 +1,6 @@
 -- ====================================
 -- FUNCTIONS AND TRIGGERS
--- Run this AFTER running 01_create_tables.sql and 02_rls_policies.sql
+-- Run this AFTER running 01_migrate_existing_tables.sql and 02_rls_policies.sql
 -- ====================================
 
 -- 7. UTILITY FUNCTIONS
