@@ -54,10 +54,11 @@ export function generateInviteToken(): string {
 export async function createTeamInvite(
   teamId: string,
   email: string,
-  role: string = 'member'
-): Promise<{ success: boolean; error?: string; invite?: PendingInvite }> {
+  role: string = 'member',
+  sendEmail: boolean = true
+): Promise<{ success: boolean; error?: string; invite?: PendingInvite; emailSent?: boolean }> {
   try {
-    console.log('🔍 Attempting to create team invite:', { teamId, email, role });
+    console.log('🔍 Attempting to create team invite:', { teamId, email, role, sendEmail });
     
     // Use the secure function instead of direct table access
     const { data, error } = await supabase.rpc('create_team_invite_secure', {
@@ -90,9 +91,41 @@ export async function createTeamInvite(
 
     console.log('✅ Successfully created invite');
     
+    let emailSent = false;
+    
+    // Send email if requested
+    if (sendEmail) {
+      try {
+        console.log('📧 Attempting to send invite email...');
+        const emailResponse = await fetch('/api/send-invite-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inviteToken: data.token
+          }),
+        });
+
+        const emailResult = await emailResponse.json();
+        
+        if (emailResult.success) {
+          console.log('✅ Email sent successfully');
+          emailSent = true;
+        } else {
+          console.warn('⚠️ Email sending failed:', emailResult.error);
+          // Don't fail the whole operation if email fails
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Email sending error:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+    }
+    
     // Return in expected format
     return { 
-      success: true, 
+      success: true,
+      emailSent,
       invite: {
         id: '', // Not returned by function
         team_id: teamId,

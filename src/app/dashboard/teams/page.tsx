@@ -56,12 +56,22 @@ export default function TeamsPage() {
       
       if (!secureError && secureTeams) {
         console.log('✅ Successfully fetched teams via secure function:', secureTeams);
-        setTeams(secureTeams.map((team: any) => ({
-          id: team.id,
-          name: team.name,
-          created_by: team.created_by,
-          created_at: team.created_at
-        })));
+        
+        // Deduplicate teams by ID (safety measure)
+        const uniqueTeams = secureTeams.reduce((acc: any[], team: any) => {
+          if (!acc.find(t => t.id === team.team_id)) {
+            acc.push({
+              id: team.team_id,
+              name: team.team_name,
+              created_by: team.team_created_by,
+              created_at: team.team_created_at
+            });
+          }
+          return acc;
+        }, []);
+        
+        console.log(`📊 Teams: ${secureTeams.length} total, ${uniqueTeams.length} unique`);
+        setTeams(uniqueTeams);
         setLoading(false);
         return;
       } else {
@@ -78,7 +88,16 @@ export default function TeamsPage() {
       
       if (!createdError) {
         console.log('✅ Fallback query successful:', createdTeams);
-        setTeams(createdTeams || []);
+        
+        // Deduplicate by ID (safety measure)
+        const uniqueTeams = (createdTeams || []).reduce((acc: Team[], team: Team) => {
+          if (!acc.find(t => t.id === team.id)) {
+            acc.push(team);
+          }
+          return acc;
+        }, []);
+        
+        setTeams(uniqueTeams);
       } else {
         console.log('❌ All methods failed:', createdError);
         setError(`Database access issue. Please run the ultimate_recursion_fix.sql script.`);

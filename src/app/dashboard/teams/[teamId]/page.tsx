@@ -142,9 +142,14 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
       return;
     }
 
-    // In a real app, send the email here
-    console.log(`Invite sent to ${inviteEmail}`);
-    alert(`Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
+    // Show appropriate message based on email sending result
+    if (result.emailSent) {
+      console.log(`📧 Email invite sent to ${inviteEmail}`);
+      alert(`✅ Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
+    } else {
+      console.log(`⚠️ Invite created for ${inviteEmail} but email not sent`);
+      alert(`⚠️ Invite created for ${inviteEmail}, but email could not be sent. You can share the invite link manually.`);
+    }
     
     setInviteEmail("");
     fetchTeam();

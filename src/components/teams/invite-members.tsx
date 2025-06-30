@@ -142,7 +142,13 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
         `An invitation was sent to ${inviteEmail} to join as ${inviteRole}`
       );
 
-      setSuccess(`Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
+      // Show appropriate success message based on email sending result
+      if (result.emailSent) {
+        setSuccess(`✅ Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
+      } else {
+        setSuccess(`⚠️ Invite created for ${inviteEmail}, but email could not be sent. You can share the invite link from the pending invites list.`);
+      }
+      
       setInviteEmail("");
       
       // Refresh pending invites
