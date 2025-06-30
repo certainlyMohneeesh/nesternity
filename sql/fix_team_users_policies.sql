@@ -9,75 +9,61 @@ DROP POLICY IF EXISTS "Users can view team members for their teams" ON public.te
 DROP POLICY IF EXISTS "Team admins can manage team members" ON public.team_users;
 DROP POLICY IF EXISTS "Allow inserting team members" ON public.team_users;
 
--- 2. CREATE NON-RECURSIVE TEAM_USERS POLICIES
+-- 2. CREATE PRODUCTION-READY NON-RECURSIVE TEAM_USERS POLICIES
 -- ====================================
+-- APPROACH: Never reference team_users table within team_users policies
+-- Use only direct relationships to teams table and auth.uid()
 
--- Allow users to view their own team memberships
-CREATE POLICY "Users can view their own team memberships" ON public.team_users
+-- Policy 1: Users can view their own team memberships (no recursion risk)
+CREATE POLICY "Users can view own memberships" ON public.team_users
     FOR SELECT USING (user_id = auth.uid());
 
--- Allow users to view team members where they are also a member (using EXISTS to avoid recursion)
-CREATE POLICY "Users can view other team members" ON public.team_users
+-- Policy 2: Team owners can view all team members (direct teams table check)
+CREATE POLICY "Team owners can view all members" ON public.team_users
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.team_users tu_self
-            WHERE tu_self.team_id = team_users.team_id 
-            AND tu_self.user_id = auth.uid()
+        team_id IN (
+            SELECT id FROM public.teams 
+            WHERE created_by = auth.uid()
         )
     );
 
--- Allow team creators to insert team members
-CREATE POLICY "Team creators can add members" ON public.team_users
+-- Policy 3: Team owners can insert team members (direct teams table check)
+CREATE POLICY "Team owners can add members" ON public.team_users
     FOR INSERT WITH CHECK (
         team_id IN (
-            SELECT id FROM public.teams WHERE created_by = auth.uid()
+            SELECT id FROM public.teams 
+            WHERE created_by = auth.uid()
         )
     );
 
--- Allow users to add themselves to teams (for invite acceptance)
-CREATE POLICY "Users can add themselves to teams" ON public.team_users
+-- Policy 4: Users can insert themselves (for invite acceptance)
+CREATE POLICY "Users can join teams themselves" ON public.team_users
     FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- Allow team creators and admins to update team members
-CREATE POLICY "Team creators can update members" ON public.team_users
+-- Policy 5: Team owners can update team members (direct teams table check)
+CREATE POLICY "Team owners can update members" ON public.team_users
     FOR UPDATE USING (
         team_id IN (
-            SELECT id FROM public.teams WHERE created_by = auth.uid()
+            SELECT id FROM public.teams 
+            WHERE created_by = auth.uid()
         )
     );
 
--- Allow admins to update team members (non-recursive check)
-CREATE POLICY "Team admins can update members" ON public.team_users
-    FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM public.team_users tu_admin
-            WHERE tu_admin.team_id = team_users.team_id 
-            AND tu_admin.user_id = auth.uid() 
-            AND tu_admin.role = 'admin'
-        )
-    );
+-- Policy 6: Users can update their own membership (role changes, etc.)
+CREATE POLICY "Users can update own membership" ON public.team_users
+    FOR UPDATE USING (user_id = auth.uid());
 
--- Allow team creators and admins to delete team members
-CREATE POLICY "Team creators can remove members" ON public.team_users
+-- Policy 7: Team owners can delete team members (direct teams table check)
+CREATE POLICY "Team owners can remove members" ON public.team_users
     FOR DELETE USING (
         team_id IN (
-            SELECT id FROM public.teams WHERE created_by = auth.uid()
+            SELECT id FROM public.teams 
+            WHERE created_by = auth.uid()
         )
     );
 
--- Allow admins to remove team members (non-recursive check)
-CREATE POLICY "Team admins can remove members" ON public.team_users
-    FOR DELETE USING (
-        EXISTS (
-            SELECT 1 FROM public.team_users tu_admin
-            WHERE tu_admin.team_id = team_users.team_id 
-            AND tu_admin.user_id = auth.uid() 
-            AND tu_admin.role = 'admin'
-        )
-    );
-
--- Allow users to remove themselves from teams
-CREATE POLICY "Users can remove themselves from teams" ON public.team_users
+-- Policy 8: Users can remove themselves from teams
+CREATE POLICY "Users can leave teams" ON public.team_users
     FOR DELETE USING (user_id = auth.uid());
 
 -- 3. SUCCESS MESSAGE

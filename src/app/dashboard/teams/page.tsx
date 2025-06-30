@@ -8,12 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Link from "next/link";
 import { useSession } from "@/components/auth/session-context";
+import InviteMembers from "@/components/teams/invite-members";
 
 interface Team {
   id: string;
   name: string;
   created_by: string;
   created_at: string;
+}
+
+interface UserTeamFunction {
+  team_id: string;
+  team_name: string;
+  role: string;
+  created_by: string;
 }
 
 export default function TeamsPage() {
@@ -34,13 +42,71 @@ export default function TeamsPage() {
 
   async function fetchTeams() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("team_users")
-      .select("teams(id, name, created_by, created_at)")
-      .eq("user_id", userId);
-    if (!error && data) {
-      setTeams(data.map((row: any) => row.teams));
+    setError(null);
+    
+    if (!userId) {
+      setLoading(false);
+      return;
     }
+    
+    try {
+      // Method 1: Use the comprehensive helper function
+      const { data: accessibleTeams, error: functionError } = await supabase
+        .rpc('get_accessible_teams', { user_uuid: userId });
+      
+      if (!functionError && accessibleTeams) {
+        console.log('✅ Successfully fetched teams via function:', accessibleTeams);
+        setTeams(accessibleTeams.map((team: any) => ({
+          id: team.id,
+          name: team.name,
+          created_by: team.created_by,
+          created_at: team.created_at
+        })));
+        setLoading(false);
+        return;
+      } else {
+        console.log('❌ Function method failed:', functionError);
+      }
+      
+      // Method 2: Direct teams query with RLS
+      console.log('🔄 Trying direct teams query...');
+      const { data: directTeams, error: directError } = await supabase
+        .from('teams')
+        .select('id, name, created_by, created_at')
+        .order('created_at', { ascending: false });
+      
+      if (!directError && directTeams) {
+        console.log('✅ Direct query successful:', directTeams);
+        setTeams(directTeams);
+        setLoading(false);
+        return;
+      } else {
+        console.log('❌ Direct query failed:', directError);
+      }
+      
+      // Method 3: Get teams user created (always works)
+      console.log('🔄 Trying creator-only query...');
+      const { data: createdTeams, error: createdError } = await supabase
+        .from('teams')
+        .select('id, name, created_by, created_at')
+        .eq('created_by', userId)
+        .order('created_at', { ascending: false });
+      
+      if (!createdError) {
+        console.log('✅ Creator query successful:', createdTeams);
+        setTeams(createdTeams || []);
+      } else {
+        console.log('❌ All methods failed');
+        setError(`Failed to fetch teams. Please check your permissions.`);
+        setTeams([]);
+      }
+      
+    } catch (err) {
+      console.error('💥 Unexpected error:', err);
+      setError('An unexpected error occurred while fetching teams.');
+      setTeams([]);
+    }
+    
     setLoading(false);
   }
 
@@ -125,17 +191,72 @@ export default function TeamsPage() {
       </form>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
-          <div className="text-muted-foreground">Loading teams...</div>
+          <div className="col-span-full">
+            <Card className="p-6">
+              <div className="text-center text-muted-foreground">Loading teams...</div>
+            </Card>
+          </div>
+        ) : error ? (
+          <div className="col-span-full">
+            <Card className="p-6 border-red-200 bg-red-50">
+              <div className="text-red-700 font-medium">Error loading teams</div>
+              <div className="text-red-600 text-sm mt-1">{error}</div>
+              <Button 
+                onClick={fetchTeams} 
+                variant="outline" 
+                className="mt-3"
+              >
+                Try Again
+              </Button>
+            </Card>
+          </div>
         ) : teams.length === 0 ? (
-          <div className="text-muted-foreground">You are not a member of any teams yet.</div>
+          <div className="col-span-full">
+            <Card className="p-8">
+              <div className="text-center space-y-4">
+                <div className="text-muted-foreground">
+                  You are not a member of any teams yet.
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Create a new team above to get started, or ask someone to invite you to their team!
+                </div>
+                <div className="pt-2">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    💡 <strong>Tip:</strong> Team creators can invite members directly from team cards
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
         ) : (
           teams.map(team => (
-            <Card key={team.id} className="p-6 flex flex-col gap-2">
-              <div className="font-bold text-lg">{team.name}</div>
-              <div className="text-xs text-muted-foreground mb-2">Created {new Date(team.created_at).toLocaleDateString()}</div>
-              <Button asChild variant="outline">
-                <Link href={`/dashboard/teams/${team.id}`}>Open Team</Link>
-              </Button>
+            <Card key={team.id} className="p-6 flex flex-col gap-3">
+              <div className="flex-1">
+                <div className="font-bold text-lg">{team.name}</div>
+                <div className="text-xs text-muted-foreground mb-2">
+                  Created {new Date(team.created_at).toLocaleDateString()}
+                </div>
+                <div className="text-xs text-muted-foreground mb-3">
+                  ID: {team.id}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button asChild variant="outline">
+                  <Link href={`/dashboard/teams/${team.id}`}>Open Team</Link>
+                </Button>
+                {(team.created_by === userId) && (
+                  <InviteMembers 
+                    teamId={team.id} 
+                    teamName={team.name}
+                    onMemberAdded={fetchTeams}
+                    trigger={
+                      <Button variant="secondary" size="sm">
+                        Invite Members
+                      </Button>
+                    }
+                  />
+                )}
+              </div>
             </Card>
           ))
         )}
