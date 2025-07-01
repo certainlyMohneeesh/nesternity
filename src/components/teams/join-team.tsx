@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/auth/session-context";
+import { getSafeSession } from "@/lib/safe-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,8 @@ export function JoinTeam() {
     setError(null);
 
     try {
+      const session = await getSafeSession();
+      
       if (!session?.access_token) {
         setError('Not authenticated');
         return;

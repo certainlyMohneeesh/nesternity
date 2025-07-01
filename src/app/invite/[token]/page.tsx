@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { getSafeSession, getSafeUser } from '@/lib/safe-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle, Users } from 'lucide-react';
@@ -43,11 +44,11 @@ export default function InvitePage() {
       setLoading(true);
       setError(null);
 
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      // Get current user safely - this won't throw an error if session is invalid
+      const currentUser = await getSafeUser();
       setUser(currentUser);
 
-      // Get invite details
+      // Get invite details - this should work regardless of auth state
       const response = await fetch(`/api/invites/${token}`);
       const data = await response.json();
 
@@ -57,7 +58,8 @@ export default function InvitePage() {
 
       setInvite(data.invite);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Load invite error:', err);
+      setError(err.message || 'Failed to load invitation');
     } finally {
       setLoading(false);
     }
@@ -76,10 +78,13 @@ export default function InvitePage() {
       setError(null);
 
       // Get current session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSafeSession();
       
       if (!session?.access_token) {
-        throw new Error('Not authenticated');
+        // If no valid session, redirect to login
+        const returnUrl = encodeURIComponent(`/invite/${token}`);
+        router.push(`/auth/login?returnUrl=${returnUrl}`);
+        return;
       }
 
       const response = await fetch(`/api/invite/${token}`, {

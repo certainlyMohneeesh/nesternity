@@ -21,10 +21,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     );
-    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    
+    // Get initial session with error handling
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn('Session error:', error.message);
+          setSession(null);
+        } else {
+          setSession(data.session);
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.warn('Session fetch error:', error);
+        setSession(null);
+        setLoading(false);
+      });
+      
     return () => {
       listener.subscription.unsubscribe();
     };
