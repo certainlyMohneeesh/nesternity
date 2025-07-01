@@ -147,7 +147,7 @@ export default function TeamsPage() {
   }
 
   function getRoleIcon(team: Team) {
-    const userMember = team.members.find(m => m.user.id === user?.id);
+    const userMember = team.members?.find(m => m.user.id === user?.id);
     const isOwner = team.createdBy === user?.id;
     
     if (isOwner) {
@@ -159,7 +159,7 @@ export default function TeamsPage() {
   }
 
   function getRoleBadge(team: Team) {
-    const userMember = team.members.find(m => m.user.id === user?.id);
+    const userMember = team.members?.find(m => m.user.id === user?.id);
     const isOwner = team.createdBy === user?.id;
     
     if (isOwner) {
