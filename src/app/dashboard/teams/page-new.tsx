@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useSession } from "@/components/auth/session-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ interface Team {
 }
 
 export default function TeamsPage() {
-  const { session, loading: sessionLoading } = useSession();
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,21 +47,20 @@ export default function TeamsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sessionLoading) {
-      loadUserAndTeams();
-    }
-  }, [sessionLoading]);
+    loadUserAndTeams();
+  }, []);
 
   async function loadUserAndTeams() {
     try {
       setLoading(true);
       
-      // Check if user is authenticated
-      if (!session?.user) {
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
         window.location.href = '/auth/login';
         return;
       }
-      setUser(session.user);
+      setUser(currentUser);
 
       // Fetch teams using new API
       await fetchTeams();
@@ -77,17 +74,7 @@ export default function TeamsPage() {
 
   async function fetchTeams() {
     try {
-      if (!session?.access_token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch('/api/teams', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch('/api/teams');
       const data = await response.json();
 
       if (response.ok) {
@@ -110,17 +97,9 @@ export default function TeamsPage() {
     setError(null);
 
     try {
-      if (!session?.access_token) {
-        setError('Not authenticated');
-        return;
-      }
-
       const response = await fetch('/api/teams', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: teamName.trim(),
           description: teamDescription.trim() || null
@@ -169,7 +148,7 @@ export default function TeamsPage() {
     return <Badge variant="outline">Member</Badge>;
   }
 
-  if (sessionLoading || loading) {
+  if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">

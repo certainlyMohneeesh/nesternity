@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ====================================
+// CORE MODELS - Clean & Simple
+// ====================================
+
+model User {
+  id           String   @id // Supabase Auth User ID
+  email        String   @unique
+  displayName  String?  @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  ownedTeams   Team[]        @relation("TeamOwner")
+  teamMembers  TeamMember[]
+  invites      TeamInvite[]  @relation("InvitedBy")
+  activities   Activity[]
+
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner       User         @relation("TeamOwner", fields: [createdBy], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  invites     TeamInvite[]
+  activities  Activity[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  teamId     String   @map("team_id")
+  userId     String   @map("user_id")
+  role       String   @default("member") // member, admin
+  addedBy    String   @map("added_by")
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  team       Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model TeamInvite {
+  id        String    @id @default(cuid())
+  teamId    String    @map("team_id")
+  email     String
+  role      String    @default("member")
+  token     String    @unique
+  invitedBy String    @map("invited_by")
+  usedAt    DateTime? @map("used_at")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  inviter   User @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+  @@map("team_invites")
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  userId    String   @map("user_id")
+  type      String   // TEAM_CREATED, MEMBER_ADDED, MEMBER_REMOVED, etc.
+  title     String
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+// ====================================
+// INDEXES FOR PERFORMANCE
+// ====================================
+
+// Optimize common queries
+// @@index([teamId]) is automatically created by foreign keys
+// @@index([userId]) is automatically created by foreign keys
+// @@index([email]) is automatically created by @unique
+// @@index([token]) is automatically created by @unique

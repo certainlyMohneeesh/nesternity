@@ -1,229 +1,244 @@
-"use client";
-import { use, useEffect, useState } from "react";
-import { useSession } from "@/components/auth/session-context";
-import { acceptInvite } from "@/lib/invites";
-import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Loader2, Users, Mail, Clock } from "lucide-react";
-import Link from "next/link";
+'use client';
 
-interface InviteDetails {
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, CheckCircle, XCircle, Users } from 'lucide-react';
+
+interface InviteData {
   id: string;
-  team_id: string;
   email: string;
   role: string;
-  expires_at: string;
-  used_at?: string;
-  teams?: {
+  team: {
+    id: string;
     name: string;
+    description?: string;
   };
-  inviter?: {
-    display_name?: string;
+  inviter: {
     email: string;
+    displayName?: string;
   };
 }
 
-export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = use(params);
-  const { session } = useSession();
+export default function InvitePage() {
+  const params = useParams();
+  const router = useRouter();
+  const token = params.token as string;
+  
+  const [invite, setInvite] = useState<InviteData | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [invite, setInvite] = useState<InviteDetails | null>(null);
-  const [result, setResult] = useState<{ success: boolean; error?: string; teamId?: string } | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    fetchInviteDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadInviteAndUser();
   }, [token]);
 
-  useEffect(() => {
-    if (session?.user && invite && !invite.used_at) {
-      handleAcceptInvite();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, invite]);
-
-  async function fetchInviteDetails() {
+  async function loadInviteAndUser() {
     try {
-      // Use the secure function instead of direct table access
-      const { data, error } = await supabase.rpc('get_invite_details_secure', {
-        p_token: token
-      });
+      setLoading(true);
+      setError(null);
 
-      if (error) {
-        console.error('Error fetching invite:', error);
-        setResult({ success: false, error: 'Failed to load invitation details' });
-        setLoading(false);
-        return;
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+
+      // Get invite details
+      const response = await fetch(`/api/invites/${token}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load invite');
       }
 
-      if (!data || !data.success) {
-        console.error('Invite not found:', data);
-        setResult({ success: false, error: data?.error || 'Invalid or expired invitation' });
-        setLoading(false);
-        return;
-      }
-
-      const inviteData = data.invite;
-      
-      // Transform to match expected interface
-      const processedInvite: InviteDetails = {
-        id: inviteData.id,
-        team_id: inviteData.team_id,
-        email: inviteData.email,
-        role: inviteData.role,
-        expires_at: inviteData.expires_at,
-        used_at: inviteData.used_at,
-        teams: { name: inviteData.team_name },
-        inviter: { 
-          display_name: inviteData.inviter_name,
-          email: inviteData.inviter_email
-        }
-      };
-
-      setInvite(processedInvite);
-
-      // Check if expired
-      if (new Date(processedInvite.expires_at) < new Date()) {
-        setResult({ success: false, error: 'This invitation has expired' });
-      }
-
-      // Check if already used
-      if (processedInvite.used_at) {
-        setResult({ success: true, teamId: processedInvite.team_id });
-      }
-
-    } catch (err) {
-      console.error('Error fetching invite details:', err);
-      setResult({ success: false, error: 'Failed to load invitation' });
+      setInvite(data.invite);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   }
 
   async function handleAcceptInvite() {
-    setLoading(true);
-    const response = await acceptInvite(token);
-    setResult(response);
-    setLoading(false);
+    if (!user) {
+      // Redirect to login with return URL
+      const returnUrl = encodeURIComponent(`/invite/${token}`);
+      router.push(`/auth/login?returnUrl=${returnUrl}`);
+      return;
+    }
+
+    try {
+      setAccepting(true);
+      setError(null);
+
+      const response = await fetch(`/api/invites/${token}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to accept invite');
+      }
+
+      setSuccess(true);
+      
+      // Redirect to team dashboard after a short delay
+      setTimeout(() => {
+        router.push(`/dashboard/teams/${invite?.team.id}`);
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAccepting(false);
+    }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Loading invitation...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !invite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <XCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+            <CardTitle>Invalid Invitation</CardTitle>
+            <CardDescription>
+              This invitation link is invalid, expired, or has already been used.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-lg">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+            <Button 
+              onClick={() => router.push('/')} 
+              className="w-full mt-4"
+            >
+              Return Home
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (!session?.user) {
+  if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center mb-6">
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Team Invitation</h1>
-            <p className="text-gray-600">You need to be logged in to accept this invitation.</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+            <CardTitle>Welcome to {invite?.team.name}!</CardTitle>
+            <CardDescription>
+              You've successfully joined the team. Redirecting to your dashboard...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <Users className="h-12 w-12 text-primary mx-auto mb-2" />
+          <CardTitle>Team Invitation</CardTitle>
+          <CardDescription>
+            You've been invited to join a team
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           {invite && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-gray-900">{invite.teams?.name}</span>
-                <Badge variant="secondary">{invite.role}</Badge>
-              </div>
-              <div className="text-sm text-gray-600 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-3 w-3" />
-                  <span>Invited: {invite.email}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3" />
-                  <span>Expires: {new Date(invite.expires_at).toLocaleDateString()}</span>
-                </div>
-                {invite.inviter && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    From: {invite.inviter.display_name || invite.inviter.email}
-                  </div>
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold text-lg">{invite.team.name}</h3>
+                {invite.team.description && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {invite.team.description}
+                  </p>
                 )}
+                <p className="text-sm text-muted-foreground mt-2">
+                  Role: <span className="font-medium capitalize">{invite.role}</span>
+                </p>
               </div>
+
+              <div className="text-sm text-center">
+                <p className="text-muted-foreground">
+                  Invited by{' '}
+                  <span className="font-medium">
+                    {invite.inviter.displayName || invite.inviter.email}
+                  </span>
+                </p>
+              </div>
+
+              {error && (
+                <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-lg">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              {!user ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-center text-muted-foreground">
+                    Please sign in to accept this invitation
+                  </p>
+                  <Button onClick={handleAcceptInvite} className="w-full">
+                    Sign In to Accept
+                  </Button>
+                </div>
+              ) : user.email !== invite.email ? (
+                <div className="space-y-3">
+                  <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      This invitation was sent to {invite.email}, but you're signed in as {user.email}.
+                      Please sign in with the correct account.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => supabase.auth.signOut().then(() => handleAcceptInvite())} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    Sign Out & Use Different Account
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={handleAcceptInvite} 
+                  disabled={accepting}
+                  className="w-full"
+                >
+                  {accepting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Accepting Invitation...
+                    </>
+                  ) : (
+                    'Accept Invitation'
+                  )}
+                </Button>
+              )}
             </div>
           )}
-
-          <div className="space-y-3">
-            <Button asChild className="w-full">
-              <Link href={`/auth/login?redirect=/invite/${token}`}>
-                Sign In
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href={`/auth/register?redirect=/invite/${token}`}>
-                Create Account
-              </Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (result?.success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-green-700 mb-2">Welcome to the team! 🎉</h1>
-            <p className="text-gray-600 mb-6">
-              You've successfully joined <strong>{invite?.teams?.name}</strong>
-            </p>
-            <Button asChild className="w-full">
-              <Link href={`/dashboard/teams/${result.teamId}`}>
-                Go to Team
-              </Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (result?.error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center">
-            <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-red-700 mb-2">Invitation Error</h1>
-            <p className="text-gray-600 mb-6">{result.error}</p>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/teams">
-                Go to Teams
-              </Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // Accepting invite (should only reach here if logged in and invite is valid)
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md p-8">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <h1 className="text-2xl font-bold mb-2">Accepting Invitation...</h1>
-          <p className="text-gray-600">Please wait while we add you to the team.</p>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );
