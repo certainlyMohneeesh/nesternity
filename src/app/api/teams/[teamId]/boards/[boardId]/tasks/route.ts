@@ -55,6 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Build filter conditions
     const where: any = {
       boardId,
+      archived: false, // Only show non-archived tasks by default
       ...(listId && { listId }),
       ...(assignedTo && { assignedTo }),
       ...(priority && { priority }),

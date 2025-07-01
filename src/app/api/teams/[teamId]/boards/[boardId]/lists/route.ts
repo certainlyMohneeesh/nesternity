@@ -5,48 +5,81 @@ import { supabase } from '@/lib/supabase';
 // Get lists for a board
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string; boardId: string } }
+  { params }: { params: Promise<{ teamId: string; boardId: string }> }
 ) {
   try {
+    const { teamId, boardId } = await params;
+    console.log('GET lists - Starting request for team:', teamId, 'board:', boardId);
+    
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     
+    console.log('Auth header present:', !!authHeader, 'Token length:', token?.length || 0);
+    
     if (!token) {
+      console.log('No token provided');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user with token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    let user;
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (token.startsWith('fake-token-') && process.env.NODE_ENV === 'development') {
+      // Development mode: extract user ID from fake token
+      const userId = token.split('-')[2];
+      const dbUser = await db.user.findUnique({
+        where: { id: userId }
+      });
+      
+      if (dbUser) {
+        user = { id: dbUser.id, email: dbUser.email };
+        console.log('Using development auth for user:', user.id);
+      } else {
+        console.log('Development user not found:', userId);
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    } else {
+      // Production mode: verify with Supabase
+      const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser(token);
+      
+      console.log('Auth check - User:', !!supabaseUser, 'User ID:', supabaseUser?.id, 'Error:', !!authError);
+      
+      if (authError || !supabaseUser) {
+        console.log('Auth error:', authError?.message);
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      
+      user = supabaseUser;
     }
 
     // Verify user has access to the team
     const teamMember = await db.teamMember.findFirst({
       where: {
-        teamId: params.teamId,
+        teamId,
         userId: user.id
       }
     });
 
     const team = await db.team.findFirst({
       where: {
-        id: params.teamId,
+        id: teamId,
         createdBy: user.id
       }
     });
 
+    console.log('Access check - Team member:', !!teamMember, 'Team owner:', !!team, 'User ID:', user.id, 'Team ID:', teamId);
+
     if (!teamMember && !team) {
+      console.log('Access denied for user:', user.id, 'to team:', teamId);
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Verify board exists and belongs to team
     const board = await (db as any).board.findFirst({
       where: {
-        id: params.boardId,
-        teamId: params.teamId
+        id: boardId,
+        teamId
       }
     });
 
@@ -57,7 +90,7 @@ export async function GET(
     // Get lists with task counts
     const lists = await (db as any).boardList.findMany({
       where: {
-        boardId: params.boardId,
+        boardId,
         archived: false
       },
       include: {
@@ -82,9 +115,10 @@ export async function GET(
 // Create a new list
 export async function POST(
   request: NextRequest,
-  { params }: { params: { teamId: string; boardId: string } }
+  { params }: { params: Promise<{ teamId: string; boardId: string }> }
 ) {
   try {
+    const { teamId, boardId } = await params;
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -109,14 +143,14 @@ export async function POST(
     // Verify user has access to the team
     const teamMember = await db.teamMember.findFirst({
       where: {
-        teamId: params.teamId,
+        teamId,
         userId: user.id
       }
     });
 
     const team = await db.team.findFirst({
       where: {
-        id: params.teamId,
+        id: teamId,
         createdBy: user.id
       }
     });
@@ -128,8 +162,8 @@ export async function POST(
     // Verify board exists and belongs to team
     const board = await (db as any).board.findFirst({
       where: {
-        id: params.boardId,
-        teamId: params.teamId
+        id: boardId,
+        teamId
       }
     });
 
@@ -139,7 +173,7 @@ export async function POST(
 
     // Get the next position for the list
     const lastList = await (db as any).boardList.findFirst({
-      where: { boardId: params.boardId },
+      where: { boardId },
       orderBy: { position: 'desc' }
     });
 
@@ -149,7 +183,7 @@ export async function POST(
     const list = await (db as any).boardList.create({
       data: {
         name,
-        boardId: params.boardId,
+        boardId,
         position
       },
       include: {
@@ -166,7 +200,7 @@ export async function POST(
     // Create activity log
     await (db as any).boardActivity.create({
       data: {
-        boardId: params.boardId,
+        boardId,
         userId: user.id,
         action: 'LIST_CREATED',
         details: {

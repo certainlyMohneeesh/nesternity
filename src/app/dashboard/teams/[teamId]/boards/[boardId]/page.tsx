@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { useSession } from "@/components/auth/session-context";
@@ -89,8 +89,9 @@ interface TeamMember {
   };
 }
 
-export default function BoardViewPage({ params }: { params: { teamId: string; boardId: string } }) {
-  const { session } = useSession();
+export default function BoardViewPage({ params }: { params: Promise<{ teamId: string; boardId: string }> }) {
+  const { session, loading: sessionLoading } = useSession();
+  const resolvedParams = use(params);
   const [lists, setLists] = useState<List[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -106,30 +107,70 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
   });
 
   useEffect(() => {
-    fetchBoardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.boardId]);
+    if (!sessionLoading && session) {
+      fetchBoardData();
+    } else if (!sessionLoading && !session) {
+      setLoading(false);
+      toast.error("Please log in to view board data");
+    }
+  }, [resolvedParams.boardId, session, sessionLoading]);
+
+  // Show loading while session is being loaded
+  if (sessionLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show login prompt if no session
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Please log in to view this board</div>
+      </div>
+    );
+  }
 
   async function fetchBoardData() {
+    if (!session) {
+      toast.error("Please log in to view board data");
+      return;
+    }
+
     setLoading(true);
     try {
+      // Add a small delay to ensure session is fully loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Fetch lists and tasks in parallel
       const [listsResponse, tasksResponse] = await Promise.all([
-        api.getLists(params.teamId, params.boardId),
-        api.getTasks(params.teamId, params.boardId)
+        api.getLists(resolvedParams.teamId, resolvedParams.boardId),
+        api.getTasks(resolvedParams.teamId, resolvedParams.boardId)
       ]);
       
       setLists(listsResponse.lists || []);
       setTasks(tasksResponse.tasks || []);
       
       // Fetch team members for task assignment
-      const teamResponse = await api.getTeam(params.teamId);
+      const teamResponse = await api.getTeam(resolvedParams.teamId);
       const members = teamResponse.team.members || [];
       setTeamMembers(members);
       
     } catch (error) {
       console.error("Error fetching board data:", error);
-      toast.error(error instanceof APIError ? error.message : "Failed to load board data");
+      if (error instanceof APIError) {
+        if (error.status === 401) {
+          toast.error("Please log in again");
+        } else if (error.status === 403) {
+          toast.error("You don't have access to this board");
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error("Failed to load board data");
+      }
     } finally {
       setLoading(false);
     }
@@ -149,7 +190,7 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
         dueDate: newTask.dueDate || null
       };
       
-      await api.createTask(params.teamId, params.boardId, taskData);
+      await api.createTask(resolvedParams.teamId, resolvedParams.boardId, taskData);
       
       setOpen(false);
       setNewTask({ 
@@ -185,7 +226,7 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
 
     try {
       // Update in database
-      await api.updateTask(params.teamId, params.boardId, draggableId, {
+      await api.updateTask(resolvedParams.teamId, resolvedParams.boardId, draggableId, {
         listId: newListId,
         position: newPosition
       });
@@ -222,6 +263,9 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
                   <SheetContent>
                     <SheetHeader>
                       <SheetTitle>Add Task</SheetTitle>
+                      <SheetDescription>
+                        Create a new task for this list
+                      </SheetDescription>
                     </SheetHeader>
                     <form onSubmit={handleAddTask} className="space-y-4 mt-4">
                       <div>
@@ -339,8 +383,11 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
             <SheetContent>
               <SheetHeader>
                 <SheetTitle>Add New List</SheetTitle>
+                <SheetDescription>
+                  Create a new list to organize your tasks
+                </SheetDescription>
               </SheetHeader>
-              <AddColumnForm teamId={params.teamId} boardId={params.boardId} onColumnAdded={fetchBoardData} />
+              <AddColumnForm teamId={resolvedParams.teamId} boardId={resolvedParams.boardId} onColumnAdded={fetchBoardData} />
             </SheetContent>
           </Sheet>
         </div>

@@ -1,50 +1,130 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthLayout } from "@/components/auth/auth-layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(true);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
-    } else {
+    } else if (data.session) {
+      // Sync user to Prisma database
+      try {
+        const syncResponse = await fetch('/api/auth/sync-user', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${data.session.access_token}`
+          }
+        });
+        
+        if (!syncResponse.ok) {
+          console.warn('Failed to sync user to database');
+        }
+      } catch (syncError) {
+        console.warn('User sync error:', syncError);
+      }
+      
       const redirect = searchParams.get('redirect');
       router.push(redirect || "/dashboard");
     }
+    setLoading(false);
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <form onSubmit={handleLogin} className="max-w-sm mx-auto mt-20 flex flex-col gap-4">
-        <h2 className="text-2xl font-bold">Login</h2>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="input input-bordered"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="input input-bordered"
-          required
-        />
-        {error && <div className="text-red-500">{error}</div>}
-        <button type="submit" className="btn btn-primary">Login</button>
+    <AuthLayout 
+      title="Sign in to your account"
+      subtitle="Welcome back! Please enter your details."
+    >
+      <form onSubmit={handleLogin} className="space-y-6">
+        <div>
+          <Label htmlFor="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <div className="relative mt-1">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4 text-gray-400" />
+              ) : (
+                <Eye className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <Link href="/auth/forgot-password" className="text-indigo-600 hover:text-indigo-500">
+              Forgot your password?
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Sign in"}
+        </Button>
+
+        <div className="text-center">
+          <span className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link href="/auth/register" className="text-indigo-600 hover:text-indigo-500 font-medium">
+              Sign up
+            </Link>
+          </span>
+        </div>
       </form>
-    </div>
+    </AuthLayout>
   );
 }

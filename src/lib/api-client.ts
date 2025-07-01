@@ -26,10 +26,28 @@ class APIClient {
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const { data: { session } } = await supabase.auth.getSession();
+    let session = null;
+    let retries = 3;
+    
+    // Try to get session with retries
+    while (retries > 0 && !session) {
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
+      
+      if (!session) {
+        // Wait a bit and try again
+        await new Promise(resolve => setTimeout(resolve, 200));
+        retries--;
+      }
+    }
     
     if (!session?.access_token) {
-      throw new APIError('Not authenticated', 401);
+      // Try to refresh the session
+      const { data: refreshData, error } = await supabase.auth.refreshSession();
+      if (error || !refreshData.session?.access_token) {
+        throw new APIError('Not authenticated', 401);
+      }
+      session = refreshData.session;
     }
 
     return {
@@ -42,60 +60,67 @@ class APIClient {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const headers = await this.getAuthHeaders();
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
     try {
-      const response = await fetch(`${this.baseURL}${url}`, {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers,
-        },
-        signal: controller.signal,
-      });
+      const headers = await this.getAuthHeaders();
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-      clearTimeout(timeoutId);
+      try {
+        const response = await fetch(`${this.baseURL}${url}`, {
+          ...options,
+          headers: {
+            ...headers,
+            ...options.headers,
+          },
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: response.statusText };
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { error: response.statusText };
+          }
+          
+          throw new APIError(
+            errorData.error || `HTTP ${response.status}`,
+            response.status,
+            errorData
+          );
+        }
+
+        // Handle empty responses
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return await response.json();
+        }
+        
+        return {} as T;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error instanceof APIError) {
+          throw error;
+        }
+        
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new APIError('Request timeout', 408);
         }
         
         throw new APIError(
-          errorData.error || `HTTP ${response.status}`,
-          response.status,
-          errorData
+          error instanceof Error ? error.message : 'Network error',
+          0
         );
       }
-
-      // Handle empty responses
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      }
-      
-      return {} as T;
     } catch (error) {
-      clearTimeout(timeoutId);
-      
       if (error instanceof APIError) {
         throw error;
       }
-      
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new APIError('Request timeout', 408);
-      }
-      
-      throw new APIError(
-        error instanceof Error ? error.message : 'Network error',
-        0
-      );
+      throw new APIError('Authentication failed', 401);
     }
   }
 

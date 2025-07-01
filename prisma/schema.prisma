@@ -141,6 +141,7 @@ model Task {
   estimatedHours Int?             @map("estimated_hours")
   actualHours    Int?             @map("actual_hours")
   tags           String[]
+  archived       Boolean          @default(false)
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   activities     TaskActivity[]
