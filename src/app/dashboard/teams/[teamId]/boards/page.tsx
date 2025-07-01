@@ -1,57 +1,126 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useSession } from "@/components/auth/session-context";
+import { Plus, Calendar, Users, MoreVertical, Archive } from "lucide-react";
 
 interface Board {
   id: string;
   name: string;
-  type: string;
-  created_at: string;
+  description?: string;
+  type: 'KANBAN' | 'SCRUM';
+  createdAt: string;
+  _count: {
+    tasks: number;
+  };
+  lists: Array<{
+    id: string;
+    name: string;
+    _count: {
+      tasks: number;
+    };
+  }>;
 }
 
 export default function BoardsPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params);
-  const { session } = useSession();
-  const userId = session?.user.id;
+  const { session, loading: sessionLoading } = useSession();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [boardName, setBoardName] = useState("");
-  const [boardType, setBoardType] = useState("kanban");
+  const [boardDescription, setBoardDescription] = useState("");
+  const [boardType, setBoardType] = useState("KANBAN");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userId) fetchBoards();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, teamId]);
+    if (!sessionLoading && session?.user) {
+      fetchBoards();
+    }
+  }, [sessionLoading, session, teamId]);
 
   async function fetchBoards() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("boards")
-      .select("*")
-      .eq("team_id", teamId)
-      .order("created_at", { ascending: false });
-    if (!error && data) setBoards(data);
-    setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!session?.access_token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const response = await fetch(`/api/teams/${teamId}/boards`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setBoards(data.boards || []);
+      } else {
+        setError(data.error || 'Failed to fetch boards');
+      }
+    } catch (error) {
+      console.error('Fetch boards error:', error);
+      setError('Failed to fetch boards');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCreateBoard(e: React.FormEvent) {
     e.preventDefault();
-    if (!boardName) return;
-    await supabase.from("boards").insert([
-      { name: boardName, type: boardType, team_id: teamId },
-    ]);
-    setOpen(false);
-    setBoardName("");
-    setBoardType("kanban");
-    fetchBoards();
+    if (!boardName.trim()) return;
+
+    try {
+      setCreating(true);
+      setError(null);
+
+      if (!session?.access_token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const response = await fetch(`/api/teams/${teamId}/boards`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: boardName.trim(),
+          description: boardDescription.trim() || null,
+          type: boardType
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setBoards(prev => [data.board, ...prev]);
+        setBoardName("");
+        setBoardDescription("");
+        setOpen(false);
+      } else {
+        setError(data.error || 'Failed to create board');
+      }
+    } catch (error) {
+      console.error('Create board error:', error);
+      setError('Failed to create board');
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,16 +8,21 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { useSession } from "@/components/auth/session-context";
-import { createActivity, ACTIVITY_TYPES } from "@/lib/notifications";
+import { api, APIError } from "@/lib/api-client";
+import { toast } from "sonner";
 
-interface Column {
+interface List {
   id: string;
   name: string;
   position: number;
+  color?: string;
+  _count: {
+    tasks: number;
+  };
 }
 
 // AddColumnForm component definition
-function AddColumnForm({ boardId, onColumnAdded }: { boardId: string; onColumnAdded: () => void }) {
+function AddColumnForm({ teamId, boardId, onColumnAdded }: { teamId: string; boardId: string; onColumnAdded: () => void }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,48 +30,68 @@ function AddColumnForm({ boardId, onColumnAdded }: { boardId: string; onColumnAd
     e.preventDefault();
     if (!name) return;
     setLoading(true);
-    await supabase.from("board_columns").insert([
-      { name, board_id: boardId }
-    ]);
-    setName("");
-    setLoading(false);
-    onColumnAdded();
+    
+    try {
+      await api.createList(teamId, boardId, { name });
+      setName("");
+      onColumnAdded();
+      toast.success("List created successfully");
+    } catch (error) {
+      console.error("Error creating list:", error);
+      toast.error(error instanceof APIError ? error.message : "Failed to create list");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
       <div>
-        <Label>Column Name</Label>
+        <Label>List Name</Label>
         <Input value={name} onChange={e => setName(e.target.value)} required />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Adding..." : "Add Column"}
+        {loading ? "Adding..." : "Add List"}
       </Button>
     </form>
   );
 }
+
 interface Task {
   id: string;
   title: string;
   description: string;
-  column_id: string;
-  assignee_id: string | null;
-  status: string | null;
-  priority: string | null;
-  due_date: string | null;
+  listId: string;
+  assignedTo: string | null;
+  status: string;
+  priority: string;
+  dueDate: string | null;
   position: number;
-  assignee?: { name: string; id: string };
+  assignee?: { 
+    displayName: string; 
+    id: string; 
+    email: string;
+  };
+  list: {
+    id: string;
+    name: string;
+    color?: string;
+  };
 }
 
 interface TeamMember {
   id: string;
-  user_id: string;
-  users: { name: string; id: string };
+  userId: string;
+  user: { 
+    displayName: string; 
+    id: string; 
+    email: string;
+  };
 }
 
 export default function BoardViewPage({ params }: { params: { teamId: string; boardId: string } }) {
   const { session } = useSession();
-  const [columns, setColumns] = useState<Column[]>([]);
+  const [lists, setLists] = useState<List[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,10 +99,10 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
   const [newTask, setNewTask] = useState({ 
     title: "", 
     description: "", 
-    column_id: "", 
-    assignee_id: "", 
-    priority: "medium",
-    due_date: ""
+    listId: "", 
+    assignedTo: "", 
+    priority: "MEDIUM",
+    dueDate: ""
   });
 
   useEffect(() => {
@@ -88,77 +112,60 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
 
   async function fetchBoardData() {
     setLoading(true);
-    // Fetch columns
-    const { data: columnsData } = await supabase
-      .from("board_columns")
-      .select("*")
-      .eq("board_id", params.boardId)
-      .order("position");
-    setColumns(columnsData || []);
-    
-    // Fetch tasks with assignee info
-    const { data: tasksData } = await supabase
-      .from("tasks")
-      .select(`
-        *,
-        assignee:users(name, id)
-      `)
-      .eq("board_id", params.boardId)
-      .order("position");
-    setTasks(tasksData || []);
-    
-    // Fetch team members
-    const { data: membersData } = await supabase
-      .from("team_users")
-      .select("id, user_id, users(name, id)")
-      .eq("team_id", params.teamId);
-    setTeamMembers((membersData || []).map((member: any) => ({
-      ...member,
-      users: Array.isArray(member.users) ? member.users[0] : member.users
-    })));
-    
-    setLoading(false);
+    try {
+      // Fetch lists and tasks in parallel
+      const [listsResponse, tasksResponse] = await Promise.all([
+        api.getLists(params.teamId, params.boardId),
+        api.getTasks(params.teamId, params.boardId)
+      ]);
+      
+      setLists(listsResponse.lists || []);
+      setTasks(tasksResponse.tasks || []);
+      
+      // Fetch team members for task assignment
+      const teamResponse = await api.getTeam(params.teamId);
+      const members = teamResponse.team.members || [];
+      setTeamMembers(members);
+      
+    } catch (error) {
+      console.error("Error fetching board data:", error);
+      toast.error(error instanceof APIError ? error.message : "Failed to load board data");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTask.title || !newTask.column_id) return;
+    if (!newTask.title || !newTask.listId) return;
     
-    // Get the position for the new task (last in column)
-    const tasksInColumn = tasks.filter(t => t.column_id === newTask.column_id);
-    const position = tasksInColumn.length;
-    
-    const { data: insertedTask, error } = await supabase.from("tasks").insert([
-      { 
-        ...newTask, 
-        board_id: params.boardId,
-        position,
-        assignee_id: newTask.assignee_id || null,
-        due_date: newTask.due_date || null
-      },
-    ]).select().single();
-    
-    if (!error && insertedTask) {
-      // Create activity for task creation
-      const assignedMember = teamMembers.find(m => m.user_id === newTask.assignee_id);
-      let description = `Task "${newTask.title}" was created`;
-      if (assignedMember) {
-        description += ` and assigned to ${assignedMember.users.name}`;
-      }
+    try {
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        listId: newTask.listId,
+        assignedTo: newTask.assignedTo || null,
+        priority: newTask.priority,
+        dueDate: newTask.dueDate || null
+      };
       
-      await createActivity(
-        params.teamId,
-        ACTIVITY_TYPES.TASK_CREATED,
-        `New task: ${newTask.title}`,
-        description,
-        params.boardId,
-        insertedTask.id
-      );
+      await api.createTask(params.teamId, params.boardId, taskData);
+      
+      setOpen(false);
+      setNewTask({ 
+        title: "", 
+        description: "", 
+        listId: "", 
+        assignedTo: "", 
+        priority: "MEDIUM", 
+        dueDate: "" 
+      });
+      fetchBoardData();
+      toast.success("Task created successfully");
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error(error instanceof APIError ? error.message : "Failed to create task");
     }
-    
-    setOpen(false);
-    setNewTask({ title: "", description: "", column_id: "", assignee_id: "", priority: "medium", due_date: "" });
-    fetchBoardData();
   }
 
   async function handleDragEnd(result: any) {
@@ -170,35 +177,29 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
     const task = tasks.find(t => t.id === draggableId);
     if (!task) return;
 
-    // Update task position and column
-    const newColumnId = destination.droppableId;
+    // Update task position and list
+    const newListId = destination.droppableId;
     const newPosition = destination.index;
-    const oldColumn = columns.find(c => c.id === source.droppableId);
-    const newColumn = columns.find(c => c.id === newColumnId);
+    const oldList = lists.find(l => l.id === source.droppableId);
+    const newList = lists.find(l => l.id === newListId);
 
-    // Update in database
-    const { error } = await supabase
-      .from("tasks")
-      .update({ 
-        column_id: newColumnId,
+    try {
+      // Update in database
+      await api.updateTask(params.teamId, params.boardId, draggableId, {
+        listId: newListId,
         position: newPosition
-      })
-      .eq("id", draggableId);
+      });
 
-    if (!error && oldColumn && newColumn && oldColumn.id !== newColumn.id) {
-      // Create activity for task movement
-      await createActivity(
-        params.teamId,
-        ACTIVITY_TYPES.TASK_MOVED,
-        `Task moved: ${task.title}`,
-        `Task "${task.title}" was moved from "${oldColumn.name}" to "${newColumn.name}"`,
-        params.boardId,
-        task.id
-      );
+      // Refresh data
+      fetchBoardData();
+      
+      if (oldList && newList && oldList.id !== newList.id) {
+        toast.success(`Task moved from "${oldList.name}" to "${newList.name}"`);
+      }
+    } catch (error) {
+      console.error("Error moving task:", error);
+      toast.error(error instanceof APIError ? error.message : "Failed to move task");
     }
-
-    // Refresh data
-    fetchBoardData();
   }
 
   return (
@@ -207,16 +208,16 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto">
           {loading ? (
-            <div className="text-muted-foreground">Loading columns...</div>
-          ) : columns.length === 0 ? (
-            <div className="text-muted-foreground">No columns yet.</div>
+            <div className="text-muted-foreground">Loading lists...</div>
+          ) : lists.length === 0 ? (
+            <div className="text-muted-foreground">No lists yet.</div>
           ) : (
-            columns.map(col => (
-              <div key={col.id} className="min-w-[300px] w-80 bg-muted/30 rounded-lg p-4 flex flex-col gap-4">
-                <div className="font-bold mb-2">{col.name}</div>
-                <Sheet open={open && newTask.column_id === col.id} onOpenChange={v => setOpen(v)}>
+            lists.map(list => (
+              <div key={list.id} className="min-w-[300px] w-80 bg-muted/30 rounded-lg p-4 flex flex-col gap-4">
+                <div className="font-bold mb-2">{list.name}</div>
+                <Sheet open={open && newTask.listId === list.id} onOpenChange={v => setOpen(v)}>
                   <SheetTrigger asChild>
-                    <Button size="sm" onClick={() => setNewTask(t => ({ ...t, column_id: col.id }))}>Add Task</Button>
+                    <Button size="sm" onClick={() => setNewTask(t => ({ ...t, listId: list.id }))}>Add Task</Button>
                   </SheetTrigger>
                   <SheetContent>
                     <SheetHeader>
@@ -234,14 +235,14 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
                       <div>
                         <Label>Assignee</Label>
                         <select 
-                          value={newTask.assignee_id} 
-                          onChange={e => setNewTask(t => ({ ...t, assignee_id: e.target.value }))}
+                          value={newTask.assignedTo} 
+                          onChange={e => setNewTask(t => ({ ...t, assignedTo: e.target.value }))}
                           className="w-full p-2 border rounded"
                         >
                           <option value="">Unassigned</option>
                           {teamMembers.map(member => (
-                            <option key={member.user_id} value={member.user_id}>
-                              {member.users?.name || member.user_id}
+                            <option key={member.userId} value={member.userId}>
+                              {member.user?.displayName || member.user?.email || member.userId}
                             </option>
                           ))}
                         </select>
@@ -253,24 +254,24 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
                           onChange={e => setNewTask(t => ({ ...t, priority: e.target.value }))}
                           className="w-full p-2 border rounded"
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
+                          <option value="LOW">Low</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="HIGH">High</option>
                         </select>
                       </div>
                       <div>
                         <Label>Due Date</Label>
                         <Input 
                           type="date" 
-                          value={newTask.due_date} 
-                          onChange={e => setNewTask(t => ({ ...t, due_date: e.target.value }))} 
+                          value={newTask.dueDate} 
+                          onChange={e => setNewTask(t => ({ ...t, dueDate: e.target.value }))} 
                         />
                       </div>
                       <Button type="submit" className="w-full">Add</Button>
                     </form>
                   </SheetContent>
                 </Sheet>
-                <Droppable droppableId={col.id}>
+                <Droppable droppableId={list.id}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
@@ -281,7 +282,7 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
                       )}
                     >
                       {tasks
-                        .filter(t => t.column_id === col.id)
+                        .filter(t => t.listId === list.id)
                         .sort((a, b) => a.position - b.position)
                         .map((task, index) => (
                           <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -296,24 +297,24 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
                                 )}
                               >
                                 <div className="font-bold">{task.title}</div>
-                                {task.assignee?.name && (
+                                {task.assignee?.displayName && (
                                   <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1 inline-block">
-                                    {task.assignee.name}
+                                    {task.assignee.displayName}
                                   </div>
                                 )}
                                 {task.priority && (
                                   <div className={cn(
                                     "text-xs px-2 py-1 rounded mt-1 inline-block ml-1",
-                                    task.priority === "high" && "bg-red-100 text-red-800",
-                                    task.priority === "medium" && "bg-yellow-100 text-yellow-800",
-                                    task.priority === "low" && "bg-green-100 text-green-800"
+                                    task.priority === "HIGH" && "bg-red-100 text-red-800",
+                                    task.priority === "MEDIUM" && "bg-yellow-100 text-yellow-800",
+                                    task.priority === "LOW" && "bg-green-100 text-green-800"
                                   )}>
-                                    {task.priority}
+                                    {task.priority.toLowerCase()}
                                   </div>
                                 )}
-                                {task.due_date && (
+                                {task.dueDate && (
                                   <div className="text-xs text-gray-600 mt-1">
-                                    Due: {new Date(task.due_date).toLocaleDateString()}
+                                    Due: {new Date(task.dueDate).toLocaleDateString()}
                                   </div>
                                 )}
                                 <div className="text-sm mt-1">{task.description}</div>
@@ -328,18 +329,18 @@ export default function BoardViewPage({ params }: { params: { teamId: string; bo
               </div>
             ))
           )}
-          {/* Add new column UI */}
+          {/* Add new list UI */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" className="min-w-[300px] w-80 h-[56px] flex items-center justify-center">
-                + Add Column
+                + Add List
               </Button>
             </SheetTrigger>
             <SheetContent>
               <SheetHeader>
-                <SheetTitle>Add New Column</SheetTitle>
+                <SheetTitle>Add New List</SheetTitle>
               </SheetHeader>
-              <AddColumnForm boardId={params.boardId} onColumnAdded={fetchBoardData} />
+              <AddColumnForm teamId={params.teamId} boardId={params.boardId} onColumnAdded={fetchBoardData} />
             </SheetContent>
           </Sheet>
         </div>
