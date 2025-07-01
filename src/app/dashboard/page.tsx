@@ -1,32 +1,412 @@
-import { Card } from "@/components/ui/card";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
+import { useSession } from "@/components/auth/session-context";
+import { api, APIError } from "@/lib/api-client";
+import { toast } from "sonner";
+import { 
+  Users, 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  TrendingUp, 
+  Plus,
+  ArrowRight,
+  FolderKanban,
+  Target
+} from "lucide-react";
+
+interface DashboardData {
+  teams: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    _count: {
+      members: number;
+      boards: number;
+    };
+  }>;
+  recentTasks: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    dueDate: string | null;
+    list: {
+      name: string;
+      board: {
+        name: string;
+        team: {
+          name: string;
+        };
+      };
+    };
+  }>;
+  stats: {
+    totalTeams: number;
+    totalBoards: number;
+    totalTasks: number;
+    completedTasks: number;
+  };
+}
 
 export default function DashboardOverview() {
-  // In a real app, you would fetch the user's teams and show a team picker or recent team
-  // For now, guide user to Teams page to select or create a team
-  return (
-    <div className="grid gap-8 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-      <Card className="p-6 flex flex-col gap-2">
-        <div className="text-sm text-muted-foreground">Teams</div>
-        <div className="text-3xl font-bold">Manage</div>
-        <Link href="/dashboard/teams" className="text-primary hover:underline text-sm mt-2">
-          View Teams
+  const { session, loading: sessionLoading } = useSession();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!sessionLoading && session) {
+      fetchDashboardData();
+    } else if (!sessionLoading && !session) {
+      setLoading(false);
+    }
+  }, [session, sessionLoading]);
+
+  async function fetchDashboardData() {
+    try {
+      setLoading(true);
+      
+      // Fetch teams first
+      const teamsResponse = await api.getTeams();
+      const teams = teamsResponse.teams || [];
+      
+      // If no teams, show empty state
+      if (teams.length === 0) {
+        setData({
+          teams: [],
+          recentTasks: [],
+          stats: {
+            totalTeams: 0,
+            totalBoards: 0,
+            totalTasks: 0,
+            completedTasks: 0
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Fetch data for each team
+      let allBoards: any[] = [];
+      let allTasks: any[] = [];
+      
+      for (const team of teams) {
+        try {
+          const boardsResponse = await api.getBoards(team.id);
+          const teamBoards = boardsResponse.boards || [];
+          allBoards = [...allBoards, ...teamBoards];
+          
+          // Get tasks from each board
+          for (const board of teamBoards) {
+            try {
+              const tasksResponse = await api.getTasks(team.id, board.id);
+              const boardTasks = (tasksResponse.tasks || []).map((task: any) => ({
+                ...task,
+                list: {
+                  ...task.list,
+                  board: {
+                    ...board,
+                    team
+                  }
+                }
+              }));
+              allTasks = [...allTasks, ...boardTasks];
+            } catch (error) {
+              // Skip boards we can't access
+              console.warn(`Couldn't fetch tasks for board ${board.id}:`, error);
+            }
+          }
+        } catch (error) {
+          // Skip teams we can't access
+          console.warn(`Couldn't fetch boards for team ${team.id}:`, error);
+        }
+      }
+
+      // Get recent tasks (last 10, sorted by creation date)
+      const recentTasks = allTasks
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .slice(0, 5);
+
+      // Calculate stats
+      const completedTasks = allTasks.filter(task => task.status === 'DONE').length;
+
+      setData({
+        teams,
+        recentTasks,
+        stats: {
+          totalTeams: teams.length,
+          totalBoards: allBoards.length,
+          totalTasks: allTasks.length,
+          completedTasks
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (sessionLoading || loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="text-muted-foreground">Please log in to view your dashboard</div>
+        <Link href="/auth/login">
+          <Button>Log In</Button>
         </Link>
-      </Card>
-      <Card className="p-6 flex flex-col gap-2">
-        <div className="text-sm text-muted-foreground">Clients</div>
-        <div className="text-3xl font-bold">—</div>
-        <span className="text-muted-foreground text-xs mt-2">Select a team to view clients</span>
-      </Card>
-      <Card className="p-6 flex flex-col gap-2">
-        <div className="text-sm text-muted-foreground">Boards</div>
-        <div className="text-3xl font-bold">—</div>
-        <span className="text-muted-foreground text-xs mt-2">Select a team to view boards</span>
-      </Card>
-      <Card className="p-6 flex flex-col gap-2">
-        <div className="text-sm text-muted-foreground">Settings</div>
-        <div className="text-3xl font-bold">—</div>
-        <span className="text-muted-foreground text-xs mt-2">Select a team to manage settings</span>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Failed to load dashboard data</div>
+      </div>
+    );
+  }
+
+  // Empty state - no teams
+  if (data.teams.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-semibold">Welcome to Nesternity!</h2>
+          <p className="text-muted-foreground">Get started by creating your first team</p>
+        </div>
+        <Link href="/dashboard/teams">
+          <Button size="lg" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create Your First Team
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const completionRate = data.stats.totalTasks > 0 
+    ? Math.round((data.stats.completedTasks / data.stats.totalTasks) * 100) 
+    : 0;
+
+  return (
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">Welcome back!</h1>
+        <p className="text-muted-foreground">
+          Here's what's happening with your teams and projects.
+        </p>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalTeams}</div>
+            <p className="text-xs text-muted-foreground">
+              Active teams
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Boards</CardTitle>
+            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalBoards}</div>
+            <p className="text-xs text-muted-foreground">
+              Project boards
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.stats.totalTasks}</div>
+            <p className="text-xs text-muted-foreground">
+              {data.stats.completedTasks} completed
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completionRate}%</div>
+            <p className="text-xs text-muted-foreground">
+              Task completion
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Teams and Recent Tasks */}
+      <div className="grid gap-8 md:grid-cols-2">
+        {/* Your Teams */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Your Teams</CardTitle>
+              <CardDescription>Teams you're part of</CardDescription>
+            </div>
+            <Link href="/dashboard/teams">
+              <Button variant="outline" size="sm" className="gap-2">
+                View All
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.teams.slice(0, 3).map((team) => (
+              <div key={team.id} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      {team.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{team.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {team._count.members} members • {team._count.boards} boards
+                    </p>
+                  </div>
+                </div>
+                <Link href={`/dashboard/teams/${team.id}`}>
+                  <Button variant="ghost" size="sm">
+                    View
+                  </Button>
+                </Link>
+              </div>
+            ))}
+            {data.teams.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p>No teams yet</p>
+                <Link href="/dashboard/teams">
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Create Team
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Tasks */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Tasks</CardTitle>
+            <CardDescription>Your latest task activity</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.recentTasks.map((task) => (
+              <div key={task.id} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center">
+                    {task.priority === 'HIGH' && (
+                      <div className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+                    )}
+                    {task.priority === 'MEDIUM' && (
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2" />
+                    )}
+                    {task.priority === 'LOW' && (
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium truncate max-w-[200px]">
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {task.list.board.team.name} • {task.list.board.name} • {task.list.name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {task.dueDate && (
+                    <Badge variant="outline" className="text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+            {data.recentTasks.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p>No recent tasks</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Common tasks to get you started</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/dashboard/teams">
+              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                <Users className="h-4 w-4" />
+                <div className="text-left">
+                  <div className="font-medium">Manage Teams</div>
+                  <div className="text-xs text-muted-foreground">Create or join teams</div>
+                </div>
+              </Button>
+            </Link>
+            
+            {data.teams.length > 0 && (
+              <Link href={`/dashboard/teams/${data.teams[0].id}/boards`}>
+                <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                  <FolderKanban className="h-4 w-4" />
+                  <div className="text-left">
+                    <div className="font-medium">View Boards</div>
+                    <div className="text-xs text-muted-foreground">Manage your projects</div>
+                  </div>
+                </Button>
+              </Link>
+            )}
+
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={fetchDashboardData}>
+              <TrendingUp className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Refresh Data</div>
+                <div className="text-xs text-muted-foreground">Update dashboard</div>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
