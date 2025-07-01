@@ -3,13 +3,13 @@ import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 
 interface RouteParams {
-  params: { token: string }
+  params: Promise<{ token: string }>
 }
 
 // Get invite details by token
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { token } = params;
+    const { token } = await params;
 
     const invite = await db.teamInvite.findUnique({
       where: { token },
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // Accept invite
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { token } = params;
+    const { token } = await params;
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useSession } from "@/components/auth/session-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,167 +9,189 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { useSession } from "@/components/auth/session-context";
-import { createTeamInvite, getTeamInvites, cancelInvite, PendingInvite as BasePendingInvite } from "@/lib/invites";
-
-// Extend PendingInvite type to include 'token' property if not already present
-type PendingInvite = BasePendingInvite & { token: string };
-import { createActivity, ACTIVITY_TYPES } from "@/lib/notifications";
-import { Mail, UserPlus, Trash2, Copy } from "lucide-react";
-import ActivityFeed from "@/components/teams/activity-feed";
+import { Mail, UserPlus, Trash2, Copy, Users, Crown, Shield } from "lucide-react";
 
 interface Team {
   id: string;
   name: string;
-  created_by: string;
-  created_at: string;
-}
-interface TeamUser {
-  id: string;
-  user_id: string;
-  role: string;
-  accepted_at: string;
-  users?: {
+  description?: string;
+  createdBy: string;
+  createdAt: string;
+  owner: {
     id: string;
     email: string;
-    display_name?: string;
+    displayName?: string;
   };
+  members: Array<{
+    id: string;
+    role: string;
+    acceptedAt: string;
+    user: {
+      id: string;
+      email: string;
+      displayName?: string;
+    };
+  }>;
+  _count: {
+    members: number;
+  };
+}
+
+interface PendingInvite {
+  id: string;
+  email: string;
+  role: string;
+  token: string;
+  teamId: string;
+  createdAt: string;
+  expiresAt: string;
+  status: string;
 }
 
 export default function TeamOverviewPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params);
-  const { session } = useSession();
+  const { session, loading: sessionLoading } = useSession();
   const userId = session?.user.id;
   const [team, setTeam] = useState<Team | null>(null);
-  const [members, setMembers] = useState<TeamUser[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = members.find(m => m.user_id === userId)?.role === "admin" || team?.created_by === userId;
+  const isAdmin = team?.members.find(m => m.user.id === userId)?.role === "admin" || team?.createdBy === userId;
 
   useEffect(() => {
-    if (userId) fetchTeam();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, userId]);
+    if (!sessionLoading && session?.user) {
+      fetchTeam();
+    }
+  }, [teamId, sessionLoading, session]);
 
   async function fetchTeam() {
-    setLoading(true);
-    
-    // Fetch team data
-    const { data: teamData } = await supabase.from("teams").select("*").eq("id", teamId).single();
-    setTeam(teamData);
-    
-    // Fetch members with user details
-    const { data: memberData } = await supabase
-      .from("team_users")
-      .select(`
-        id, user_id, role, accepted_at,
-        users:user_id (id, email, display_name)
-      `)
-      .eq("team_id", teamId);
-    setMembers((memberData || []).map((row: any) => ({
-      ...row,
-      users: Array.isArray(row.users) ? row.users[0] : row.users
-    })));
-    
-    // Fetch pending invites
-    if (memberData?.find(m => m.user_id === userId && m.role === "admin") || teamData?.created_by === userId) {
-      const { invites } = await getTeamInvites(teamId);
-      setPendingInvites(
-        (invites || []).map(invite => ({
-          ...invite,
-          token: (invite as any).token ?? "",
-          expiresAt: (invite as any).expiresAt ?? ""
-        }))
-      );
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!session?.access_token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      // Fetch team details
+      const teamResponse = await fetch(`/api/teams/${teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!teamResponse.ok) {
+        const errorData = await teamResponse.json();
+        setError(errorData.error || 'Failed to fetch team');
+        return;
+      }
+
+      const teamData = await teamResponse.json();
+      setTeam(teamData.team);
+
+      // Fetch pending invites if user is admin/owner
+      if (teamData.team.createdBy === userId || 
+          teamData.team.members.some((m: any) => m.user.id === userId && m.role === 'admin')) {
+        await fetchInvites();
+      }
+    } catch (error) {
+      console.error('Fetch team error:', error);
+      setError('Failed to fetch team');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }
 
-  async function handleDirectInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!inviteEmail) return;
-    
-    // Find user by email in the users table
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("id, display_name")
-      .eq("email", inviteEmail)
-      .single();
+  async function fetchInvites() {
+    try {
+      if (!session?.access_token) return;
 
-    if (error || !user) {
-      alert("User not found. They must register first or use the email invite feature.");
-      return;
+      const invitesResponse = await fetch(`/api/teams/invites?teamId=${teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (invitesResponse.ok) {
+        const invitesData = await invitesResponse.json();
+        setPendingInvites(invitesData.invites || []);
+      }
+    } catch (error) {
+      console.error('Fetch invites error:', error);
     }
-
-    // Check if already a member
-    const { data: existing } = await supabase
-      .from("team_users")
-      .select("id")
-      .eq("team_id", teamId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (existing) {
-      alert("User is already a member of this team.");
-      return;
-    }
-
-    // Add as member
-    const { error: addError } = await supabase.from("team_users").insert([
-      { team_id: teamId, user_id: user.id, role: "member", accepted_at: new Date().toISOString() },
-    ]);
-    
-    if (addError) {
-      alert("Failed to add member: " + addError.message);
-      return;
-    }
-
-    // Create activity for member addition
-    await createActivity(
-      teamId,
-      ACTIVITY_TYPES.MEMBER_ADDED,
-      `New member added: ${user.display_name || inviteEmail}`,
-      `${user.display_name || inviteEmail} was added to the team`
-    );
-    
-    setInviteEmail("");
-    fetchTeam();
   }
 
   async function handleEmailInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteEmail || !team) return;
-    
-    const result = await createTeamInvite(teamId, inviteEmail, "member");
-    
-    if (!result.success) {
-      alert(result.error);
-      return;
-    }
 
-    // Show appropriate message based on email sending result
-    if (result.success) {
-      console.log(`📧 Invite created successfully for ${inviteEmail}`);
-      alert(`✅ Invite created for ${inviteEmail}! You can share the invite link manually.`);
-    } else {
-      console.log(`⚠️ Failed to create invite for ${inviteEmail}`);
-      alert(`⚠️ Failed to create invite for ${inviteEmail}: ${result.error}`);
+    try {
+      if (!session?.access_token) {
+        alert('Not authenticated');
+        return;
+      }
+
+      const response = await fetch('/api/teams/invites', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamId,
+          email: inviteEmail,
+          role: 'member'
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.emailSent) {
+          alert(`✅ Invitation sent to ${inviteEmail}!`);
+        } else {
+          alert(`✅ Invitation created for ${inviteEmail}! You can share the invite link manually.`);
+        }
+        setInviteEmail("");
+        setOpen(false);
+        await fetchInvites();
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Invite error:', error);
+      alert('Failed to send invitation');
     }
-    
-    setInviteEmail("");
-    fetchTeam();
   }
 
   async function handleCancelInvite(inviteId: string) {
-    const result = await cancelInvite(inviteId);
-    if (result.success) {
-      fetchTeam();
-    } else {
-      alert("Failed to cancel invite: " + result.error);
+    try {
+      if (!session?.access_token) return;
+
+      const response = await fetch('/api/teams/invites', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inviteId })
+      });
+
+      if (response.ok) {
+        await fetchInvites();
+      } else {
+        const data = await response.json();
+        alert("Failed to cancel invite: " + data.error);
+      }
+    } catch (error) {
+      console.error('Cancel invite error:', error);
+      alert('Failed to cancel invite');
     }
   }
 
@@ -179,182 +201,197 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
     alert("Invite link copied to clipboard!");
   }
 
-  async function handleRemove(user_id: string) {
-    const memberToRemove = members.find(m => m.user_id === user_id);
-    if (!memberToRemove) return;
-
-    const { error } = await supabase.from("team_users").delete().eq("team_id", teamId).eq("user_id", user_id);
+  function getRoleIcon(member: any) {
+    const isOwner = team?.createdBy === member.user.id;
     
-    if (!error) {
-      // Create activity for member removal
-      const memberName = memberToRemove.users?.display_name || memberToRemove.users?.email || 'Unknown user';
-      await createActivity(
-        teamId,
-        ACTIVITY_TYPES.MEMBER_REMOVED,
-        `Member removed: ${memberName}`,
-        `${memberName} was removed from the team`
-      );
+    if (isOwner) {
+      return <Crown className="h-4 w-4 text-yellow-500" />;
+    } else if (member.role === 'admin') {
+      return <Shield className="h-4 w-4 text-blue-500" />;
     }
-    
-    fetchTeam();
+    return <Users className="h-4 w-4 text-gray-500" />;
   }
 
-  useEffect(() => {
-    console.log("members", members);
-    console.log("userId", userId);
-    console.log("isAdmin", isAdmin);
-  }, [members, userId, isAdmin]);
+  function getRoleBadge(member: any) {
+    const isOwner = team?.createdBy === member.user.id;
+    
+    if (isOwner) {
+      return <Badge variant="default">Owner</Badge>;
+    } else if (member.role === 'admin') {
+      return <Badge variant="secondary">Admin</Badge>;
+    }
+    return <Badge variant="outline">Member</Badge>;
+  }
+
+  if (sessionLoading || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading team...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={fetchTeam} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!team) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">Team not found.</p>
+          <Link href="/dashboard/teams">
+            <Button variant="outline" className="mt-4">
+              Back to Teams
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Team Overview</h2>
-      <div className="flex gap-4 mb-6">
-        <Button asChild><Link href={`/dashboard/teams/${teamId}/boards`}>Boards</Link></Button>
-        <Button asChild><Link href={`/dashboard/teams/${teamId}/clients`}>Clients</Link></Button>
-        <Button asChild><Link href={`/dashboard/teams/${teamId}/settings`}>Settings</Link></Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Team Overview</h2>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/teams/${teamId}/boards`}>Boards</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/teams/${teamId}/clients`}>Clients</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/teams/${teamId}/settings`}>Settings</Link>
+          </Button>
+        </div>
       </div>
-      {loading ? (
-        <div className="text-muted-foreground">Loading...</div>
-      ) : team ? (
+
+      <Card className="p-6">
         <div className="space-y-6">
-          <Card className="p-6">
-            <div className="font-bold text-lg mb-2">{team.name}</div>
-            <div className="text-xs text-muted-foreground mb-2">Created {new Date(team.created_at).toLocaleDateString()}</div>
-            <div className="font-semibold mb-2">Members ({members.length})</div>
-            <ul className="mb-4 space-y-2">
-              {members.map(member => (
-                <li key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div>
-                    <div className="font-medium">
-                      {member.users?.display_name || member.users?.email || member.user_id}
-                    </div>
-                    {member.users?.email && member.users?.display_name && (
-                      <div className="text-sm text-muted-foreground">{member.users.email}</div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                      {member.role}
-                    </Badge>
-                    {isAdmin && member.user_id !== userId && (
-                      <Button size="sm" variant="destructive" onClick={() => handleRemove(member.user_id)}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {/* Pending Invites */}
-            {isAdmin && pendingInvites.length > 0 && (
-              <div className="mb-4">
-                <div className="font-semibold mb-2">Pending Invites ({pendingInvites.length})</div>
-                <ul className="space-y-2">
-                  {pendingInvites.map(invite => (
-                    <li key={invite.id} className="flex items-center justify-between p-2 bg-yellow-50 rounded border border-yellow-200">
-                      <div>
-                        <div className="font-medium">{invite.email}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Expires {new Date(invite.expiresAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{invite.role}</Badge>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => copyInviteLink(invite.token)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => handleCancelInvite(invite.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <div>
+            <h3 className="text-xl font-semibold mb-2">{team.name}</h3>
+            {team.description && (
+              <p className="text-muted-foreground mb-4">{team.description}</p>
             )}
+            <p className="text-sm text-muted-foreground">
+              Created {new Date(team.createdAt).toLocaleDateString()}
+            </p>
+          </div>
 
-            {isAdmin && (
-              <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite User
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Invite User to Team</SheetTitle>
-                  </SheetHeader>
-                  
-                  <Tabs defaultValue="direct" className="mt-4">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="direct">Direct Invite</TabsTrigger>
-                      <TabsTrigger value="email">Email Invite</TabsTrigger>
-                    </TabsList>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold">Members ({team.members.length})</h4>
+              {isAdmin && (
+                <Sheet open={open} onOpenChange={setOpen}>
+                  <SheetTrigger asChild>
+                    <Button size="sm">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Invite Member
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent>
+                    <SheetHeader>
+                      <SheetTitle>Invite Member to Team</SheetTitle>
+                    </SheetHeader>
                     
-                    <TabsContent value="direct" className="space-y-4">
-                      <div className="text-sm text-muted-foreground">
-                        Add users who have already registered on the platform.
-                      </div>
-                      <form onSubmit={handleDirectInvite} className="space-y-4">
-                        <div>
-                          <Label>Email Address</Label>
-                          <Input
-                            value={inviteEmail}
-                            onChange={e => setInviteEmail(e.target.value)}
-                            required
-                            type="email"
-                            placeholder="user@example.com"
-                          />
-                        </div>
-                        <Button type="submit" className="w-full">
-                          Add Member
-                        </Button>
-                      </form>
-                    </TabsContent>
-                    
-                    <TabsContent value="email" className="space-y-4">
-                      <div className="text-sm text-muted-foreground">
-                        Send an email invitation to users who haven't registered yet.
-                      </div>
+                    <div className="mt-6">
                       <form onSubmit={handleEmailInvite} className="space-y-4">
                         <div>
-                          <Label>Email Address</Label>
+                          <Label htmlFor="inviteEmail">Email Address</Label>
                           <Input
-                            value={inviteEmail}
-                            onChange={e => setInviteEmail(e.target.value)}
-                            required
+                            id="inviteEmail"
                             type="email"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
                             placeholder="user@example.com"
+                            required
                           />
                         </div>
                         <Button type="submit" className="w-full">
                           <Mail className="h-4 w-4 mr-2" />
-                          Send Invite
+                          Send Invitation
                         </Button>
                       </form>
-                    </TabsContent>
-                  </Tabs>
-                </SheetContent>
-              </Sheet>
-            )}
-          </Card>
-          
-          {/* Activity Feed */}
-          <ActivityFeed teamId={teamId} />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {team.members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {getRoleIcon(member)}
+                    <div>
+                      <div className="font-medium">
+                        {member.user.displayName || member.user.email}
+                      </div>
+                      {member.user.displayName && (
+                        <div className="text-sm text-muted-foreground">
+                          {member.user.email}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getRoleBadge(member)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pending Invites */}
+          {isAdmin && pendingInvites.length > 0 && (
+            <div>
+              <h4 className="font-semibold mb-4">Pending Invitations ({pendingInvites.length})</h4>
+              <div className="space-y-2">
+                {pendingInvites.map((invite) => (
+                  <div key={invite.id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div>
+                      <div className="font-medium">{invite.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{invite.role}</Badge>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => copyInviteLink(invite.token)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={() => handleCancelInvite(invite.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="text-muted-foreground">Team not found.</div>
-      )}
+      </Card>
     </div>
   );
 }

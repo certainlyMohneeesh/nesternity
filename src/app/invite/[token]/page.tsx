@@ -75,9 +75,17 @@ export default function InvitePage() {
       setAccepting(true);
       setError(null);
 
-      const response = await fetch(`/api/invites/${token}`, {
+      // Get current session for auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/invite/${token}`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
       });

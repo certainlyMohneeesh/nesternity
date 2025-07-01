@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Calendar, Crown, Shield } from "lucide-react";
 import Link from "next/link";
+import { JoinTeam } from "@/components/teams/join-team";
 
 interface Team {
   id: string;
@@ -184,14 +185,16 @@ export default function TeamsPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Teams</h2>
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Team
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
+        <div className="flex gap-2">
+          <JoinTeam />
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Team
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
             <SheetHeader>
               <SheetTitle>Create New Team</SheetTitle>
             </SheetHeader>
@@ -227,6 +230,7 @@ export default function TeamsPage() {
             </form>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
 
       {error && !open && (

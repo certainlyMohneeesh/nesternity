@@ -3,14 +3,24 @@ import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 
 interface RouteParams {
-  params: { teamId: string }
+  params: Promise<{ teamId: string }>
 }
 
 // Get team members
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { teamId } = params;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { teamId } = await params;
+    
+    // Get auth token from request headers
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // Update member role
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { teamId } = params;
+    const { teamId } = await params;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -111,7 +121,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // Remove team member
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { teamId } = params;
+    const { teamId } = await params;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
