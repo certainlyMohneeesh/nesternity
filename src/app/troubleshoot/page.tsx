@@ -24,7 +24,7 @@ export default function TroubleshootPage() {
     // Test 2: Check if invite details function works
     try {
       const { data, error } = await supabase.rpc('get_invite_details_secure', {
-        p_token: 'test-token'
+        p_token: '7dd041b0ab12693fbfa4f3a7e3ae5e727eb5ae9ebe7cb0da9067d99f87083fa9'
       });
       testResults.inviteDetails = { success: !error, data, error: error?.message };
     } catch (err) {
@@ -36,7 +36,7 @@ export default function TroubleshootPage() {
       const response = await fetch('/api/test-email-resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'test@example.com' })
+        body: JSON.stringify({ email: '987xwarrior@gmail.com' })
       });
       const data = await response.json();
       testResults.emailTest = data;
