@@ -72,7 +72,7 @@ export default function TeamMembers({ teamId, teamName, teamCreatedBy, onMemberC
       // Fetch pending invites if user is admin
       if (isAdmin) {
         const invites = await getTeamInvites(teamId);
-        setPendingInvites(invites);
+        setPendingInvites(invites.invites || []);
       }
       
     } catch (error) {
@@ -298,7 +298,7 @@ export default function TeamMembers({ teamId, teamName, teamCreatedBy, onMemberC
                 <div>
                   <div className="font-medium">{invite.email}</div>
                   <div className="text-sm text-muted-foreground">
-                    Expires {new Date(invite.expires_at).toLocaleDateString()}
+                    Expires {new Date(invite.expiresAt).toLocaleDateString()}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export default function TeamMembers({ teamId, teamName, teamCreatedBy, onMemberC
                     size="sm" 
                     variant="outline"
                     onClick={() => {
-                      const url = `${window.location.origin}/invite/${invite.token}`;
+                      const url = `${window.location.origin}/invite/${invite.id}`;
                       navigator.clipboard.writeText(url);
                       alert('Invite link copied to clipboard!');
                     }}

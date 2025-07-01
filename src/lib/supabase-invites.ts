@@ -173,7 +173,7 @@ export async function createTeamInviteHybrid(
     console.log('🔄 Fallback to custom invite system');
     // Import and use your existing function
     const { createTeamInvite } = await import('./invites');
-    const result = await createTeamInvite(teamId, email, role, true);
+    const result = await createTeamInvite(teamId, email, role);
     return { ...result, method: 'custom-resend' };
   }
 }

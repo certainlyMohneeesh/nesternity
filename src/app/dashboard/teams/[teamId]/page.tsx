@@ -10,7 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useSession } from "@/components/auth/session-context";
-import { createTeamInvite, getTeamInvites, cancelInvite, PendingInvite } from "@/lib/invites";
+import { createTeamInvite, getTeamInvites, cancelInvite, PendingInvite as BasePendingInvite } from "@/lib/invites";
+
+// Extend PendingInvite type to include 'token' property if not already present
+type PendingInvite = BasePendingInvite & { token: string };
 import { createActivity, ACTIVITY_TYPES } from "@/lib/notifications";
 import { Mail, UserPlus, Trash2, Copy } from "lucide-react";
 import ActivityFeed from "@/components/teams/activity-feed";
@@ -73,8 +76,14 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
     
     // Fetch pending invites
     if (memberData?.find(m => m.user_id === userId && m.role === "admin") || teamData?.created_by === userId) {
-      const invites = await getTeamInvites(teamId);
-      setPendingInvites(invites);
+      const { invites } = await getTeamInvites(teamId);
+      setPendingInvites(
+        (invites || []).map(invite => ({
+          ...invite,
+          token: (invite as any).token ?? "",
+          expiresAt: (invite as any).expiresAt ?? ""
+        }))
+      );
     }
     
     setLoading(false);
@@ -143,12 +152,12 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
     }
 
     // Show appropriate message based on email sending result
-    if (result.emailSent) {
-      console.log(`📧 Email invite sent to ${inviteEmail}`);
-      alert(`✅ Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
+    if (result.success) {
+      console.log(`📧 Invite created successfully for ${inviteEmail}`);
+      alert(`✅ Invite created for ${inviteEmail}! You can share the invite link manually.`);
     } else {
-      console.log(`⚠️ Invite created for ${inviteEmail} but email not sent`);
-      alert(`⚠️ Invite created for ${inviteEmail}, but email could not be sent. You can share the invite link manually.`);
+      console.log(`⚠️ Failed to create invite for ${inviteEmail}`);
+      alert(`⚠️ Failed to create invite for ${inviteEmail}: ${result.error}`);
     }
     
     setInviteEmail("");
@@ -247,7 +256,7 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
                       <div>
                         <div className="font-medium">{invite.email}</div>
                         <div className="text-sm text-muted-foreground">
-                          Expires {new Date(invite.expires_at).toLocaleDateString()}
+                          Expires {new Date(invite.expiresAt).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

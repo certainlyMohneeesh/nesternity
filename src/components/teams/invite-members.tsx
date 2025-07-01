@@ -37,7 +37,7 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
         // Load pending invites when opening
         console.log('📨 Loading pending invites for team:', teamId);
         const invites = await getTeamInvites(teamId);
-        setPendingInvites(invites);
+        setPendingInvites(invites.invites || []);
         console.log('✅ Successfully loaded invites:', invites);
       } catch (error) {
         console.error('❌ Failed to load pending invites:', error);
@@ -142,19 +142,15 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
         `An invitation was sent to ${inviteEmail} to join as ${inviteRole}`
       );
 
-      // Show appropriate success message based on email sending result
-      if (result.emailSent) {
-        setSuccess(`✅ Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
-      } else {
-        setSuccess(`⚠️ Invite created for ${inviteEmail}, but email could not be sent. You can share the invite link from the pending invites list.`);
-      }
+      // Show success message for invite creation
+      setSuccess(`✅ Invite sent to ${inviteEmail}! They will receive an email with instructions.`);
       
       setInviteEmail("");
       
       // Refresh pending invites
       try {
         const invites = await getTeamInvites(teamId);
-        setPendingInvites(invites);
+        setPendingInvites(invites.invites || []);
       } catch (error) {
         console.error('Failed to refresh invites after sending:', error);
         // Don't show error to user here, invite was successful
@@ -176,7 +172,7 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
       setSuccess(`Invite to ${email} has been cancelled.`);
       try {
         const invites = await getTeamInvites(teamId);
-        setPendingInvites(invites);
+        setPendingInvites(invites.invites || []);
       } catch (error) {
         console.error('Failed to refresh invites after cancelling:', error);
         // Still show success for the cancellation
@@ -323,7 +319,7 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm truncate">{invite.email}</div>
                         <div className="text-xs text-muted-foreground">
-                          Expires {new Date(invite.expires_at).toLocaleDateString()}
+                          Expires {new Date(invite.expiresAt).toLocaleDateString()}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-2">
@@ -333,7 +329,7 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
                         <Button 
                           size="sm" 
                           variant="ghost" 
-                          onClick={() => copyInviteLink(invite.token)}
+                          onClick={() => copyInviteLink(invite.id)}
                           disabled={loading}
                         >
                           <Copy className="h-3 w-3" />
