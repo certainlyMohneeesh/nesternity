@@ -71,7 +71,7 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
+        <div className="p-6 flex-1 overflow-y-auto">{children}</div>
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>

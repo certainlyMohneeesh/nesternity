@@ -260,7 +260,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                   <SheetTrigger asChild>
                     <Button size="sm" onClick={() => setNewTask(t => ({ ...t, listId: list.id }))}>Add Task</Button>
                   </SheetTrigger>
-                  <SheetContent>
+                    <SheetContent>
                     <SheetHeader>
                       <SheetTitle>Add Task</SheetTitle>
                       <SheetDescription>
@@ -315,7 +315,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                     </form>
                   </SheetContent>
                 </Sheet>
-                <Droppable droppableId={list.id}>
+                <Droppable droppableId={list.id} isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
