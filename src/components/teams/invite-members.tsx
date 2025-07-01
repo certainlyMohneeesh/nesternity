@@ -62,18 +62,18 @@ export default function InviteMembers({ teamId, teamName, onMemberAdded, trigger
     setSuccess(null);
 
     try {
-      // Find user by email in the users table
-      const { data: user, error: userError } = await supabase
-        .from("users")
-        .select("id, display_name, email")
-        .eq("email", inviteEmail)
-        .single();
+      // Use the secure function to find user by email (checks auth.users)
+      const { data: userResult, error: userError } = await supabase.rpc('get_user_by_email_secure', {
+        p_email: inviteEmail
+      });
 
-      if (userError || !user) {
+      if (userError || !userResult?.success) {
         setError("User not found. They must register first or use the email invite feature.");
         setLoading(false);
         return;
       }
+
+      const user = userResult.user;
 
       // Use the secure function to add member
       const { data: result, error: addError } = await supabase.rpc('add_team_member', {

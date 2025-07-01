@@ -14,35 +14,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get invite details from database
-    const { data: invite, error: inviteError } = await supabase
-      .from('team_invites')
-      .select(`
-        id, team_id, email, token, expires_at, created_at,
-        teams:team_id (id, name),
-        inviter:invited_by (display_name, email)
-      `)
-      .eq('token', inviteToken)
-      .eq('used_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .single();
+    // Get invite details using secure function
+    const { data: inviteResult, error: inviteError } = await supabase.rpc('get_invite_details_secure', {
+      p_token: inviteToken
+    });
 
-    if (inviteError || !invite) {
+    if (inviteError || !inviteResult?.success) {
+      console.error('Failed to get invite details:', inviteError || inviteResult?.error);
       return NextResponse.json(
         { success: false, error: 'Invalid or expired invite' },
         { status: 404 }
       );
     }
 
-    // Prepare email data
-    const team = Array.isArray(invite.teams) ? invite.teams[0] : invite.teams;
-    const inviter = Array.isArray(invite.inviter) ? invite.inviter[0] : invite.inviter;
+    const invite = inviteResult.invite;
     
+    // Check if invite is still valid
+    if (invite.used_at || new Date(invite.expires_at) < new Date()) {
+      return NextResponse.json(
+        { success: false, error: 'Invite is expired or already used' },
+        { status: 400 }
+      );
+    }
+    
+    // Prepare email data
     const emailData = {
       recipientEmail: invite.email,
-      teamName: team?.name || 'Unknown Team',
-      inviterName: inviter?.display_name || inviter?.email || 'Team Admin',
-      inviteToken: invite.token,
+      teamName: invite.team_name || 'Unknown Team',
+      inviterName: invite.inviter_name || 'Team Admin',
+      inviteToken: inviteToken,
       expiresAt: invite.expires_at,
     };
 

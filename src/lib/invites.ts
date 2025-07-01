@@ -56,15 +56,33 @@ export async function createTeamInvite(
   email: string,
   role: string = 'member',
   sendEmail: boolean = true
-): Promise<{ success: boolean; error?: string; invite?: PendingInvite; emailSent?: boolean }> {
+): Promise<{ success: boolean; error?: string; invite?: PendingInvite; emailSent?: boolean; emailMethod?: string }> {
   try {
     console.log('🔍 Attempting to create team invite:', { teamId, email, role, sendEmail });
     
+    // Import email configuration
+    const { EMAIL_PROVIDER } = await import('./email-config');
+    
+    // Handle different email providers
+    if (sendEmail && EMAIL_PROVIDER === 'supabase-auth') {
+      console.log('🎯 Using Supabase Auth invite system (FREE)');
+      const { createSupabaseInvite } = await import('./supabase-invites');
+      return { ...(await createSupabaseInvite(teamId, email, role)), emailMethod: 'supabase-auth' };
+    }
+    
+    if (sendEmail && EMAIL_PROVIDER === 'hybrid') {
+      console.log('🔄 Using hybrid email system');
+      const { createTeamInviteHybrid } = await import('./supabase-invites');  
+      return await createTeamInviteHybrid(teamId, email, role);
+    }
+    
+    // Default to custom invite system with Resend (original behavior)
+    
     // Use the secure function instead of direct table access
     const { data, error } = await supabase.rpc('create_team_invite_secure', {
-      team_uuid: teamId,
-      invite_email: email,
-      invite_role: role
+      p_team_id: teamId,
+      p_email: email,
+      p_role: role
     });
 
     console.log('📊 Create invite response:', { data, error });
@@ -86,17 +104,24 @@ export async function createTeamInvite(
 
     if (!data || !data.success) {
       console.log('❌ Function returned failure:', data);
-      return { success: false, error: data?.error || 'Unknown error' };
+      
+      // Handle specific error cases
+      if (data?.error?.includes('encoding')) {
+        console.error('Database encoding error - running SQL fix required');
+        return { success: false, error: 'Database configuration error. Please contact support.' };
+      }
+      
+      return { success: false, error: data?.error || 'Failed to create invite' };
     }
 
     console.log('✅ Successfully created invite');
     
     let emailSent = false;
     
-    // Send email if requested
+    // Send email if requested (Resend method)
     if (sendEmail) {
       try {
-        console.log('📧 Attempting to send invite email...');
+        console.log('📧 Attempting to send invite email via Resend...');
         const emailResponse = await fetch('/api/send-invite-email', {
           method: 'POST',
           headers: {
@@ -110,7 +135,7 @@ export async function createTeamInvite(
         const emailResult = await emailResponse.json();
         
         if (emailResult.success) {
-          console.log('✅ Email sent successfully');
+          console.log('✅ Email sent successfully via Resend');
           emailSent = true;
         } else {
           console.warn('⚠️ Email sending failed:', emailResult.error);
@@ -126,6 +151,7 @@ export async function createTeamInvite(
     return { 
       success: true,
       emailSent,
+      emailMethod: 'resend',
       invite: {
         id: '', // Not returned by function
         team_id: teamId,
@@ -196,17 +222,17 @@ export async function getTeamInvites(teamId: string): Promise<PendingInvite[]> {
 
 export async function cancelInvite(inviteId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Use the secure function instead of direct table access
+    // Use the secure function with explicit parameters to avoid ambiguity
     const { data, error } = await supabase.rpc('cancel_team_invite_secure', {
-      invite_id: inviteId
+      p_invite_id: inviteId
     });
 
     if (error) {
       return { success: false, error: error.message };
     }
 
-    if (!data.success) {
-      return { success: false, error: data.error };
+    if (!data || !data.success) {
+      return { success: false, error: data?.error || 'Failed to cancel invite' };
     }
 
     return { success: true };
@@ -216,17 +242,25 @@ export async function cancelInvite(inviteId: string): Promise<{ success: boolean
 }
 
 export async function acceptInvite(token: string): Promise<{ success: boolean; error?: string; teamId?: string }> {
-  const { data, error } = await supabase.rpc('accept_team_invite', { invite_token: token });
+  try {
+    const { data, error } = await supabase.rpc('accept_team_invite_secure', { 
+      p_token: token 
+    });
 
-  if (error) {
-    return { success: false, error: error.message };
+    if (error) {
+      console.error('Accept invite error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data || !data.success) {
+      return { success: false, error: data?.error || 'Failed to accept invite' };
+    }
+
+    return { success: true, teamId: data.team_id };
+  } catch (error) {
+    console.error('Unexpected accept invite error:', error);
+    return { success: false, error: 'Failed to accept invite' };
   }
-
-  if (!data.success) {
-    return { success: false, error: data.error };
-  }
-
-  return { success: true, teamId: data.team_id };
 }
 
 // Email service placeholder - in a real app, you'd integrate with services like:

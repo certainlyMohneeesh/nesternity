@@ -46,28 +46,40 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   async function fetchInviteDetails() {
     try {
-      const { data, error } = await supabase
-        .from('team_invites')
-        .select(`
-          id, team_id, email, role, expires_at, used_at,
-          teams:team_id (name),
-          inviter:invited_by (display_name, email)
-        `)
-        .eq('token', token)
-        .single();
+      // Use the secure function instead of direct table access
+      const { data, error } = await supabase.rpc('get_invite_details_secure', {
+        p_token: token
+      });
 
-      if (error || !data) {
+      if (error) {
         console.error('Error fetching invite:', error);
-        setResult({ success: false, error: 'Invalid or expired invitation' });
+        setResult({ success: false, error: 'Failed to load invitation details' });
         setLoading(false);
         return;
       }
 
-      // Handle potential array responses
-      const processedInvite = {
-        ...data,
-        teams: Array.isArray(data.teams) ? data.teams[0] : data.teams,
-        inviter: Array.isArray(data.inviter) ? data.inviter[0] : data.inviter,
+      if (!data || !data.success) {
+        console.error('Invite not found:', data);
+        setResult({ success: false, error: data?.error || 'Invalid or expired invitation' });
+        setLoading(false);
+        return;
+      }
+
+      const inviteData = data.invite;
+      
+      // Transform to match expected interface
+      const processedInvite: InviteDetails = {
+        id: inviteData.id,
+        team_id: inviteData.team_id,
+        email: inviteData.email,
+        role: inviteData.role,
+        expires_at: inviteData.expires_at,
+        used_at: inviteData.used_at,
+        teams: { name: inviteData.team_name },
+        inviter: { 
+          display_name: inviteData.inviter_name,
+          email: inviteData.inviter_email
+        }
       };
 
       setInvite(processedInvite);
