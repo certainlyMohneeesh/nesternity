@@ -141,34 +141,104 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
                 <Input value={boardName} onChange={e => setBoardName(e.target.value)} required />
               </div>
               <div>
-                <Label>Type</Label>
-                <select
-                  className="input w-full"
-                  value={boardType}
-                  onChange={e => setBoardType(e.target.value)}
-                >
-                  <option value="kanban">Kanban</option>
-                    <option value="scrum" disabled>Scrum <Badge variant="secondary" className="ml-2">Coming Soon</Badge></option>
-                </select>
+                <Label>Description (Optional)</Label>
+                <Input 
+                  value={boardDescription} 
+                  onChange={e => setBoardDescription(e.target.value)} 
+                  placeholder="Add a description for your board..."
+                />
               </div>
-              <Button type="submit" className="w-full">Create</Button>
+              <div>
+                <Label>Board Type</Label>
+                <Select value={boardType} onValueChange={setBoardType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select board type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KANBAN">
+                      <div className="flex items-center gap-2">
+                        <span>Kanban</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="SCRUM" disabled>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Scrum</span>
+                        <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  {error}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={creating}>
+                {creating ? "Creating..." : "Create Board"}
+              </Button>
             </form>
           </SheetContent>
         </Sheet>
       </div>
+      
+      {error && !open && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
-          <div className="text-muted-foreground">Loading boards...</div>
+          <div className="col-span-full flex items-center justify-center py-12">
+            <div className="text-muted-foreground">Loading boards...</div>
+          </div>
         ) : boards.length === 0 ? (
-          <div className="text-muted-foreground">No boards for this team yet.</div>
+          <div className="col-span-full flex flex-col items-center justify-center py-12 space-y-4">
+            <div className="text-muted-foreground text-center">
+              <h3 className="font-medium text-lg mb-2">No boards yet</h3>
+              <p>Create your first board to start organizing your team's work.</p>
+            </div>
+            <Button onClick={() => setOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Your First Board
+            </Button>
+          </div>
         ) : (
           boards.map(board => (
-            <Card key={board.id} className="p-6 flex flex-col gap-2">
-              <div className="font-bold text-lg">{board.name}</div>
-              <div className="text-xs text-muted-foreground mb-2">{board.type.charAt(0).toUpperCase() + board.type.slice(1)} board</div>
-              <Button asChild variant="outline">
-                <Link href={`/dashboard/teams/${teamId}/boards/${board.id}`}>Open Board</Link>
-              </Button>
+            <Card key={board.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{board.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {board.type === 'KANBAN' ? 'Kanban' : 'Scrum'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {board._count.tasks} tasks
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {board.description && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                    {board.description}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    Created {new Date(board.createdAt).toLocaleDateString()}
+                  </div>
+                  <Button asChild size="sm">
+                    <Link href={`/dashboard/teams/${teamId}/boards/${board.id}`}>
+                      Open Board
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
             </Card>
           ))
         )}
