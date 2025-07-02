@@ -38,8 +38,18 @@ interface List {
   };
 }
 
-// AddColumnForm component definition (unchanged)
-function AddColumnForm({ teamId, boardId, onColumnAdded }: { teamId: string; boardId: string; onColumnAdded: () => void }) {
+// AddColumnForm component with optimistic updates
+function AddColumnForm({ 
+  teamId, 
+  boardId, 
+  onColumnAdded, 
+  onOptimisticAdd 
+}: { 
+  teamId: string; 
+  boardId: string; 
+  onColumnAdded: () => void;
+  onOptimisticAdd: (list: List) => void;
+}) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -48,10 +58,22 @@ function AddColumnForm({ teamId, boardId, onColumnAdded }: { teamId: string; boa
     if (!name) return;
     setLoading(true);
     
+    // Create optimistic list
+    const optimisticList: List = {
+      id: `temp-${Date.now()}`,
+      name,
+      position: 999, // Will be adjusted by server
+      _count: { tasks: 0 }
+    };
+
+    // Add optimistically to UI
+    onOptimisticAdd(optimisticList);
+    setName("");
+    onColumnAdded(); // Close the sheet
+    
     try {
-      await api.createList(teamId, boardId, { name });
-      setName("");
-      onColumnAdded();
+      const response = await api.createList(teamId, boardId, { name });
+      // The parent component should replace the optimistic list with the real one
       toast.success("List created successfully");
     } catch (error) {
       console.error("Error creating list:", error);
@@ -114,38 +136,52 @@ function SortableTask({ task, index }: { task: Task; index: number }) {
       ref={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
+        transition: isDragging ? 'transform 0ms' : transition, // Remove transition during drag for responsiveness
+        opacity: isDragging ? 0.6 : 1,
       }}
       {...attributes}
       {...listeners}
       className={cn(
-        "p-4 cursor-grab active:cursor-grabbing",
-        isDragging && "shadow-lg rotate-3"
+        "p-4 cursor-grab active:cursor-grabbing border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-white rounded-xl",
+        isDragging && "shadow-2xl rotate-1 scale-105 z-50"
       )}
     >
-      <div className="font-bold">{task.title}</div>
-      {task.assignee?.displayName && (
-        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1 inline-block">
-          {task.assignee.displayName}
+      <div className="flex flex-col gap-3">
+        <div className="font-semibold text-gray-900 leading-tight">{task.title}</div>
+        
+        {task.description && (
+          <div className="text-sm text-gray-600 line-clamp-2">{task.description}</div>
+        )}
+        
+        <div className="flex flex-wrap items-center gap-2">
+          {task.assignee?.displayName && (
+            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              {task.assignee.displayName}
+            </div>
+          )}
+          
+          {task.priority && (
+            <div className={cn(
+              "px-2.5 py-1 rounded-full text-xs font-medium",
+              task.priority === "HIGH" && "bg-red-50 text-red-700",
+              task.priority === "MEDIUM" && "bg-amber-50 text-amber-700",
+              task.priority === "LOW" && "bg-emerald-50 text-emerald-700"
+            )}>
+              {task.priority.toLowerCase()}
+            </div>
+          )}
         </div>
-      )}
-      {task.priority && (
-        <div className={cn(
-          "text-xs px-2 py-1 rounded mt-1 inline-block ml-1",
-          task.priority === "HIGH" && "bg-red-100 text-red-800",
-          task.priority === "MEDIUM" && "bg-yellow-100 text-yellow-800",
-          task.priority === "LOW" && "bg-green-100 text-green-800"
-        )}>
-          {task.priority.toLowerCase()}
-        </div>
-      )}
-      {task.dueDate && (
-        <div className="text-xs text-gray-600 mt-1">
-          Due: {new Date(task.dueDate).toLocaleDateString()}
-        </div>
-      )}
-      <div className="text-sm mt-1">{task.description}</div>
+        
+        {task.dueDate && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {new Date(task.dueDate).toLocaleDateString()}
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -248,34 +284,63 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
     if (!newTask.title || !newTask.listId) return;
+    
+    // Create optimistic task
+    const optimisticTask: Task = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      title: newTask.title,
+      description: newTask.description,
+      listId: newTask.listId,
+      assignedTo: newTask.assignedTo || null,
+      status: "TODO",
+      priority: newTask.priority,
+      dueDate: newTask.dueDate || null,
+      position: tasks.filter(t => t.listId === newTask.listId).length,
+      assignee: newTask.assignedTo ? teamMembers.find(m => m.userId === newTask.assignedTo)?.user : undefined,
+      list: lists.find(l => l.id === newTask.listId)!
+    };
+
+    // Optimistically add to UI
+    setTasks(prev => [...prev, optimisticTask]);
+    setOpen(false);
+    
+    // Clear form
+    const taskData = {
+      title: newTask.title,
+      description: newTask.description,
+      listId: newTask.listId,
+      assignedTo: newTask.assignedTo || null,
+      priority: newTask.priority,
+      dueDate: newTask.dueDate || null
+    };
+    
+    setNewTask({ 
+      title: "", 
+      description: "", 
+      listId: "", 
+      assignedTo: "", 
+      priority: "MEDIUM", 
+      dueDate: "" 
+    });
+
     try {
-      const taskData = {
-        title: newTask.title,
-        description: newTask.description,
-        listId: newTask.listId,
-        assignedTo: newTask.assignedTo || null,
-        priority: newTask.priority,
-        dueDate: newTask.dueDate || null
-      };
-      await api.createTask(resolvedParams.teamId, resolvedParams.boardId, taskData);
-      setOpen(false);
-      setNewTask({ 
-        title: "", 
-        description: "", 
-        listId: "", 
-        assignedTo: "", 
-        priority: "MEDIUM", 
-        dueDate: "" 
-      });
-      fetchBoardData();
+      const response = await api.createTask(resolvedParams.teamId, resolvedParams.boardId, taskData);
+      
+      // Replace optimistic task with real task
+      setTasks(prev => prev.map(t => 
+        t.id === optimisticTask.id ? response.task : t
+      ));
+      
       toast.success("Task created successfully");
     } catch (error) {
       console.error("Error creating task:", error);
+      // Remove optimistic task on error
+      setTasks(prev => prev.filter(t => t.id !== optimisticTask.id));
       toast.error(error instanceof APIError ? error.message : "Failed to create task");
     }
   }
 
-  // dnd-kit drag end handler (updated)
+  // dnd-kit drag end handler with optimistic updates
   async function handleDragEnd(event: any) {
     const { active, over } = event;
     setActiveTaskId(null);
@@ -283,46 +348,82 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     if (!over || active.id === over.id) return;
 
     // Find the task being dragged
-    const task = tasks.find(t => t.id === active.id);
-    if (!task) return;
+    const draggedTask = tasks.find(t => t.id === active.id);
+    if (!draggedTask) return;
+
+    // Determine the destination list and position
+    let targetListId: string;
+    let targetPosition: number;
 
     // If dropped over a list (column), move to end of that list
     const overList = lists.find(l => l.id === over.id);
     if (overList) {
-      const listTasks = tasks.filter(t => t.listId === overList.id).sort((a, b) => a.position - b.position);
-      const newPosition = listTasks.length;
-      try {
-        await api.updateTask(resolvedParams.teamId, resolvedParams.boardId, active.id, {
-          listId: overList.id,
-          position: newPosition
-        });
-        fetchBoardData();
-        toast.success("Task moved");
-      } catch (error) {
-        console.error("Error moving task:", error);
-        toast.error(error instanceof APIError ? error.message : "Failed to move task");
-      }
-      return;
+      targetListId = overList.id;
+      const listTasks = tasks.filter(t => t.listId === overList.id && t.id !== active.id);
+      targetPosition = listTasks.length;
+    } else {
+      // If dropped over another task, find which list and position
+      const overTask = tasks.find(t => t.id === over.id);
+      if (!overTask) return;
+      
+      targetListId = overTask.listId;
+      const listTasks = tasks.filter(t => t.listId === targetListId && t.id !== active.id);
+      const overIndex = listTasks.findIndex(t => t.id === over.id);
+      targetPosition = overIndex >= 0 ? overIndex : listTasks.length;
     }
 
-    // If dropped over another task, move to that position in the same or another list
-    for (const list of lists) {
-      const listTasks = tasks.filter(t => t.listId === list.id).sort((a, b) => a.position - b.position);
-      const overIndex = listTasks.findIndex(t => t.id === over.id);
-      if (overIndex !== -1) {
-        try {
-          await api.updateTask(resolvedParams.teamId, resolvedParams.boardId, active.id, {
-            listId: list.id,
-            position: overIndex
-          });
-          fetchBoardData();
-          toast.success("Task moved");
-        } catch (error) {
-          console.error("Error moving task:", error);
-          toast.error(error instanceof APIError ? error.message : "Failed to move task");
-        }
-        return;
+    // Optimistically update the UI immediately
+    const updatedTasks = tasks.map(task => {
+      if (task.id === active.id) {
+        return { ...task, listId: targetListId, position: targetPosition };
       }
+      // Adjust positions of other tasks in the target list
+      if (task.listId === targetListId && task.id !== active.id) {
+        if (task.position >= targetPosition) {
+          return { ...task, position: task.position + 1 };
+        }
+      }
+      // Adjust positions of tasks in the source list (if different from target)
+      if (task.listId === draggedTask.listId && targetListId !== draggedTask.listId) {
+        if (task.position > draggedTask.position) {
+          return { ...task, position: task.position - 1 };
+        }
+      }
+      return task;
+    });
+
+    // Update the UI state immediately
+    setTasks(updatedTasks);
+
+    // Sync with server in the background
+    try {
+      await api.updateTask(resolvedParams.teamId, resolvedParams.boardId, active.id, {
+        listId: targetListId,
+        position: targetPosition
+      });
+      // Optionally show a subtle success indicator
+      // toast.success("Task moved", { duration: 1000 });
+    } catch (error) {
+      console.error("Error moving task:", error);
+      // Revert the optimistic update on error
+      setTasks(tasks);
+      toast.error(error instanceof APIError ? error.message : "Failed to move task");
+    }
+  }
+
+  // Handle optimistic list addition
+  function handleOptimisticListAdd(optimisticList: List) {
+    setLists(prev => [...prev, optimisticList]);
+  }
+
+  // Handle list creation completion (replace optimistic with real)
+  async function handleListAdded() {
+    try {
+      // Fetch only the lists to replace optimistic ones with real data
+      const listsResponse = await api.getLists(resolvedParams.teamId, resolvedParams.boardId);
+      setLists(listsResponse.lists || []);
+    } catch (error) {
+      console.error("Error refreshing lists:", error);
     }
   }
 
@@ -434,16 +535,23 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                   Create a new list to organize your tasks
                 </SheetDescription>
               </SheetHeader>
-              <AddColumnForm teamId={resolvedParams.teamId} boardId={resolvedParams.boardId} onColumnAdded={fetchBoardData} />
+              <AddColumnForm 
+                teamId={resolvedParams.teamId} 
+                boardId={resolvedParams.boardId} 
+                onColumnAdded={handleListAdded}
+                onOptimisticAdd={handleOptimisticListAdd}
+              />
             </SheetContent>
           </Sheet>
         </div>
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeTaskId ? (
-            <SortableTask
-              task={tasks.find(t => t.id === activeTaskId)!}
-              index={0}
-            />
+            <div className="rotate-3 scale-105">
+              <SortableTask
+                task={tasks.find(t => t.id === activeTaskId)!}
+                index={0}
+              />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>
