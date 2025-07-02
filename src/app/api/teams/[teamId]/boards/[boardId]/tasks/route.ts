@@ -51,16 +51,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const assignedTo = searchParams.get('assignedTo');
     const priority = searchParams.get('priority');
     const status = searchParams.get('status');
+    const archived = searchParams.get('archived');
 
     // Build filter conditions
     const where: any = {
       boardId,
-      archived: false, // Only show non-archived tasks by default
       ...(listId && { listId }),
       ...(assignedTo && { assignedTo }),
       ...(priority && { priority }),
       ...(status && { status })
     };
+
+    // Handle archived filter - default to false if not specified
+    if (archived === 'true') {
+      where.archived = true;
+    } else if (archived === 'false') {
+      where.archived = false;
+    } else {
+      // Default behavior - only show non-archived tasks
+      where.archived = false;
+    }
 
     // Get tasks with all related data
     const tasks = await (db as any).task.findMany({
@@ -91,7 +101,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           select: { comments: true, attachments: true }
         }
       },
-      orderBy: { position: 'asc' }
+      orderBy: archived === 'true' ? { updatedAt: 'desc' } : { position: 'asc' }
     });
 
     return NextResponse.json({ tasks });

@@ -36,6 +36,23 @@ interface DashboardData {
     title: string;
     priority: string;
     dueDate: string | null;
+    status: string;
+    archived: boolean;
+    list: {
+      name: string;
+      board: {
+        name: string;
+        team: {
+          name: string;
+        };
+      };
+    };
+  }>;
+  recentCompletedTasks: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    completedAt: string;
     list: {
       name: string;
       board: {
@@ -50,6 +67,7 @@ interface DashboardData {
     totalTeams: number;
     totalBoards: number;
     totalTasks: number;
+    activeTasks: number;
     completedTasks: number;
   };
 }
@@ -80,10 +98,12 @@ export default function DashboardOverview() {
         setData({
           teams: [],
           recentTasks: [],
+          recentCompletedTasks: [],
           stats: {
             totalTeams: 0,
             totalBoards: 0,
             totalTasks: 0,
+            activeTasks: 0,
             completedTasks: 0
           }
         });
@@ -93,7 +113,8 @@ export default function DashboardOverview() {
 
       // Fetch data for each team
       let allBoards: any[] = [];
-      let allTasks: any[] = [];
+      let allActiveTasks: any[] = [];
+      let allCompletedTasks: any[] = [];
       
       for (const team of teams) {
         try {
@@ -101,11 +122,12 @@ export default function DashboardOverview() {
           const teamBoards = boardsResponse.boards || [];
           allBoards = [...allBoards, ...teamBoards];
           
-          // Get tasks from each board
+          // Get both active and completed tasks from each board
           for (const board of teamBoards) {
             try {
-              const tasksResponse = await api.getTasks(team.id, board.id);
-              const boardTasks = (tasksResponse.tasks || []).map((task: any) => ({
+              // Fetch active tasks (archived: false)
+              const activeTasksResponse = await api.getTasks(team.id, board.id);
+              const activeBoardTasks = (activeTasksResponse.tasks || []).map((task: any) => ({
                 ...task,
                 list: {
                   ...task.list,
@@ -115,7 +137,34 @@ export default function DashboardOverview() {
                   }
                 }
               }));
-              allTasks = [...allTasks, ...boardTasks];
+              allActiveTasks = [...allActiveTasks, ...activeBoardTasks];
+
+              // Fetch completed tasks (archived: true, status: DONE) - we need a special API call for this
+              // For now, we'll make a custom request to get completed tasks
+              try {
+                const response = await fetch(`/api/teams/${team.id}/boards/${board.id}/tasks?archived=true&status=DONE`, {
+                  headers: {
+                    'Authorization': `Bearer ${session?.access_token}`
+                  }
+                });
+                
+                if (response.ok) {
+                  const completedTasksResponse = await response.json();
+                  const completedBoardTasks = (completedTasksResponse.tasks || []).map((task: any) => ({
+                    ...task,
+                    list: {
+                      ...task.list,
+                      board: {
+                        ...board,
+                        team
+                      }
+                    }
+                  }));
+                  allCompletedTasks = [...allCompletedTasks, ...completedBoardTasks];
+                }
+              } catch (error) {
+                console.warn(`Couldn't fetch completed tasks for board ${board.id}:`, error);
+              }
             } catch (error) {
               // Skip boards we can't access
               console.warn(`Couldn't fetch tasks for board ${board.id}:`, error);
@@ -127,22 +176,33 @@ export default function DashboardOverview() {
         }
       }
 
-      // Get recent tasks (last 10, sorted by creation date)
-      const recentTasks = allTasks
+      // Get recent active tasks (last 5, sorted by creation date)
+      const recentTasks = allActiveTasks
         .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
         .slice(0, 5);
 
+      // Get recent completed tasks (last 5, sorted by completion/update date)
+      const recentCompletedTasks = allCompletedTasks
+        .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
+        .slice(0, 5)
+        .map(task => ({
+          ...task,
+          completedAt: task.updatedAt
+        }));
+
       // Calculate stats
-      const completedTasks = allTasks.filter(task => task.status === 'DONE').length;
+      const totalTasks = allActiveTasks.length + allCompletedTasks.length;
 
       setData({
         teams,
         recentTasks,
+        recentCompletedTasks,
         stats: {
           totalTeams: teams.length,
           totalBoards: allBoards.length,
-          totalTasks: allTasks.length,
-          completedTasks
+          totalTasks,
+          activeTasks: allActiveTasks.length,
+          completedTasks: allCompletedTasks.length
         }
       });
     } catch (error) {
@@ -242,11 +302,11 @@ export default function DashboardOverview() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalTasks}</div>
+            <div className="text-2xl font-bold">{data.stats.activeTasks}</div>
             <p className="text-xs text-muted-foreground">
               {data.stats.completedTasks} completed
             </p>
@@ -267,7 +327,7 @@ export default function DashboardOverview() {
         </Card>
       </div>
 
-      {/* Teams and Recent Tasks */}
+      {/* Teams and Recent Activity */}
       <div className="grid gap-8 md:grid-cols-2">
         {/* Your Teams */}
         <Card>
@@ -323,7 +383,7 @@ export default function DashboardOverview() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Tasks</CardTitle>
-            <CardDescription>Your latest task activity</CardDescription>
+            <CardDescription>Your latest active tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {data.recentTasks.map((task) => (
@@ -367,6 +427,42 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Completed Tasks */}
+      {data.recentCompletedTasks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Recently Completed Tasks
+            </CardTitle>
+            <CardDescription>Tasks you've completed recently</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.recentCompletedTasks.map((task) => (
+              <div key={task.id} className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 truncate max-w-[200px]">
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-green-700">
+                      {task.list.board.team.name} • {task.list.board.name} • {task.list.name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    {new Date(task.completedAt).toLocaleDateString()}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>
