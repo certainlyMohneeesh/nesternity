@@ -272,9 +272,9 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                {/* <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">N</span>
-                </div>
+                </div> */}
                 <span className="text-xl font-bold">Nesternity</span>
               </div>
               <p className="text-muted-foreground mb-4 max-w-md">
