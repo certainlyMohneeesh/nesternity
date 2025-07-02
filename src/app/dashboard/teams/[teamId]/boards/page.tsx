@@ -148,7 +148,7 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
                   onChange={e => setBoardType(e.target.value)}
                 >
                   <option value="kanban">Kanban</option>
-                  <option value="scrum">Scrum</option>
+                    <option value="scrum" disabled>Scrum <Badge variant="secondary" className="ml-2">Coming Soon</Badge></option>
                 </select>
               </div>
               <Button type="submit" className="w-full">Create</Button>
