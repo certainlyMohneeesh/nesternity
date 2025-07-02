@@ -53,6 +53,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Topbar */}
           <header className="flex items-center justify-between px-4 py-3 border-b bg-card/80 backdrop-blur">
+            {/* Logo */}
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+            <img src="/nesternity.svg" alt="Nesternity" className="w-12 h-12" />
+            </div>
             <div className="font-bold text-lg">Nesternity CRM</div>
             <div className="flex items-center gap-4">
               <NotificationCenter />
