@@ -11,9 +11,9 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">N</span>
-          </div>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+            <img src="/nesternity.svg" alt="Nesternity" className="w-12 h-12" />
+            </div>
           <span className="text-xl font-bold">Nesternity</span>
         </div>
         <div className="hidden md:flex items-center space-x-6">
@@ -27,42 +27,51 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 md:py-32 px-6 text-center max-w-5xl mx-auto">
-        <Badge variant="secondary" className="mb-6">
+      <section className="py-20 md:py-32 px-6 text-center max-w-5xl mx-auto relative">
+        {/* Background overlay image */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+          <img 
+        src="/nesternity.svg" 
+        alt="" 
+        className="w-[600px] h-[600px] object-contain"
+          />
+        </div>
+        
+        <Badge variant="secondary" className="mb-6 relative z-10">
           🚀 Now in Beta - Join the waitlist
         </Badge>
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight">
+        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
           The Freelancer's Nest for Clients, Contracts & Clarity
         </h1>
-        <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
+        <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed relative z-10">
           Nesternity helps solo professionals manage client relationships, send smart contracts,
           and stay paid — all from one calm, cozy hub.
         </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12 relative z-10">
           <Link href="/dashboard">
-            <Button size="lg" className="gap-2 text-lg px-8 py-6">
-              Try it Free
-              <ArrowRight className="h-5 w-5" />
-            </Button>
+        <Button size="lg" className="gap-2 text-lg px-8 py-6">
+          Try it Free
+          <ArrowRight className="h-5 w-5" />
+        </Button>
           </Link>
           <Link href="/demo">
-            <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-6">
-              Watch Demo
-            </Button>
+        <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-6">
+          Watch Demo
+        </Button>
           </Link>
         </div>
-        <div className="flex justify-center items-center gap-6 text-muted-foreground">
+        <div className="flex justify-center items-center gap-6 text-muted-foreground relative z-10">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-sm">Free to start</span>
+        <CheckCircle className="h-4 w-4 text-green-500" />
+        <span className="text-sm">Free to start</span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-sm">No credit card required</span>
+        <CheckCircle className="h-4 w-4 text-green-500" />
+        <span className="text-sm">No credit card required</span>
           </div>
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-sm">Setup in 2 minutes</span>
+        <CheckCircle className="h-4 w-4 text-green-500" />
+        <span className="text-sm">Setup in 2 minutes</span>
           </div>
         </div>
       </section>
