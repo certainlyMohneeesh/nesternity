@@ -187,6 +187,8 @@ export const api = {
   // Board lists
   getLists: (teamId: string, boardId: string) => apiClient.get<{ lists: any[] }>(`/api/teams/${teamId}/boards/${boardId}/lists`),
   createList: (teamId: string, boardId: string, data: any) => apiClient.post<{ list: any }>(`/api/teams/${teamId}/boards/${boardId}/lists`, data),
+  deleteList: (teamId: string, boardId: string, listId: string) => 
+    apiClient.delete(`/api/teams/${teamId}/boards/${boardId}/lists/${listId}`),
   
   // Tasks
   getTasks: (teamId: string, boardId: string, params?: Record<string, string>) => 

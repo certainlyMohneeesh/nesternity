@@ -73,7 +73,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       status, 
       dueDate, 
       estimatedHours,
-      tags 
+      tags,
+      archived
     } = updateData;
 
     // If moving to a different list, verify the new list exists
@@ -102,6 +103,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (dueDate !== undefined) taskUpdateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (estimatedHours !== undefined) taskUpdateData.estimatedHours = estimatedHours;
     if (tags !== undefined) taskUpdateData.tags = tags;
+    if (archived !== undefined) taskUpdateData.archived = archived;
 
     // Update the task
     const updatedTask = await (db as any).task.update({
@@ -160,10 +162,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         data: {
           taskId,
           userId: user.id,
-          action: 'TASK_STATUS_CHANGED',
+          action: status === 'DONE' ? 'TASK_COMPLETED' : 'TASK_STATUS_CHANGED',
           details: {
             fromStatus: existingTask.status,
             toStatus: status
+          }
+        }
+      });
+    }
+
+    if (archived !== undefined && archived === true) {
+      await (db as any).taskActivity.create({
+        data: {
+          taskId,
+          userId: user.id,
+          action: 'TASK_ARCHIVED',
+          details: {
+            taskTitle: existingTask.title
           }
         }
       });

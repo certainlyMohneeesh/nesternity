@@ -5,6 +5,17 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/auth/session-context";
 import { api, APIError } from "@/lib/api-client";
@@ -129,8 +140,19 @@ interface TeamMember {
 }
 
 // dnd-kit SortableTask component
-function SortableTask({ task, index }: { task: Task; index: number }) {
+function SortableTask({ 
+  task, 
+  index, 
+  onDelete, 
+  onComplete 
+}: { 
+  task: Task; 
+  index: number;
+  onDelete: (taskId: string, taskTitle: string) => void;
+  onComplete: (taskId: string, taskTitle: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  
   return (
     <Card
       ref={setNodeRef}
@@ -139,14 +161,16 @@ function SortableTask({ task, index }: { task: Task; index: number }) {
         transition: isDragging ? 'transform 0ms' : transition, // Remove transition during drag for responsiveness
         opacity: isDragging ? 0.6 : 1,
       }}
-      {...attributes}
-      {...listeners}
       className={cn(
-        "p-4 cursor-grab active:cursor-grabbing border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-white rounded-xl",
+        "p-4 border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-white rounded-xl group",
         isDragging && "shadow-2xl rotate-1 scale-105 z-50"
       )}
     >
-      <div className="flex flex-col gap-3">
+      <div 
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing flex flex-col gap-3"
+      >
         <div className="font-semibold text-gray-900 leading-tight">{task.title}</div>
         
         {task.description && (
@@ -181,6 +205,73 @@ function SortableTask({ task, index }: { task: Task; index: number }) {
             {new Date(task.dueDate).toLocaleDateString()}
           </div>
         )}
+      </div>
+
+      {/* Action buttons - only visible on hover */}
+      <div className="flex items-center justify-end gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Complete Task</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to mark this task as completed? This will remove it from the board.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => onComplete(task.id, task.title)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Complete Task
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Task</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this task? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => onDelete(task.id, task.title)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete Task
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Card>
   );
@@ -427,6 +518,67 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     }
   }
 
+  // Delete a list with optimistic updates
+  async function handleDeleteList(listId: string, listName: string) {
+    // Check if list has tasks
+    const listTasks = tasks.filter(t => t.listId === listId);
+    if (listTasks.length > 0) {
+      toast.error("Cannot delete list with tasks. Please move or delete all tasks first.");
+      return;
+    }
+
+    // Optimistically remove from UI
+    setLists(prev => prev.filter(l => l.id !== listId));
+
+    try {
+      await api.deleteList(resolvedParams.teamId, resolvedParams.boardId, listId);
+      toast.success(`List "${listName}" deleted successfully`);
+    } catch (error) {
+      console.error("Error deleting list:", error);
+      // Revert optimistic update on error
+      const listsResponse = await api.getLists(resolvedParams.teamId, resolvedParams.boardId);
+      setLists(listsResponse.lists || []);
+      toast.error(error instanceof APIError ? error.message : "Failed to delete list");
+    }
+  }
+
+  // Delete a task with optimistic updates
+  async function handleDeleteTask(taskId: string, taskTitle: string) {
+    // Optimistically remove from UI
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
+    try {
+      await api.deleteTask(resolvedParams.teamId, resolvedParams.boardId, taskId);
+      toast.success(`Task "${taskTitle}" deleted successfully`);
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      // Revert optimistic update on error
+      const tasksResponse = await api.getTasks(resolvedParams.teamId, resolvedParams.boardId);
+      setTasks(tasksResponse.tasks || []);
+      toast.error(error instanceof APIError ? error.message : "Failed to delete task");
+    }
+  }
+
+  // Complete a task (move to completed status and remove from board)
+  async function handleCompleteTask(taskId: string, taskTitle: string) {
+    // Optimistically remove from UI
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
+    try {
+      await api.updateTask(resolvedParams.teamId, resolvedParams.boardId, taskId, {
+        status: 'DONE',
+        archived: true
+      });
+      toast.success(`Task "${taskTitle}" completed successfully! 🎉`);
+    } catch (error) {
+      console.error("Error completing task:", error);
+      // Revert optimistic update on error
+      const tasksResponse = await api.getTasks(resolvedParams.teamId, resolvedParams.boardId);
+      setTasks(tasksResponse.tasks || []);
+      toast.error(error instanceof APIError ? error.message : "Failed to complete task");
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Board</h2>
@@ -447,7 +599,45 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
               const listTasks = tasks.filter(t => t.listId === list.id).sort((a, b) => a.position - b.position);
               return (
                 <div key={list.id} className="min-w-[300px] w-80 bg-muted/30 rounded-lg p-4 flex flex-col gap-4">
-                  <div className="font-bold mb-2">{list.name}</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-bold">{list.name}</div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 opacity-70 hover:opacity-100"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete List</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete the list "{list.name}"? This action cannot be undone.
+                            {listTasks.length > 0 && (
+                              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+                                ⚠️ This list contains {listTasks.length} task(s). Please move or delete all tasks first.
+                              </div>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteList(list.id, list.name)}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={listTasks.length > 0}
+                          >
+                            Delete List
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <Sheet open={open && newTask.listId === list.id} onOpenChange={v => setOpen(v)}>
                     <SheetTrigger asChild>
                       <Button size="sm" onClick={() => setNewTask(t => ({ ...t, listId: list.id }))}>Add Task</Button>
@@ -513,7 +703,13 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                   >
                     <DroppableList list={list}>
                       {listTasks.map((task, index) => (
-                        <SortableTask key={task.id} task={task} index={index} />
+                        <SortableTask 
+                          key={task.id} 
+                          task={task} 
+                          index={index} 
+                          onDelete={handleDeleteTask}
+                          onComplete={handleCompleteTask}
+                        />
                       ))}
                     </DroppableList>
                   </SortableContext>
@@ -550,6 +746,8 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
               <SortableTask
                 task={tasks.find(t => t.id === activeTaskId)!}
                 index={0}
+                onDelete={handleDeleteTask}
+                onComplete={handleCompleteTask}
               />
             </div>
           ) : null}
