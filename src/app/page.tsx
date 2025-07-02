@@ -206,7 +206,7 @@ export default function HomePage() {
               <CardHeader className="text-center">
                 <Badge variant="outline" className="w-fit mx-auto mb-4">Coming Soon</Badge>
                 <CardTitle className="text-2xl mb-2">Pro</CardTitle>
-                <div className="text-4xl font-bold mb-2">$29<span className="text-lg font-normal">/month</span></div>
+                <div className="text-4xl font-bold mb-2">$15<span className="text-lg font-normal">/month</span></div>
                 <CardDescription>For established freelancers scaling up</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
