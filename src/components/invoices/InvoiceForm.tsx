@@ -140,16 +140,29 @@ export default function InvoiceForm({ teamId, clients: propClients, onSuccess }:
   const onSubmit = async (data: InvoiceFormData) => {
     setLoading(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(data),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create invoice')
+        const errorData = await response.json()
+        console.error('Invoice creation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}: Failed to create invoice`)
       }
 
       const invoice = await response.json()
@@ -158,7 +171,7 @@ export default function InvoiceForm({ teamId, clients: propClients, onSuccess }:
       onSuccess?.()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      toast.error('Failed to create invoice')
+      toast.error(error instanceof Error ? error.message : 'Failed to create invoice')
     } finally {
       setLoading(false)
     }

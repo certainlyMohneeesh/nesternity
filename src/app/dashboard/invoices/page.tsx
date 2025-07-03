@@ -11,6 +11,7 @@ import { PayNowButton } from '@/components/invoices/PayNowButton'
 import InvoiceForm from '@/components/invoices/InvoiceForm'
 import { toast } from 'sonner'
 import { Plus, Eye, FileText } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface Invoice {
@@ -51,10 +52,25 @@ export default function InvoiceHistoryPage() {
         params.append('status', statusFilter)
       }
       
-      const response = await fetch(`/api/invoices?${params}`)
+      // Get auth session for making authenticated requests
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+      
+      const response = await fetch(`/api/invoices?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
       if (response.ok) {
         const data = await response.json()
         setInvoices(data)
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Failed to fetch invoices')
       }
     } catch (error) {
       console.error('Error fetching invoices:', error)
