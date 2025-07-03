@@ -7,17 +7,29 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from '@/components/ui/navigation-menu'
 import { cn } from '@/lib/utils'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from 'lucide-react'
 
 interface NavLink {
   href: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  iconName: string
 }
 
 interface MobileNavigationProps {
   navLinks: NavLink[]
 }
+
+// Icon mapping for mobile navigation
+const iconMap = {
+  Home,
+  Users,
+  FolderOpen,
+  FileText,
+  FileCheck,
+  AlertCircle,
+  Users2,
+  Settings,
+};
 
 export function MobileNavigation({ navLinks }: MobileNavigationProps) {
   const [open, setOpen] = useState(false)
@@ -53,7 +65,7 @@ export function MobileNavigation({ navLinks }: MobileNavigationProps) {
             <NavigationMenu orientation="vertical" className="w-full">
               <NavigationMenuList className="flex flex-col gap-2 w-full">
                 {navLinks.map((link) => {
-                  const Icon = link.icon
+                  const Icon = iconMap[link.iconName as keyof typeof iconMap]
                   const isActive = pathname === link.href || 
                     (link.href !== '/dashboard' && pathname.startsWith(link.href))
                   

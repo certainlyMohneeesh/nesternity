@@ -11,16 +11,29 @@ import { ThemeProvider } from "@/components/theme-provider/theme-provider";
 import { StripeProvider } from "@/components/providers/StripeProvider";
 import { Menu, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from "lucide-react";
 
+// Define nav links without icon components to avoid serialization issues
 const navLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/dashboard/clients", label: "Clients", icon: Users },
-  { href: "/dashboard/projects", label: "Projects", icon: FolderOpen },
-  { href: "/dashboard/contracts", label: "Contracts", icon: FileText },
-  { href: "/dashboard/invoices", label: "Invoices", icon: FileCheck },
-  { href: "/dashboard/issues", label: "Issues", icon: AlertCircle },
-  { href: "/dashboard/teams", label: "Teams", icon: Users2 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", iconName: "Home" },
+  { href: "/dashboard/clients", label: "Clients", iconName: "Users" },
+  { href: "/dashboard/projects", label: "Projects", iconName: "FolderOpen" },
+  { href: "/dashboard/contracts", label: "Contracts", iconName: "FileText" },
+  { href: "/dashboard/invoices", label: "Invoices", iconName: "FileCheck" },
+  { href: "/dashboard/issues", label: "Issues", iconName: "AlertCircle" },
+  { href: "/dashboard/teams", label: "Teams", iconName: "Users2" },
+  { href: "/dashboard/settings", label: "Settings", iconName: "Settings" },
 ];
+
+// Icon mapping for client components
+const iconMap = {
+  Home,
+  Users,
+  FolderOpen,
+  FileText,
+  FileCheck,
+  AlertCircle,
+  Users2,
+  Settings,
+};
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -41,7 +54,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <NavigationMenu orientation="vertical" className="w-full">
                   <NavigationMenuList className="flex flex-col gap-2 w-full">
                     {navLinks.map((link) => {
-                      const Icon = link.icon
+                      const Icon = iconMap[link.iconName as keyof typeof iconMap];
                       return (
                         <NavigationMenuItem key={link.href} className="w-full">
                           <Link
