@@ -1,18 +1,20 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set')
+// Server-side validation (only runs on server)
+if (typeof window === 'undefined') {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not set')
+  }
 }
 
-if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-  throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set')
-}
+// Create server-side Stripe instance (only on server)
+export const stripe = typeof window === 'undefined' 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-06-30.basil',
+    })
+  : null as any // Won't be used on client-side
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-06-30.basil',
-})
-
-// Stripe publishable key for client-side usage
+// Safe client-side exports
 export const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 // Client-side Stripe instance (for frontend usage)
@@ -22,7 +24,7 @@ export const getStripePromise = () => {
   }
   
   return import('@stripe/stripe-js').then((module) => 
-    module.loadStripe(stripePublishableKey)
+    module.loadStripe(stripePublishableKey || '')
   )
 }
 
@@ -145,8 +147,14 @@ export const getStripeConfig = () => {
   }
 }
 
-// Helper to check if Stripe is properly configured
+// Helper to check if Stripe is properly configured (server-side only)
 export const isStripeConfigured = () => {
+  if (typeof window !== 'undefined') {
+    // Client-side check
+    return !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  }
+  
+  // Server-side check
   return !!(
     process.env.STRIPE_SECRET_KEY &&
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY &&

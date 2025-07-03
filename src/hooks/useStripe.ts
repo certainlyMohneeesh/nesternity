@@ -1,7 +1,7 @@
 'use client'
 
 import { useStripe as useStripeElements, useElements } from '@stripe/react-stripe-js'
-import { stripePublishableKey } from '@/lib/stripe'
+import { stripePublishableKey } from '@/lib/stripe-client'
 
 // Hook for accessing Stripe instance and elements within StripeProvider
 export const useStripe = () => {

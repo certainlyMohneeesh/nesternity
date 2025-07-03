@@ -3,10 +3,10 @@
 import React, { createContext, useContext } from 'react'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { stripePublishableKey } from '@/lib/stripe'
+import { stripePublishableKey } from '@/lib/stripe-client'
 
-// Create Stripe promise
-const stripePromise = loadStripe(stripePublishableKey)
+// Create Stripe promise safely
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 interface StripeProviderProps {
   children: React.ReactNode
@@ -23,6 +23,11 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({
   children, 
   options = {} 
 }) => {
+  // Don't render if Stripe is not configured
+  if (!stripePromise) {
+    return <>{children}</>
+  }
+
   const defaultOptions = {
     appearance: {
       theme: 'stripe' as const,
@@ -48,7 +53,7 @@ export const StripeProvider: React.FC<StripeProviderProps> = ({
 
 // Context for accessing Stripe configuration
 const StripeConfigContext = createContext<{
-  publishableKey: string
+  publishableKey: string | undefined
 }>({
   publishableKey: stripePublishableKey,
 })

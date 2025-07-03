@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Create checkout session
+    if (!stripeCustomerId) {
+      return NextResponse.json({ error: 'Failed to get Stripe customer ID' }, { status: 500 })
+    }
+    
     const session = await createCheckoutSession(
       stripeCustomerId,
       priceId,

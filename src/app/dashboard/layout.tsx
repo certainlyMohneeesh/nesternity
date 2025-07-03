@@ -22,7 +22,7 @@ const navLinks = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
-      {/* <StripeProvider> */}
+      <StripeProvider>
         {/* <ThemeProvider
               attribute="class"
               defaultTheme="light"
@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
       {/* </ThemeProvider> */}
-      {/* </StripeProvider> */}
+      </StripeProvider>
     </SessionProvider>
   );
 }
