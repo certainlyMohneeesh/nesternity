@@ -1,338 +1,718 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useSession } from "@/components/auth/session-context";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Crown, UserX, Settings } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Crown, 
+  UserX, 
+  Settings, 
+  Users, 
+  Shield, 
+  Trash2, 
+  Edit3, 
+  Mail, 
+  Calendar,
+  AlertTriangle
+} from "lucide-react";
 
-interface TeamUser {
+interface TeamMember {
   id: string;
-  user_id: string;
-  team_id: string;
+  userId: string;
   role: string;
-  accepted_at: string;
-  users: {
+  addedBy: string;
+  acceptedAt: string;
+  createdAt: string;
+  user: {
     id: string;
     email: string;
-    user_metadata?: any;
-    display_name?: string;
-  } | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
 }
 
 interface Team {
   id: string;
   name: string;
-  created_by: string;
-  created_at: string;
+  description: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members: TeamMember[];
+  _count: {
+    boards: number;
+    projects: number;
+    members: number;
+  };
+}
+
+interface TeamInvite {
+  id: string;
+  email: string;
+  role: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+  inviter: {
+    displayName: string | null;
+    email: string;
+  };
 }
 
 export default function TeamSettingsPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params);
-  const { session } = useSession();
-  const userId = session?.user.id;
+  const { session, loading: sessionLoading } = useSession();
   const [team, setTeam] = useState<Team | null>(null);
-  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
+  const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("general");
+  
+  // Form states
+  const [teamName, setTeamName] = useState("");
+  const [teamDescription, setTeamDescription] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-  const [selectedNewOwner, setSelectedNewOwner] = useState<string>("");
+  const [selectedNewOwner, setSelectedNewOwner] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (userId && teamId) {
+    if (!sessionLoading && session?.user) {
       fetchTeamData();
+      fetchInvites();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, teamId]);
+  }, [sessionLoading, session, teamId]);
 
   async function fetchTeamData() {
     setLoading(true);
     setError(null);
     
-    // Fetch team data
-    const { data: teamData, error: teamError } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("id", teamId)
-      .single();
-    
-    if (teamError) {
-      setError("Failed to load team data");
-      setLoading(false);
-      return;
-    }
-    
-    setTeam(teamData);
-    
-    // Fetch team users with user details
-    const { data, error } = await supabase
-      .from("team_users")
-      .select(`
-        id, user_id, team_id, role, accepted_at,
-        users:user_id (id, email, display_name)
-      `)
-      .eq("team_id", teamId);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${authSession.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch team data');
+      }
+
+      const data = await response.json();
+      setTeam(data);
+      setTeamName(data.name);
+      setTeamDescription(data.description || "");
       
-    if (error) {
-      setError("Failed to load team members");
+      // Check user permissions
+      const currentUserMember = data.members.find((m: TeamMember) => m.userId === session?.user.id);
+      setIsOwner(data.createdBy === session?.user.id);
+      setIsAdmin(currentUserMember?.role === 'admin' || data.createdBy === session?.user.id);
+      
+    } catch (error) {
+      console.error('Error fetching team:', error);
+      setError('Failed to load team data');
+    } finally {
       setLoading(false);
-      return;
     }
-    
-    setTeamUsers((data || []).map((row: any) => ({ ...row, users: row.users ?? null })));
-    
-    // Check if current user is admin or owner
-    const currentUserRole = data?.find((u: any) => u.user_id === userId);
-    setIsAdmin(!!currentUserRole && (currentUserRole.role === "admin" || teamData?.created_by === userId));
-    setLoading(false);
   }
 
-  async function handleRoleChange(targetUserId: string, newRole: string) {
-    const { error } = await supabase
-      .from("team_users")
-      .update({ role: newRole })
-      .eq("team_id", teamId)
-      .eq("user_id", targetUserId);
-      
-    if (error) {
-      alert("Failed to update role: " + error.message);
-      return;
+  async function fetchInvites() {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}/invites`, {
+        headers: {
+          'Authorization': `Bearer ${authSession.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setInvites(data);
+      }
+    } catch (error) {
+      console.error('Error fetching invites:', error);
     }
-    
-    await fetchTeamData();
   }
 
-  async function handleRemoveMember(targetUserId: string) {
+  async function saveTeamSettings() {
+    setSaving(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`
+        },
+        body: JSON.stringify({
+          name: teamName,
+          description: teamDescription
+        })
+      });
+
+      if (response.ok) {
+        fetchTeamData();
+      }
+    } catch (error) {
+      console.error('Error saving team:', error);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRoleChange(userId: string, newRole: string) {
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (response.ok) {
+        fetchTeamData();
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+    }
+  }
+
+  async function handleRemoveMember(userId: string) {
     if (!confirm("Are you sure you want to remove this member?")) return;
-    
-    const { error } = await supabase
-      .from("team_users")
-      .delete()
-      .eq("team_id", teamId)
-      .eq("user_id", targetUserId);
-      
-    if (error) {
-      alert("Failed to remove member: " + error.message);
-      return;
+
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authSession.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        fetchTeamData();
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
     }
-    
-    await fetchTeamData();
+  }
+
+  async function handleInviteMember() {
+    if (!inviteEmail) return;
+
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}/invites`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`
+        },
+        body: JSON.stringify({
+          email: inviteEmail,
+          role: inviteRole
+        })
+      });
+
+      if (response.ok) {
+        setInviteEmail("");
+        setInviteRole("member");
+        fetchInvites();
+      }
+    } catch (error) {
+      console.error('Error inviting member:', error);
+    }
   }
 
   async function handleTransferOwnership() {
-    if (!selectedNewOwner || !team) return;
-    
-    const { error } = await supabase
-      .from("teams")
-      .update({ created_by: selectedNewOwner })
-      .eq("id", teamId);
-      
-    if (error) {
-      alert("Failed to transfer ownership: " + error.message);
-      return;
+    if (!selectedNewOwner) return;
+
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}/transfer-ownership`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`
+        },
+        body: JSON.stringify({ newOwnerId: selectedNewOwner })
+      });
+
+      if (response.ok) {
+        setTransferDialogOpen(false);
+        setSelectedNewOwner("");
+        fetchTeamData();
+      }
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
     }
-    
-    // Update the new owner's role to admin if they're not already
-    await supabase
-      .from("team_users")
-      .update({ role: "admin" })
-      .eq("team_id", teamId)
-      .eq("user_id", selectedNewOwner);
-    
-    setTransferDialogOpen(false);
-    setSelectedNewOwner("");
-    await fetchTeamData();
   }
 
   async function handleDeleteTeam() {
-    if (!confirm("Are you sure you want to delete this team? This cannot be undone.")) return;
-    
-    const { error } = await supabase.from("teams").delete().eq("id", teamId);
-    
-    if (error) {
-      alert("Failed to delete team: " + error.message);
-      return;
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) return;
+
+      const response = await fetch(`/api/teams/${teamId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authSession.access_token}`
+        }
+      });
+
+      if (response.ok) {
+        window.location.href = '/dashboard/teams';
+      }
+    } catch (error) {
+      console.error('Error deleting team:', error);
     }
-    
-    // Redirect after successful deletion
-    window.location.href = "/dashboard/teams";
   }
 
-  const isOwner = team?.created_by === userId;
-  const eligibleNewOwners = teamUsers.filter(u => u.user_id !== userId && u.role === "admin");
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Settings className="h-6 w-6" />
+          <h2 className="text-3xl font-bold tracking-tight">Team Settings</h2>
+        </div>
+        <div className="animate-pulse space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-3 bg-muted rounded w-2/3"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="h-3 bg-muted rounded"></div>
+                  <div className="h-3 bg-muted rounded w-3/4"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Settings className="h-6 w-6" />
+          <h2 className="text-3xl font-bold tracking-tight">Team Settings</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-destructive bg-destructive/10 p-4 rounded-lg">
+              {error}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!team) {
+    return null;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Settings className="h-6 w-6" />
+          <h2 className="text-3xl font-bold tracking-tight">Team Settings</h2>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-amber-600 bg-amber-50 p-4 rounded-lg">
+              You must be a team admin to manage settings.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const adminMembers = team.members.filter(m => m.role === 'admin' && m.userId !== session?.user.id);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Settings className="h-6 w-6" />
-        <h2 className="text-2xl font-bold">Team Settings</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Team Settings</h2>
       </div>
-      
-      {loading ? (
-        <div className="text-center py-8">Loading...</div>
-      ) : error ? (
-        <div className="text-red-500 bg-red-50 p-4 rounded">{error}</div>
-      ) : !isAdmin ? (
-        <div className="text-yellow-600 bg-yellow-50 p-4 rounded">
-          You must be a team admin to manage settings.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Team Information */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Team Information</h3>
-            <div className="space-y-2">
-              <div><strong>Name:</strong> {team?.name}</div>
-              <div><strong>Created:</strong> {team?.created_at ? new Date(team.created_at).toLocaleDateString() : 'Unknown'}</div>
-              <div className="flex items-center gap-2">
-                <strong>Your Role:</strong>
-                {isOwner ? (
-                  <Badge variant="default" className="bg-yellow-500">
-                    <Crown className="h-3 w-3 mr-1" />
-                    Owner
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">Admin</Badge>
-                )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Edit3 className="h-4 w-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="members" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Members
+          </TabsTrigger>
+          <TabsTrigger value="invites" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Invites
+          </TabsTrigger>
+          <TabsTrigger value="advanced" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Advanced
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Edit3 className="h-5 w-5" />
+                Team Information
+              </CardTitle>
+              <CardDescription>
+                Update your team's basic information and settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="teamName">Team Name</Label>
+                  <Input
+                    id="teamName"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Enter team name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Created</Label>
+                  <Input
+                    value={new Date(team.createdAt).toLocaleDateString()}
+                    disabled
+                  />
+                </div>
               </div>
-            </div>
-          </Card>
-
-          {/* Member Management */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Member Management</h3>
-            <div className="space-y-4">
-              {teamUsers.map((user) => {
-                const isCurrentUser = user.user_id === userId;
-                const isUserOwner = team?.created_by === user.user_id;
-                const displayName = user.users?.display_name || user.users?.email || user.user_id;
-                
-                return (
-                  <div key={user.user_id} className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <div className="font-medium">{displayName}</div>
-                        <div className="text-sm text-muted-foreground">{user.users?.email}</div>
-                      </div>
-                      {isUserOwner && (
-                        <Badge variant="default" className="bg-yellow-500">
-                          <Crown className="h-3 w-3 mr-1" />
-                          Owner
-                        </Badge>
-                      )}
-                      {!isUserOwner && (
-                        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                          {user.role}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {!isCurrentUser && !isUserOwner && (
-                        <>
-                          <Select
-                            value={user.role}
-                            onValueChange={(newRole) => handleRoleChange(user.user_id, newRole)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="member">Member</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRemoveMember(user.user_id)}
-                          >
-                            <UserX className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Transfer Ownership */}
-          {isOwner && eligibleNewOwners.length > 0 && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Transfer Ownership</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Transfer ownership to another admin member. You will become an admin after the transfer.
-              </p>
               
-              <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Crown className="h-4 w-4 mr-2" />
-                    Transfer Ownership
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Transfer Team Ownership</DialogTitle>
-                    <DialogDescription>
-                      This action cannot be undone. The selected admin will become the new team owner,
-                      and you will become a team admin.
-                    </DialogDescription>
-                  </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="teamDescription">Description</Label>
+                <Textarea
+                  id="teamDescription"
+                  value={teamDescription}
+                  onChange={(e) => setTeamDescription(e.target.value)}
+                  placeholder="Describe your team's purpose and goals"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Members</Label>
+                  <div className="text-2xl font-bold">{team._count.members}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Boards</Label>
+                  <div className="text-2xl font-bold">{team._count.boards}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Projects</Label>
+                  <div className="text-2xl font-bold">{team._count.projects}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={saveTeamSettings}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="members" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Team Members
+              </CardTitle>
+              <CardDescription>
+                Manage team members and their roles.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {team.members.map((member) => {
+                  const isCurrentUser = member.userId === session?.user.id;
+                  const isMemberOwner = team.createdBy === member.userId;
+                  const displayName = member.user.displayName || member.user.email;
                   
-                  <div className="py-4">
-                    <Select value={selectedNewOwner} onValueChange={setSelectedNewOwner}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select new owner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eligibleNewOwners.map((user) => (
-                          <SelectItem key={user.user_id} value={user.user_id}>
-                            {user.users?.display_name || user.users?.email || user.user_id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      onClick={handleTransferOwnership}
-                      disabled={!selectedNewOwner}
-                    >
+                  return (
+                    <div key={member.userId} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium">{displayName}</div>
+                          <div className="text-sm text-muted-foreground">{member.user.email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3 inline mr-1" />
+                            Joined {new Date(member.acceptedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {isMemberOwner ? (
+                          <Badge variant="default" className="bg-yellow-500">
+                            <Crown className="h-3 w-3 mr-1" />
+                            Owner
+                          </Badge>
+                        ) : (
+                          <Badge variant={member.role === "admin" ? "default" : "secondary"}>
+                            {member.role}
+                          </Badge>
+                        )}
+                        
+                        {!isCurrentUser && !isMemberOwner && (
+                          <div className="flex items-center gap-1">
+                            <Select
+                              value={member.role}
+                              onValueChange={(newRole) => handleRoleChange(member.userId, newRole)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemoveMember(member.userId)}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="invites" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Team Invitations
+              </CardTitle>
+              <CardDescription>
+                Invite new members to join your team.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Email address"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleInviteMember}>
+                  Send Invite
+                </Button>
+              </div>
+
+              {invites.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-medium">Pending Invitations</h4>
+                  {invites.map((invite) => (
+                    <div key={invite.id} className="flex items-center justify-between p-3 bg-muted rounded">
+                      <div>
+                        <div className="font-medium">{invite.email}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Invited by {invite.inviter.displayName || invite.inviter.email} • 
+                          Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <Badge variant="secondary">{invite.role}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-6">
+          {/* Transfer Ownership */}
+          {isOwner && adminMembers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="h-5 w-5" />
+                  Transfer Ownership
+                </CardTitle>
+                <CardDescription>
+                  Transfer ownership to another admin member. You will become an admin after the transfer.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Crown className="h-4 w-4 mr-2" />
                       Transfer Ownership
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Transfer Team Ownership</DialogTitle>
+                      <DialogDescription>
+                        This action cannot be undone. The selected admin will become the new team owner,
+                        and you will become a team admin.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4">
+                      <Select value={selectedNewOwner} onValueChange={setSelectedNewOwner}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select new owner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {adminMembers.map((member) => (
+                            <SelectItem key={member.userId} value={member.userId}>
+                              {member.user.displayName || member.user.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setTransferDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleTransferOwnership}
+                        disabled={!selectedNewOwner}
+                      >
+                        Transfer Ownership
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
             </Card>
           )}
 
-          {/* Danger Zone */}
+          {/* Delete Team */}
           {isOwner && (
-            <Card className="p-6 border-red-200">
-              <h3 className="text-lg font-semibold text-red-700 mb-4">Danger Zone</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Deleting the team will permanently remove all boards, tasks, and data. This cannot be undone.
-              </p>
-              <Button variant="destructive" onClick={handleDeleteTeam}>
-                Delete Team
-              </Button>
+            <Card className="border-destructive/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Deleting the team will permanently remove all boards, tasks, and data. This cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Team
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Team</DialogTitle>
+                      <DialogDescription>
+                        Are you absolutely sure you want to delete this team? This action cannot be undone.
+                        All boards, tasks, projects, and data will be permanently removed.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Type the team name <strong>{team.name}</strong> to confirm:
+                      </p>
+                      <Input placeholder={team.name} />
+                    </div>
+                    
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleDeleteTeam}
+                      >
+                        Delete Team
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
             </Card>
           )}
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
