@@ -34,20 +34,20 @@ cd /home/chemicalmyth/Desktop/Nesternity/nesternity
 # 2. Update .env.local with your DATABASE_URL
 nano .env.local
 
-# 3. Run the automated setup
+# 3. Run the automated setup (optimized - no repeated Prisma generation)
 ./setup.sh
 ```
 
 ### Option 2: Manual Setup
 ```bash
-# Generate Prisma client
-npx prisma generate
+# Install dependencies (auto-generates Prisma client)
+pnpm install
 
 # Run database migration  
-npx prisma migrate dev --name init
+pnpm prisma:dev
 
-# Start development
-npm run dev
+# Start development (fast - no Prisma generation)
+pnpm dev
 ```
 
 ## 🔧 Database Options

@@ -98,6 +98,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
       prisma:
         specifier: ^6.10.1
         version: 6.11.0(typescript@5.8.3)
