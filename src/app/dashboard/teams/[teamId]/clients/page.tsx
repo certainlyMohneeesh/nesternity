@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useSession } from "@/components/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { Users, Building, Mail, Phone, Calendar, FolderOpen, Plus } from "lucide-react";
+import { Users, Building, Mail, Phone, Calendar, FolderOpen, Plus, Edit, Trash2 } from "lucide-react";
 import { ClientForm } from "@/components/clients/ClientForm";
 import { toast } from "sonner";
 
@@ -273,7 +273,7 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
                       onClick={() => handleOpen(client)}
                       className="h-8 w-8 p-0"
                     >
-                      ✏️
+                      <Edit className="w-4 h-4" />
                     </Button>
                     <Button 
                       size="sm" 
@@ -281,7 +281,7 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
                       onClick={() => handleDelete(client.id)}
                       className="h-8 w-8 p-0"
                     >
-                      🗑️
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>

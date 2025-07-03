@@ -128,7 +128,10 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
 
       if (response.ok) {
         const teamsData = await response.json();
-        setTeams(teamsData);
+        console.log('Teams data received:', teamsData); // Debug log
+        setTeams(Array.isArray(teamsData) ? teamsData : teamsData.teams || []);
+      } else {
+        console.error('Failed to fetch teams:', response.status);
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
@@ -184,7 +187,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
             <SelectValue placeholder={loadingTeams ? "Loading teams..." : "Select a team"} />
           </SelectTrigger>
           <SelectContent>
-            {teams.map((team) => (
+            {Array.isArray(teams) && teams.map((team) => (
               <SelectItem key={team.id} value={team.id}>
                 {team.name}
               </SelectItem>
@@ -204,7 +207,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">No client</SelectItem>
-            {clients.map((client) => (
+            {Array.isArray(clients) && clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
                 {client.name} {client.company && `(${client.company})`}
               </SelectItem>

@@ -162,7 +162,7 @@ export default function ProjectsPage() {
         },
         body: JSON.stringify({
           ...data,
-          clientId: data.clientId || null
+          clientId: data.clientId === 'none' ? null : data.clientId || null
         }),
       })
 
@@ -331,12 +331,12 @@ export default function ProjectsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="clientId">Client</Label>
-                <Select value={watch('clientId')} onValueChange={(value) => setValue('clientId', value)}>
+                <Select value={watch('clientId') || 'none'} onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No client</SelectItem>
+                    <SelectItem value="none">No client</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name} {client.company && `(${client.company})`}

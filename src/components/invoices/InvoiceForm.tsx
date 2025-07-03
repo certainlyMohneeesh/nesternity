@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { supabase } from '@/lib/supabase'
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -41,15 +42,19 @@ interface Client {
   id: string
   name: string
   email: string
+  company?: string
 }
 
 interface InvoiceFormProps {
-  clients: Client[]
+  teamId?: string // Optional team context
+  clients?: Client[] // Optional pre-fetched clients (for backward compatibility)
   onSuccess?: () => void
 }
 
-export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
+export default function InvoiceForm({ teamId, clients: propClients, onSuccess }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false)
+  const [clients, setClients] = useState<Client[]>(propClients || [])
+  const [fetchingClients, setFetchingClients] = useState(false)
   
   const {
     register,
@@ -88,6 +93,49 @@ export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
   const taxAmount = subtotal * (taxRate / 100)
   const discountAmount = subtotal * (discount / 100)
   const total = subtotal + taxAmount - discountAmount
+
+  // Fetch clients if not provided as props
+  const fetchClients = async () => {
+    if (propClients && propClients.length > 0) {
+      return // Use provided clients
+    }
+
+    setFetchingClients(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+
+      const endpoint = teamId 
+        ? `/api/teams/${teamId}/clients`
+        : '/api/clients'
+
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setClients(data)
+      } else {
+        throw new Error('Failed to fetch clients')
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+      toast.error('Failed to fetch clients')
+    } finally {
+      setFetchingClients(false)
+    }
+  }
+
+  // Load clients on component mount
+  useEffect(() => {
+    fetchClients()
+  }, [teamId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSubmit = async (data: InvoiceFormData) => {
     setLoading(true)
@@ -151,16 +199,22 @@ export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="clientId">Client *</Label>
-            <Select onValueChange={(value) => setValue('clientId', value)}>
+            <Select onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)} disabled={fetchingClients}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a client" />
+                <SelectValue placeholder={fetchingClients ? "Loading clients..." : "Select a client"} />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name} ({client.email})
+                {clients.length === 0 && !fetchingClients ? (
+                  <SelectItem value="none" disabled>
+                    No clients available
                   </SelectItem>
-                ))}
+                ) : (
+                  clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name} {client.company && `(${client.company})`} - {client.email}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             {errors.clientId && (

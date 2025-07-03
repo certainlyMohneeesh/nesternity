@@ -174,7 +174,7 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
           name: boardName.trim(),
           description: boardDescription.trim() || null,
           type: boardType,
-          projectId: selectedProject || null
+          projectId: selectedProject && selectedProject !== '' ? selectedProject : null
         })
       });
 
@@ -300,12 +300,12 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
 
                 <div className="space-y-2">
                   <Label htmlFor="project">Link to Project</Label>
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <Select value={selectedProject || 'none'} onValueChange={(value) => setSelectedProject(value === 'none' ? '' : value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select project (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No project</SelectItem>
+                      <SelectItem value="none">No project</SelectItem>
                       {projects.map(project => (
                         <SelectItem key={project.id} value={project.id}>
                           <div className="flex items-center gap-2">

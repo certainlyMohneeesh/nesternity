@@ -38,15 +38,8 @@ interface Invoice {
   }>
 }
 
-interface Client {
-  id: string
-  name: string
-  email: string
-}
-
 export default function InvoiceHistoryPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
@@ -71,21 +64,8 @@ export default function InvoiceHistoryPage() {
     }
   }
 
-  const fetchClients = async () => {
-    try {
-      const response = await fetch('/api/clients')
-      if (response.ok) {
-        const data = await response.json()
-        setClients(data)
-      }
-    } catch (error) {
-      console.error('Error fetching clients:', error)
-    }
-  }
-
   useEffect(() => {
     fetchInvoices()
-    fetchClients()
   }, [statusFilter])
 
   const getStatusVariant = (status: Invoice['status']) => {
@@ -133,7 +113,6 @@ export default function InvoiceHistoryPage() {
               <DialogTitle>Create New Invoice</DialogTitle>
             </DialogHeader>
             <InvoiceForm
-              clients={clients}
               onSuccess={handleFormSuccess}
             />
           </DialogContent>

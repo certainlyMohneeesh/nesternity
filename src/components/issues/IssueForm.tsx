@@ -100,13 +100,21 @@ export function IssueForm({ projects, boards, users, issue, onSuccess, onCancel 
       const url = issue ? `/api/issues/${issue.id}` : '/api/issues'
       const method = issue ? 'PUT' : 'POST'
       
+      // Convert special values to null/undefined
+      const processedData = {
+        ...data,
+        assignedTo: data.assignedTo === 'unassigned' ? undefined : data.assignedTo,
+        projectId: data.projectId === 'none' ? undefined : data.projectId,
+        boardId: data.boardId === 'none' ? undefined : data.boardId,
+      }
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...data,
+          ...processedData,
           tags: selectedTags,
         }),
       })
@@ -190,12 +198,12 @@ export function IssueForm({ projects, boards, users, issue, onSuccess, onCancel 
 
             <div className="space-y-2">
               <Label htmlFor="assignedTo">Assign to</Label>
-              <Select onValueChange={(value) => setValue('assignedTo', value)}>
+              <Select onValueChange={(value) => setValue('assignedTo', value === 'unassigned' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select assignee" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {users?.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.displayName || user.email}
@@ -209,12 +217,12 @@ export function IssueForm({ projects, boards, users, issue, onSuccess, onCancel 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="projectId">Project</Label>
-              <Select onValueChange={(value) => setValue('projectId', value)}>
+              <Select onValueChange={(value) => setValue('projectId', value === 'none' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="none">No project</SelectItem>
                   {projects?.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -227,12 +235,12 @@ export function IssueForm({ projects, boards, users, issue, onSuccess, onCancel 
 
             <div className="space-y-2">
               <Label htmlFor="boardId">Board</Label>
-              <Select onValueChange={(value) => setValue('boardId', value)}>
+              <Select onValueChange={(value) => setValue('boardId', value === 'none' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select board" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No board</SelectItem>
+                  <SelectItem value="none">No board</SelectItem>
                   {boards?.map((board) => (
                     <SelectItem key={board.id} value={board.id}>
                       {board.name}

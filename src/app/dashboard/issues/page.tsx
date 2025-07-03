@@ -125,8 +125,8 @@ export default function IssuesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          projectId: formData.projectId || null,
-          boardId: formData.boardId || null
+          projectId: formData.projectId === 'none' ? null : formData.projectId || null,
+          boardId: formData.boardId === 'none' ? null : formData.boardId || null
         })
       })
 
@@ -282,12 +282,12 @@ export default function IssuesPage() {
                 </div>
                 <div>
                   <Label htmlFor="project">Project (Optional)</Label>
-                  <Select value={formData.projectId} onValueChange={(value) => setFormData({ ...formData, projectId: value })}>
+                  <Select value={formData.projectId || 'none'} onValueChange={(value) => setFormData({ ...formData, projectId: value === 'none' ? '' : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No project</SelectItem>
+                      <SelectItem value="none">No project</SelectItem>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
@@ -298,12 +298,12 @@ export default function IssuesPage() {
                 </div>
                 <div>
                   <Label htmlFor="board">Board (Optional)</Label>
-                  <Select value={formData.boardId} onValueChange={(value) => setFormData({ ...formData, boardId: value })}>
+                  <Select value={formData.boardId || 'none'} onValueChange={(value) => setFormData({ ...formData, boardId: value === 'none' ? '' : value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select board" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No board</SelectItem>
+                      <SelectItem value="none">No board</SelectItem>
                       {boards.map((board) => (
                         <SelectItem key={board.id} value={board.id}>
                           {board.title}
