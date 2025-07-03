@@ -1,49 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getSafeUser } from '@/lib/safe-auth';
+import { db } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
 
-export async function GET(req: NextRequest) {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET(request: NextRequest) {
   try {
-    const user = await getSafeUser();
-    if (!user) {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const teamId = searchParams.get('teamId');
-
-    if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
-    }
-
-    // Verify user has access to the team
-    const teamMember = await prisma.teamMember.findFirst({
+    // Get all teams where the user is a member or owner
+    const userTeams = await db.teamMember.findMany({
       where: {
-        teamId,
-        userId: user.id
-      }
+        userId: user.id,
+      },
+      select: {
+        teamId: true,
+      },
     });
 
-    const team = await prisma.team.findFirst({
+    const teamIds = userTeams.map(member => member.teamId);
+
+    // Also include teams owned by the user
+    const ownedTeams = await db.team.findMany({
       where: {
-        id: teamId,
-        createdBy: user.id
-      }
+        createdBy: user.id,
+      },
+      select: {
+        id: true,
+      },
     });
 
-    if (!teamMember && !team) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
+    const allTeamIds = [...teamIds, ...ownedTeams.map(team => team.id)];
 
-    const projects = await prisma.project.findMany({
+    // Get projects from all accessible teams
+    const projects = await db.project.findMany({
       where: {
-        teamId,
+        teamId: {
+          in: allTeamIds,
+        },
       },
       include: {
         client: true,
+        team: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        boards: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         _count: {
           select: {
             boards: true,
+            issues: true,
           },
         },
       },
@@ -59,42 +85,49 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const user = await getSafeUser();
-    if (!user) {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { name, description, clientId, teamId, startDate, endDate } = body;
+    const body = await request.json();
+    const { name, description, clientId, teamId, startDate, endDate, status } = body;
 
     if (!name || !teamId) {
-      return NextResponse.json({ error: 'Name and team ID are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Name and team are required' }, { status: 400 });
     }
 
     // Verify user has access to the team
-    const teamMember = await prisma.teamMember.findFirst({
+    const teamAccess = await db.teamMember.findFirst({
       where: {
         teamId,
-        userId: user.id
-      }
+        userId: user.id,
+      },
     });
 
-    const team = await prisma.team.findFirst({
+    const isOwner = await db.team.findFirst({
       where: {
         id: teamId,
-        createdBy: user.id
-      }
+        createdBy: user.id,
+      },
     });
 
-    if (!teamMember && !team) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    if (!teamAccess && !isOwner) {
+      return NextResponse.json({ error: 'Access denied to this team' }, { status: 403 });
     }
 
-    // If clientId is provided, verify user owns the client
+    // If clientId is provided, verify the client exists and user has access
     if (clientId) {
-      const client = await prisma.client.findFirst({
+      const client = await db.client.findFirst({
         where: {
           id: clientId,
           createdBy: user.id,
@@ -102,27 +135,46 @@ export async function POST(req: NextRequest) {
       });
 
       if (!client) {
-        return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Client not found or access denied' }, { status: 404 });
       }
     }
 
-    const project = await prisma.project.create({
+    const project = await db.project.create({
       data: {
         name,
         description,
-        clientId,
+        clientId: clientId || null,
         teamId,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
+        status: status || 'PLANNING',
       },
       include: {
         client: true,
+        team: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        boards: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            boards: true,
+            issues: true,
+          },
+        },
       },
     });
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     console.error('Error creating project:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

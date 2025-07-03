@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ClientForm } from './ClientForm'
 import { toast } from 'sonner'
 import { Plus, Edit, Trash2, Building, Mail, Phone } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Client {
   id: string
@@ -32,10 +33,23 @@ export function ClientList() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('/api/clients')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !session.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+
+      const response = await fetch('/api/clients', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
       if (response.ok) {
         const data = await response.json()
         setClients(data)
+      } else {
+        throw new Error('Failed to fetch clients')
       }
     } catch (error) {
       console.error('Error fetching clients:', error)
@@ -53,8 +67,17 @@ export function ClientList() {
     if (!confirm('Are you sure you want to delete this client?')) return
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !session.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+
       const response = await fetch(`/api/clients/${clientId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       })
 
       if (response.ok) {

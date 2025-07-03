@@ -105,7 +105,7 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
     setIsLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!session || !session.access_token) {
         throw new Error('No authentication session found')
       }
 
@@ -128,11 +128,7 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
       
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-      }
-      
-      // Only add authorization header for team-specific endpoints
-      if (teamId && session.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${session.access_token}`, // Always send auth header
       }
       
       const response = await fetch(url, {

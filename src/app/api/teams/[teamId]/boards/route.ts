@@ -52,6 +52,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         archived: false
       },
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            client: {
+              select: {
+                id: true,
+                name: true,
+                company: true,
+              },
+            },
+          },
+        },
         lists: {
           where: { archived: false },
           orderBy: { position: 'asc' },
@@ -95,7 +110,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, type } = await request.json();
+    const { name, description, type, projectId } = await request.json();
 
     if (!name) {
       return NextResponse.json({ error: 'Board name is required' }, { status: 400 });
@@ -121,6 +136,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // If projectId is provided, verify it exists and user has access
+    if (projectId) {
+      const project = await db.project.findFirst({
+        where: {
+          id: projectId,
+          teamId, // Ensure project belongs to this team
+        },
+      });
+
+      if (!project) {
+        return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+      }
+    }
+
     // Get the next position for the board
     const lastBoard = await (db as any).board.findFirst({
       where: { teamId },
@@ -137,7 +166,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         type: type || 'KANBAN',
         teamId,
         createdBy: user.id,
-        position
+        position,
+        projectId: projectId || null,
       }
     });
 

@@ -65,15 +65,7 @@ export default function ProjectsPage() {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleSubmit = async (projectData: {
-    name: string;
-    description?: string;
-    clientId?: string;
-    teamId: string;
-    startDate?: string;
-    endDate?: string;
-    status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
-  }) => {
+  const handleSubmit = async (projectData: Omit<Project, 'id'>) => {
     try {
       setIsLoading(true);
       
