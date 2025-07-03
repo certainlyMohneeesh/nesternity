@@ -15,6 +15,7 @@ interface PayNowButtonProps {
   disabled?: boolean
   size?: 'sm' | 'default' | 'lg'
   variant?: 'default' | 'outline' | 'secondary'
+  mode?: 'redirect' | 'embedded' // New option for payment mode
 }
 
 export function PayNowButton({
@@ -25,7 +26,8 @@ export function PayNowButton({
   currency,
   disabled = false,
   size = 'default',
-  variant = 'default'
+  variant = 'default',
+  mode = 'redirect'
 }: PayNowButtonProps) {
   const [loading, setLoading] = useState(false)
   const { isConfigured } = useStripeConfig()
@@ -48,6 +50,9 @@ export function PayNowButton({
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          mode, // Pass the mode to the API
+        }),
       })
 
       if (!response.ok) {
@@ -57,7 +62,8 @@ export function PayNowButton({
 
       const { checkoutUrl } = await response.json()
       
-      // Redirect to Stripe checkout
+      // Always redirect to Stripe checkout for now
+      // Future enhancement: Handle embedded mode differently
       window.location.href = checkoutUrl
     } catch (error) {
       console.error('Error creating payment link:', error)

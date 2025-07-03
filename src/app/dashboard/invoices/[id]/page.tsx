@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
 import { PayNowButton } from '@/components/invoices/PayNowButton'
+import { PayNowButtonWithModal } from '@/components/invoices/PayNowButtonWithModal'
 import { ArrowLeft, Calendar, User, Mail, FileText, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -303,12 +304,14 @@ export default function InvoiceDetailsPage({ params }: { params: { id: string } 
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 flex-wrap">
-              <PayNowButton
+              <PayNowButtonWithModal
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoiceNumber}
                 status={invoice.status}
                 amount={calculateTotal()}
                 currency={invoice.currency}
+                clientName={invoice.client.name}
+                showModal={true}
               />
               <DownloadInvoiceButton
                 pdfUrl={invoice.pdfUrl}

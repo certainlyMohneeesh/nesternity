@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { useStripeConfig } from '@/hooks/useStripe'
 
 interface Plan {
   name: string
   price: number
   priceId: string
-  features: string[]
+  features: readonly string[]
 }
 
 interface PricingCardProps {
@@ -23,11 +24,17 @@ interface PricingCardProps {
 
 export function PricingCard({ plan, isPopular, ctaText, ctaAction }: PricingCardProps) {
   const [loading, setLoading] = useState(false)
+  const { isConfigured } = useStripeConfig()
 
   const handleSubscribe = async () => {
     if (ctaAction === 'free') {
       // Handle free plan signup
       window.location.href = '/auth'
+      return
+    }
+
+    if (!isConfigured) {
+      toast.error('Payment processing is temporarily unavailable')
       return
     }
 

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { SessionProvider } from "@/components/auth/session-context";
 import NotificationCenter from "@/components/notifications/notification-center";
 import { ThemeProvider } from "@/components/theme-provider/theme-provider";
+import { StripeProvider } from "@/components/providers/StripeProvider";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -21,12 +22,13 @@ const navLinks = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
-      {/* <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-      > */}
+      <StripeProvider>
+        {/* <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+        > */}
       <div className="flex min-h-screen bg-background">
         {/* Sidebar */}
         <aside className="hidden md:flex md:flex-col w-64 border-r bg-card p-4">
@@ -72,6 +74,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
       {/* </ThemeProvider> */}
+      </StripeProvider>
     </SessionProvider>
   );
 }

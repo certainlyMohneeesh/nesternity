@@ -79,6 +79,24 @@ All your features are implemented with clean API routes:
 - ✅ **Activity Feed** (`/api/activities`)
 - ✅ **Email System** (Resend integration)
 
+## 💳 Stripe Integration
+
+This project includes comprehensive Stripe integration for payments and subscriptions:
+
+### Features
+- ✅ **Invoice Payments**: Pay Now buttons with secure Stripe checkout
+- ✅ **Subscription Management**: Multiple pricing tiers (Free, Standard, Pro)
+- ✅ **Payment Processing**: One-time payments and recurring subscriptions
+- ✅ **Webhook Handling**: Automatic status updates and payment confirmations
+- ✅ **Client-side Components**: Ready-to-use payment forms and providers
+
+### Quick Stripe Setup
+1. **Get API Keys**: Sign up at [stripe.com](https://stripe.com) and get your keys
+2. **Add to Environment**: Update `.env.local` with Stripe keys
+3. **Test Integration**: Visit `/stripe-test` to see working examples
+
+For detailed setup instructions, see [STRIPE_SETUP.md](./STRIPE_SETUP.md)
+
 ## 🎯 Next Steps
 
 1. **Set up database** (5 minutes with Neon)

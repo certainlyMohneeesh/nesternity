@@ -1,9 +1,11 @@
 import { STRIPE_PLANS } from '@/lib/stripe'
 import { PricingCard } from '@/components/shared/PricingCard'
+import { StripeProvider } from '@/components/providers/StripeProvider'
 
 export default function PricingPage() {
   return (
-    <div className="container mx-auto px-4 py-12">
+    <StripeProvider>
+      <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
         <p className="text-xl text-gray-600">
@@ -62,5 +64,6 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+    </StripeProvider>
   )
 }

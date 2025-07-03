@@ -4,9 +4,27 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY is not set')
 }
 
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+  throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set')
+}
+
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-06-30.basil',
 })
+
+// Stripe publishable key for client-side usage
+export const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+// Client-side Stripe instance (for frontend usage)
+export const getStripePromise = () => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  
+  return import('@stripe/stripe-js').then((module) => 
+    module.loadStripe(stripePublishableKey)
+  )
+}
 
 export const getStripeCustomerId = async (userId: string, email: string) => {
   const customer = await stripe.customers.create({
@@ -118,3 +136,20 @@ export const STRIPE_PLANS = {
     ],
   },
 } as const
+
+// Client-side configuration helper
+export const getStripeConfig = () => {
+  return {
+    publishableKey: stripePublishableKey,
+    apiVersion: '2025-06-30.basil' as const,
+  }
+}
+
+// Helper to check if Stripe is properly configured
+export const isStripeConfigured = () => {
+  return !!(
+    process.env.STRIPE_SECRET_KEY &&
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY &&
+    process.env.STRIPE_WEBHOOK_SECRET
+  )
+}
