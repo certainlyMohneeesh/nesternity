@@ -11,7 +11,7 @@ import { Eye, EyeOff, CheckCircle } from "lucide-react";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -35,7 +35,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email,
           password,
-          displayName: name
+          displayName: displayName,
         })
       });
 
@@ -67,8 +67,8 @@ export default function RegisterPage() {
             id="name"
             type="text"
             placeholder="Enter your full name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
             required
             className="mt-1"
           />

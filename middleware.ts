@@ -15,6 +15,38 @@ async function getUserFromToken(token: string) {
 }
 
 export default async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith("/admin")) {
+    // Allow access to login page
+    if (req.nextUrl.pathname === "/admin/login") {
+      return NextResponse.next();
+    }
+
+    // Check for admin authentication cookie
+    const adminAuth = req.cookies.get("admin-auth");
+
+    if (!adminAuth) {
+      // Redirect to admin login if not authenticated
+      return NextResponse.redirect(new URL("/admin/login", req.url));
+    }
+
+    try {
+      const { email, timestamp } = JSON.parse(adminAuth.value);
+      const isExpired = Date.now() - timestamp > 4 * 60 * 60 * 1000; // 4 hours
+
+      if (isExpired) {
+        // Redirect to admin login if session expired
+        const response = NextResponse.redirect(new URL("/admin/login", req.url));
+        response.cookies.delete("admin-auth");
+        return response;
+      }
+    } catch {
+      // Redirect to admin login if cookie is invalid
+      const response = NextResponse.redirect(new URL("/admin/login", req.url));
+      response.cookies.delete("admin-auth");
+      return response;
+    }
+  }
+
   if (!req.nextUrl.pathname.startsWith("/dashboard")) {
     return NextResponse.next();
   }
@@ -34,5 +66,5 @@ export default async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*"],
 };

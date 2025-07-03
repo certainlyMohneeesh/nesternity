@@ -1,85 +1,117 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Shield } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Shield, Lock, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [credentials, setCredentials] = useState({
+    email: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  async function handleLogin(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+    if (!credentials.email || !credentials.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
 
+    setLoading(true);
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/admin/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(credentials)
       });
 
-      const data = await response.json();
-
       if (response.ok) {
-        // Set admin auth cookie
-        document.cookie = 'admin-auth=true; path=/; max-age=3600'; // 1 hour
+        toast.success('Login successful');
         router.push('/admin/dashboard');
       } else {
-        setError(data.error || 'Invalid password');
+        const error = await response.json();
+        toast.error(error.error || 'Login failed');
       }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Network error');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <Shield className="h-12 w-12 text-primary mx-auto mb-2" />
-          <CardTitle className="text-2xl">Admin Access</CardTitle>
-          <CardDescription>
-            Enter the admin password to access system tools
-          </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center">
+            <Shield className="h-8 w-8 text-primary-foreground" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-bold">Admin Access</CardTitle>
+            <p className="text-muted-foreground mt-2">
+              Enter your credentials to access the admin dashboard
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Admin Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter admin password"
-                required
-                disabled={loading}
-              />
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                <p className="text-sm text-red-700">{error}</p>
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your admin email"
+                  value={credentials.email}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value }))}
+                  className="pl-10"
+                  required
+                />
               </div>
-            )}
-
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={credentials.password}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading || !password}
+              disabled={loading}
+              size="lg"
             >
-              {loading ? 'Authenticating...' : 'Access Admin Panel'}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Sign In to Admin
+                </>
+              )}
             </Button>
           </form>
         </CardContent>

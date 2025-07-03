@@ -1,1 +1,1 @@
-// Supabase DB types placeholder
+

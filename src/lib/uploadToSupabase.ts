@@ -1,23 +1,30 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export async function uploadInvoicePDF(
+  pdfBuffer: Buffer, 
+  filename: string
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('invoices')
+      .upload(`pdfs/${filename}`, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true
+      })
 
-export async function uploadInvoicePDF(buffer: Buffer, filename: string) {
-  const { data, error } = await supabase.storage
-    .from('invoices')
-    .upload(`pdf/${filename}`, buffer, {
-      contentType: 'application/pdf',
-      upsert: true,
-    })
+    if (error) {
+      console.error('Error uploading PDF:', error)
+      throw new Error('Failed to upload PDF to storage')
+    }
 
-  if (error) throw new Error(error.message)
+    // Get the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('invoices')
+      .getPublicUrl(`pdfs/${filename}`)
 
-  const { data: publicUrl } = supabase.storage
-    .from('invoices')
-    .getPublicUrl(`pdf/${filename}`)
-
-  return publicUrl.publicUrl
+    return publicUrl
+  } catch (error) {
+    console.error('Error in uploadInvoicePDF:', error)
+    throw error
+  }
 }

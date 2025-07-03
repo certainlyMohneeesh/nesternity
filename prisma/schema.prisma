@@ -8,60 +8,57 @@ datasource db {
 }
 
 model User {
-  id              String           @id
-  email           String           @unique
-  displayName     String?          @map("display_name")
-  avatarUrl       String?          @map("avatar_url")
-  stripeCustomerId String?         @unique @map("stripe_customer_id")
-  subscription    Subscription?    @relation("UserSubscription")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-
-  activities      Activity[]
-  boardActivities BoardActivity[]  @relation("BoardActivityUser")
-  taskActivities  TaskActivity[]   @relation("TaskActivityUser")
-  taskAttachments TaskAttachment[] @relation("TaskAttachmentUploader")
-  taskComments    TaskComment[]    @relation("TaskCommentAuthor")
-  assignedTasks   Task[]           @relation("TaskAssignee")
-  createdTasks    Task[]           @relation("TaskCreator")
-  invites         TeamInvite[]     @relation("InvitedBy")
-  teamMembers     TeamMember[]
-  ownedTeams      Team[]           @relation("TeamOwner")
-  issuedInvoices  Invoice[]        @relation("IssuedBy")
-  clientsCreated  Client[]         @relation("UserClients")
-  assignedIssues  Issue[]          @relation("IssueAssignee")
-  createdIssues   Issue[]          @relation("IssueCreator")
-  issueComments   IssueComment[]   @relation("IssueCommentAuthor")
+  id               String           @id
+  email            String           @unique
+  displayName      String?          @map("display_name")
+  avatarUrl        String?          @map("avatar_url")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  stripeCustomerId String?          @unique @map("stripe_customer_id")
+  activities       Activity[]
+  boardActivities  BoardActivity[]  @relation("BoardActivityUser")
+  clientsCreated   Client[]         @relation("UserClients")
+  issuedInvoices   Invoice[]        @relation("IssuedBy")
+  issueComments    IssueComment[]   @relation("IssueCommentAuthor")
+  assignedIssues   Issue[]          @relation("IssueAssignee")
+  createdIssues    Issue[]          @relation("IssueCreator")
+  subscription     Subscription?    @relation("UserSubscription")
+  taskActivities   TaskActivity[]   @relation("TaskActivityUser")
+  taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
+  taskComments     TaskComment[]    @relation("TaskCommentAuthor")
+  assignedTasks    Task[]           @relation("TaskAssignee")
+  createdTasks     Task[]           @relation("TaskCreator")
+  invites          TeamInvite[]     @relation("InvitedBy")
+  teamMembers      TeamMember[]
+  ownedTeams       Team[]           @relation("TeamOwner")
 
   @@map("users")
 }
 
 model Subscription {
-  id              String   @id @default(cuid())
-  userId          String   @unique @map("user_id")
-  stripePriceId   String   @map("stripe_price_id")
-  stripeSubId     String   @map("stripe_subscription_id")
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  stripePriceId    String   @map("stripe_price_id")
+  stripeSubId      String   @map("stripe_subscription_id")
   currentPeriodEnd DateTime @map("current_period_end")
-  status          String
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  user            User     @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
+  status           String
+  createdAt        DateTime @default(now()) @map("created_at")
+  user             User     @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  company   String?
-  address   String?
-  notes     String?
-  createdBy String   @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  createdByUser User     @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  company       String?
+  address       String?
+  notes         String?
+  createdBy     String    @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  createdByUser User      @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
   invoices      Invoice[]
   projects      Project[] @relation("ClientProjects")
 
@@ -69,30 +66,29 @@ model Client {
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
-  clientId      String        @map("client_id")
-  issuedById    String        @map("issued_by_id")
-  dueDate       DateTime      @map("due_date")
-  issuedDate    DateTime      @default(now()) @map("issued_date")
-  status        InvoiceStatus @default(PENDING)
+  id            String             @id @default(cuid())
+  invoiceNumber String             @unique
+  clientId      String             @map("client_id")
+  issuedById    String             @map("issued_by_id")
+  dueDate       DateTime           @map("due_date")
+  issuedDate    DateTime           @default(now()) @map("issued_date")
+  status        InvoiceStatus      @default(PENDING)
   paymentMethod PaymentMethod?
   notes         String?
-  taxRate       Float?        @map("tax_rate")
-  discount      Float?        @default(0)
-  currency      String        @default("INR")
-  pdfUrl        String?       @map("pdf_url")
-  isRecurring   Boolean       @default(false) @map("is_recurring")
+  taxRate       Float?             @map("tax_rate")
+  discount      Float?             @default(0)
+  currency      String             @default("INR")
+  pdfUrl        String?            @map("pdf_url")
+  isRecurring   Boolean            @default(false) @map("is_recurring")
   recurrence    InvoiceRecurrence?
-  nextIssueDate DateTime?     @map("next_issue_date")
-  lastSentDate  DateTime?     @map("last_sent_date")
-  reminderSent  Boolean       @default(false) @map("reminder_sent")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  issuedBy      User          @relation("IssuedBy", fields: [issuedById], references: [id])
+  nextIssueDate DateTime?          @map("next_issue_date")
+  lastSentDate  DateTime?          @map("last_sent_date")
+  reminderSent  Boolean            @default(false) @map("reminder_sent")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
   items         InvoiceItem[]
+  client        Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  issuedBy      User               @relation("IssuedBy", fields: [issuedById], references: [id])
 
   @@map("invoices")
 }
@@ -105,7 +101,6 @@ model InvoiceItem {
   rate        Float
   total       Float    @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
-
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("invoice_items")
@@ -118,13 +113,12 @@ model Team {
   createdBy   String       @map("created_by")
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
-
   activities  Activity[]
   boards      Board[]
+  projects    Project[]    @relation("TeamProjects")
   invites     TeamInvite[]
   members     TeamMember[]
   owner       User         @relation("TeamOwner", fields: [createdBy], references: [id], onDelete: Cascade)
-  projects    Project[]    @relation("TeamProjects")
 
   @@map("teams")
 }
@@ -137,7 +131,6 @@ model TeamMember {
   addedBy    String   @map("added_by")
   acceptedAt DateTime @default(now()) @map("accepted_at")
   createdAt  DateTime @default(now()) @map("created_at")
-
   team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -155,7 +148,6 @@ model TeamInvite {
   usedAt    DateTime? @map("used_at")
   expiresAt DateTime  @map("expires_at")
   createdAt DateTime  @default(now()) @map("created_at")
-
   inviter   User      @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
@@ -171,7 +163,6 @@ model Activity {
   title     String
   details   Json?
   createdAt DateTime @default(now()) @map("created_at")
-
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -179,24 +170,24 @@ model Activity {
 }
 
 model Board {
-  id        String   @id @default(cuid())
-  name      String
-  teamId    String   @map("team_id")
-  createdBy String   @map("created_by")
-  type      BoardType @default(KANBAN)
-  settings  Json?
-  position  Int       @default(0)
-  archived  Boolean   @default(false)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  projectId String?   @map("project_id")
-
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  project   Project?  @relation("ProjectBoards", fields: [projectId], references: [id])
-  lists     BoardList[]
-  tasks     Task[]
-  activities BoardActivity[]
-  issues    Issue[]   @relation("BoardIssues")
+  id          String          @id @default(cuid())
+  name        String
+  type        BoardType       @default(KANBAN)
+  teamId      String          @map("team_id")
+  createdBy   String          @map("created_by")
+  settings    Json?
+  position    Int             @default(0)
+  archived    Boolean         @default(false)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  projectId   String?         @map("project_id")
+  description String?
+  activities  BoardActivity[]
+  lists       BoardList[]
+  project     Project?        @relation("ProjectBoards", fields: [projectId], references: [id])
+  team        Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  issues      Issue[]         @relation("BoardIssues")
+  tasks       Task[]
 
   @@map("boards")
 }
@@ -210,7 +201,6 @@ model BoardList {
   archived  Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks     Task[]
 
@@ -218,32 +208,32 @@ model BoardList {
 }
 
 model Task {
-  id             String       @id @default(cuid())
+  id             String           @id @default(cuid())
   title          String
-  boardId        String       @map("board_id")
-  listId         String       @map("list_id")
-  assignedTo     String?      @map("assigned_to")
-  createdBy      String       @map("created_by")
-  priority       TaskPriority @default(MEDIUM)
-  status         TaskStatus   @default(TODO)
+  description    String
+  boardId        String           @map("board_id")
+  listId         String           @map("list_id")
+  assignedTo     String?          @map("assigned_to")
+  createdBy      String           @map("created_by")
+  priority       TaskPriority     @default(MEDIUM)
+  status         TaskStatus       @default(TODO)
   position       Int
-  dueDate        DateTime?    @map("due_date")
-  completedAt    DateTime?    @map("completed_at")
-  estimatedHours Int?         @map("estimated_hours")
-  actualHours    Int?         @map("actual_hours")
+  dueDate        DateTime?        @map("due_date")
+  completedAt    DateTime?        @map("completed_at")
+  estimatedHours Int?             @map("estimated_hours")
+  actualHours    Int?             @map("actual_hours")
   tags           String[]
-  archived       Boolean      @default(false)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-
-  assignee       User?        @relation("TaskAssignee", fields: [assignedTo], references: [id])
-  board          Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  creator        User         @relation("TaskCreator", fields: [createdBy], references: [id])
-  list           BoardList    @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  archived       Boolean          @default(false)
+  issues         Issue[]          @relation("TaskIssues")
   activities     TaskActivity[]
   attachments    TaskAttachment[]
   comments       TaskComment[]
-  issues         Issue[]      @relation("TaskIssues")
+  assignee       User?            @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  board          Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  creator        User             @relation("TaskCreator", fields: [createdBy], references: [id])
+  list           BoardList        @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
 }
@@ -255,7 +245,6 @@ model TaskComment {
   content   String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation("TaskCommentAuthor", fields: [userId], references: [id])
 
@@ -271,7 +260,6 @@ model TaskAttachment {
   mimeType   String   @map("mime_type")
   uploadedBy String   @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
-
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   uploader   User     @relation("TaskAttachmentUploader", fields: [uploadedBy], references: [id])
 
@@ -285,7 +273,6 @@ model BoardActivity {
   action    String
   details   Json
   createdAt DateTime @default(now()) @map("created_at")
-
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   user      User     @relation("BoardActivityUser", fields: [userId], references: [id])
 
@@ -299,7 +286,6 @@ model TaskActivity {
   action    String
   details   Json
   createdAt DateTime @default(now()) @map("created_at")
-
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation("TaskActivityUser", fields: [userId], references: [id])
 
@@ -317,35 +303,33 @@ model Project {
   status      ProjectStatus @default(PLANNING)
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
-
-  client      Client?       @relation("ClientProjects", fields: [clientId], references: [id])
-  team        Team          @relation("TeamProjects", fields: [teamId], references: [id])
   boards      Board[]       @relation("ProjectBoards")
   issues      Issue[]
+  client      Client?       @relation("ClientProjects", fields: [clientId], references: [id])
+  team        Team          @relation("TeamProjects", fields: [teamId], references: [id])
 
   @@map("projects")
 }
 
 model Issue {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   title       String
   description String
-  status      IssueStatus   @default(OPEN)
-  priority    IssuePriority @default(MEDIUM)
-  projectId   String?       @map("project_id")
-  boardId     String?       @map("board_id")
-  taskId      String?       @map("task_id")
-  assignedTo  String?       @map("assigned_to")
-  createdBy   String        @map("created_by")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-
-  project     Project?      @relation(fields: [projectId], references: [id])
-  board       Board?        @relation("BoardIssues", fields: [boardId], references: [id])
-  task        Task?         @relation("TaskIssues", fields: [taskId], references: [id])
-  assignee    User?         @relation("IssueAssignee", fields: [assignedTo], references: [id])
-  creator     User          @relation("IssueCreator", fields: [createdBy], references: [id])
+  status      IssueStatus    @default(OPEN)
+  priority    IssuePriority  @default(MEDIUM)
+  projectId   String?        @map("project_id")
+  boardId     String?        @map("board_id")
+  taskId      String?        @map("task_id")
+  assignedTo  String?        @map("assigned_to")
+  createdBy   String         @map("created_by")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
   comments    IssueComment[]
+  assignee    User?          @relation("IssueAssignee", fields: [assignedTo], references: [id])
+  board       Board?         @relation("BoardIssues", fields: [boardId], references: [id])
+  creator     User           @relation("IssueCreator", fields: [createdBy], references: [id])
+  project     Project?       @relation(fields: [projectId], references: [id])
+  task        Task?          @relation("TaskIssues", fields: [taskId], references: [id])
 
   @@map("issues")
 }
@@ -356,13 +340,11 @@ model IssueComment {
   userId    String   @map("user_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
-
   issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
   user      User     @relation("IssueCommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("issue_comments")
 }
-
 
 enum BoardType {
   KANBAN
