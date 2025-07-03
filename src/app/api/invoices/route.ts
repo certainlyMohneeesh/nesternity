@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
         console.log('💾 Updating invoice with PDF URL...');
         const updatedInvoice = await prisma.invoice.update({
           where: { id: invoice.id },
-          data: { pdfUrl },
+          data: { pdfUrl: typeof pdfUrl === 'string' ? pdfUrl : pdfUrl?.toString('base64') },
           include: {
             client: true,
             items: true,

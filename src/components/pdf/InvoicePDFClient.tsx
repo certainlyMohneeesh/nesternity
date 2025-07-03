@@ -14,11 +14,11 @@ const PDFViewer = React.lazy(() =>
 )
 
 // Dynamic import for PDF function
-let pdfFunction: any = null
+let pdfFunction: typeof import('@react-pdf/renderer').pdf | null = null
 const loadPdfFunction = async () => {
   if (!pdfFunction) {
-    const module = await import('@react-pdf/renderer')
-    pdfFunction = module.pdf
+    const pdfModule = await import('@react-pdf/renderer')
+    pdfFunction = pdfModule.pdf
   }
   return pdfFunction
 }
@@ -167,7 +167,7 @@ export function InvoicePDFClient({ invoice, showPreview = false }: InvoicePDFCli
             document={<InvoiceDocument invoice={invoice} />}
             fileName={`invoice-${invoice.invoiceNumber}.pdf`}
           >
-            {({ blob, url, loading, error }) => (
+            {({ loading }) => (
               <Button
                 variant="secondary"
                 disabled={loading}

@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button'
 import { CreditCard, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStripeConfig } from '@/hooks/useStripe'
+import { supabase } from '@/lib/supabase'
 
 interface PayNowButtonProps {
   invoiceId: string
-  invoiceNumber: string
   status: string
   amount: number
   currency: string
@@ -19,7 +19,6 @@ interface PayNowButtonProps {
 
 export function PayNowButton({
   invoiceId,
-  invoiceNumber,
   status,
   amount,
   currency,
@@ -43,16 +42,25 @@ export function PayNowButton({
 
     setLoading(true)
     try {
+      // Get auth session for making authenticated requests
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        setLoading(false)
+        return
+      }
+
       const response = await fetch(`/api/invoices/${invoiceId}/payment-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create payment link')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create payment link')
       }
 
       const { checkoutUrl } = await response.json()
@@ -102,7 +110,13 @@ export function PayNowButton({
       ) : (
         <>
           <CreditCard className="w-4 h-4" />
-          Pay Now ({currency} {amount.toFixed(2)})
+          <span className="flex items-center gap-1">
+            Pay Now
+            <span className="ml-2 px-2 py-0.5 text-xs rounded bg-yellow-200 text-yellow-800 font-semibold">Coming Soon</span>
+          </span>
+          <span className="ml-2 text-muted-foreground">
+            ({currency} {amount.toFixed(2)})
+          </span>
           <ExternalLink className="w-3 h-3" />
         </>
       )}

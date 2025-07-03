@@ -1,5 +1,4 @@
 // Team invites module using the new API architecture
-import { supabase } from "./supabase";
 
 export interface PendingInvite {
   id: string;

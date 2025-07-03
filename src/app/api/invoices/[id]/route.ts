@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSafeUser } from '@/lib/safe-auth';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSafeUser();
-    if (!user) {
+    const resolvedParams = await params
+    
+    // Get auth token from request headers
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         issuedById: user.id,
       },
       include: {
@@ -23,6 +35,9 @@ export async function GET(
             id: true,
             name: true,
             email: true,
+            company: true,
+            address: true,
+            phone: true,
           },
         },
         items: true,
@@ -42,11 +57,23 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSafeUser();
-    if (!user) {
+    const resolvedParams = await params
+    
+    // Get auth token from request headers
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -55,7 +82,7 @@ export async function PUT(
 
     const invoice = await prisma.invoice.updateMany({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         issuedById: user.id,
       },
       data: {
@@ -69,7 +96,7 @@ export async function PUT(
     }
 
     const updatedInvoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         client: true,
         items: true,

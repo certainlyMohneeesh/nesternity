@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
-import { generateInvoicePDF } from '@/lib/generatePdf'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('📄 PDF download request for invoice:', params.id)
+    const resolvedParams = await params
+    console.log('📄 PDF download request for invoice:', resolvedParams.id)
     
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization')
@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const invoiceId = params.id
+    const invoiceId = resolvedParams.id
 
     // Fetch invoice with all related data
     const invoice = await prisma.invoice.findFirst({
@@ -90,6 +90,7 @@ export async function GET(
     }
 
     // Generate PDF buffer (don't upload, just return for download)
+    const { generateInvoicePDF } = await import('@/lib/generatePdf')
     const pdfBuffer = await generateInvoicePDF(invoiceData, { 
       upload: false, 
       returnBuffer: true 

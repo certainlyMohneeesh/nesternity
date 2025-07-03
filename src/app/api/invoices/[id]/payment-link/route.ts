@@ -5,9 +5,10 @@ import { stripe } from '@/lib/stripe'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const user = await getSafeUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +16,7 @@ export async function POST(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         issuedById: user.id,
       },
       include: {
@@ -36,7 +37,6 @@ export async function POST(
     const subtotal = invoice.items.reduce((sum, item) => sum + item.total, 0)
     const taxAmount = subtotal * (invoice.taxRate || 0) / 100
     const discountAmount = subtotal * (invoice.discount || 0) / 100
-    const totalAmount = subtotal + taxAmount - discountAmount
 
     // Create line items for Stripe
     const lineItems = invoice.items.map(item => ({
@@ -83,8 +83,8 @@ export async function POST(
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}?payment=cancelled`,
+      success_url: `${req.nextUrl.origin}/dashboard/invoices/${resolvedParams.id}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.nextUrl.origin}/dashboard/invoices/${resolvedParams.id}?payment=cancelled`,
       metadata: {
         invoiceId: invoice.id,
         userId: user.id,

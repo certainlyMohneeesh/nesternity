@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,8 @@ interface Invoice {
   pdfUrl?: string
 }
 
-export default function PaymentSuccessPage({ params }: { params: { id: string } }) {
+export default function PaymentSuccessPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -37,11 +38,11 @@ export default function PaymentSuccessPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     fetchInvoice()
-  }, [params.id])
+  }, [resolvedParams.id])
 
   const fetchInvoice = async () => {
     try {
-      const response = await fetch(`/api/invoices/${params.id}`)
+      const response = await fetch(`/api/invoices/${resolvedParams.id}`)
       if (response.ok) {
         const data = await response.json()
         setInvoice(data)

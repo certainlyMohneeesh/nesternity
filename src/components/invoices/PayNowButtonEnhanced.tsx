@@ -8,7 +8,6 @@ import { useStripeConfig } from '@/hooks/useStripe'
 
 interface PayNowButtonProps {
   invoiceId: string
-  invoiceNumber: string
   status: string
   amount: number
   currency: string
@@ -20,7 +19,6 @@ interface PayNowButtonProps {
 
 export function PayNowButton({
   invoiceId,
-  invoiceNumber,
   status,
   amount,
   currency,

@@ -7,6 +7,7 @@ import { PaymentForm } from '@/components/stripe/PaymentForm'
 import { CreditCard, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStripeConfig } from '@/hooks/useStripe'
+import { supabase } from '@/lib/supabase'
 
 interface PaymentModalProps {
   invoiceId: string
@@ -36,16 +37,25 @@ export function PaymentModal({
   const handleStripeCheckout = async () => {
     setLoading(true)
     try {
+      // Get auth session for making authenticated requests
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        setLoading(false)
+        return
+      }
+
       const response = await fetch(`/api/invoices/${invoiceId}/payment-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create payment link')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create payment link')
       }
 
       const { checkoutUrl } = await response.json()

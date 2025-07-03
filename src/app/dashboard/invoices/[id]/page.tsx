@@ -1,15 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
-import { PayNowButton } from '@/components/invoices/PayNowButton'
+
 import { PayNowButtonWithModal } from '@/components/invoices/PayNowButtonWithModal'
 import { ArrowLeft, Calendar, User, Mail, FileText, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+import React from 'react'
+import dynamic from 'next/dynamic'
+
+// Dynamic import for InvoicePDFClient to ensure it only loads on client-side
+const InvoicePDFClient = dynamic(
+  () => import('@/components/pdf/InvoicePDFClient').then(mod => ({ default: mod.InvoicePDFClient })),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading PDF preview...</p>
+        </div>
+      </div>
+    )
+  }
+)
 
 interface Invoice {
   id: string
@@ -39,22 +58,33 @@ interface Invoice {
   }>
 }
 
-export default function InvoiceDetailsPage({ params }: { params: { id: string } }) {
+export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchInvoice()
-  }, [params.id])
-
-  const fetchInvoice = async () => {
+  const fetchInvoice = useCallback(async () => {
     try {
-      const response = await fetch(`/api/invoices/${params.id}`)
+      // Get auth session for making authenticated requests
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch(`/api/invoices/${resolvedParams.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      
       if (response.ok) {
         const data = await response.json()
         setInvoice(data)
       } else {
-        toast.error('Failed to fetch invoice details')
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.error || 'Failed to fetch invoice details')
       }
     } catch (error) {
       console.error('Error fetching invoice:', error)
@@ -62,7 +92,11 @@ export default function InvoiceDetailsPage({ params }: { params: { id: string } 
     } finally {
       setLoading(false)
     }
-  }
+  }, [resolvedParams.id])
+
+  useEffect(() => {
+    fetchInvoice()
+  }, [fetchInvoice])
 
   const getStatusVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -314,10 +348,40 @@ export default function InvoiceDetailsPage({ params }: { params: { id: string } 
                 showModal={true}
               />
               <DownloadInvoiceButton
-                pdfUrl={invoice.pdfUrl}
+                invoiceId={invoice.id}
                 invoiceNumber={invoice.invoiceNumber}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* PDF Preview */}
+        <Card>
+          <CardHeader>
+            <CardTitle>PDF Preview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {typeof window !== 'undefined' && (
+              <React.Suspense fallback={
+                <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-gray-600">Loading PDF preview...</p>
+                  </div>
+                </div>
+              }>
+                <InvoicePDFClient 
+                  invoice={{
+                    ...invoice,
+                    createdAt: invoice.issuedDate,
+                    dueDate: invoice.dueDate,
+                    taxRate: invoice.taxRate,
+                    discount: invoice.discount
+                  }} 
+                  showPreview={true}
+                />
+              </React.Suspense>
+            )}
           </CardContent>
         </Card>
       </div>

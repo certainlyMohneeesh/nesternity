@@ -192,14 +192,13 @@ export default function InvoiceHistoryPage() {
                   <div className="flex gap-2">
                     <PayNowButton
                       invoiceId={invoice.id}
-                      invoiceNumber={invoice.invoiceNumber}
                       status={invoice.status}
                       amount={calculateTotal(invoice)}
                       currency={invoice.currency}
                       size="sm"
                     />
                     <DownloadInvoiceButton
-                      pdfUrl={invoice.pdfUrl}
+                      invoiceId={invoice.id}
                       invoiceNumber={invoice.invoiceNumber}
                     />
                     <Button variant="outline" size="sm" asChild>
