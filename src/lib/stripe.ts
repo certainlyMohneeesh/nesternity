@@ -1,1 +1,120 @@
-// Stripe helpers placeholder
+import Stripe from 'stripe'
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY is not set')
+}
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2025-06-30.basil',
+})
+
+export const getStripeCustomerId = async (userId: string, email: string) => {
+  const customer = await stripe.customers.create({
+    email,
+    metadata: {
+      userId,
+    },
+  })
+  return customer.id
+}
+
+export const createSubscription = async (customerId: string, priceId: string) => {
+  const subscription = await stripe.subscriptions.create({
+    customer: customerId,
+    items: [{ price: priceId }],
+    payment_behavior: 'default_incomplete',
+    payment_settings: { save_default_payment_method: 'on_subscription' },
+    expand: ['latest_invoice.payment_intent'],
+  })
+  return subscription
+}
+
+export const createCheckoutSession = async (
+  customerId: string,
+  priceId: string,
+  successUrl: string,
+  cancelUrl: string
+) => {
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  })
+  return session
+}
+
+export const createInvoice = async (
+  customerId: string,
+  amount: number,
+  currency: string = 'inr',
+  description?: string
+) => {
+  const invoice = await stripe.invoices.create({
+    customer: customerId,
+    collection_method: 'send_invoice',
+    days_until_due: 30,
+    currency,
+    description,
+    metadata: {
+      amount: amount.toString(),
+    },
+  })
+
+  await stripe.invoiceItems.create({
+    customer: customerId,
+    invoice: invoice.id,
+    amount: Math.round(amount * 100), // Convert to cents
+    currency,
+    description: description || 'Service Invoice',
+  })
+
+  return invoice
+}
+
+export const STRIPE_PLANS = {
+  FREE: {
+    name: 'Free',
+    price: 0,
+    priceId: '',
+    features: [
+      'Up to 3 teams',
+      'Up to 10 boards per team',
+      'Basic task management',
+      'Email support',
+    ],
+  },
+  STANDARD: {
+    name: 'Standard',
+    price: 999, // ₹999 in paise
+    priceId: process.env.STRIPE_STANDARD_PRICE_ID || '',
+    features: [
+      'Unlimited teams',
+      'Unlimited boards',
+      'Advanced task management',
+      'Client management',
+      'Invoice generation',
+      'Priority support',
+    ],
+  },
+  PRO: {
+    name: 'Pro',
+    price: 2999, // ₹2999 in paise
+    priceId: process.env.STRIPE_PRO_PRICE_ID || '',
+    features: [
+      'Everything in Standard',
+      'Advanced analytics',
+      'Custom integrations',
+      'API access',
+      'White-label options',
+      'Dedicated support',
+    ],
+  },
+} as const

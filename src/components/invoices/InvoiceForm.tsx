@@ -1,14 +1,39 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { useState } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
-import { generatePdf } from '@/lib/generatePdf'
-import { toast } from 'sonner'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from 'sonner'
+import { Plus, Trash2 } from 'lucide-react'
+
+const invoiceItemSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  rate: z.number().min(0, 'Rate must be positive'),
+})
+
+const invoiceSchema = z.object({
+  invoiceNumber: z.string().min(1, 'Invoice number is required'),
+  clientId: z.string().min(1, 'Client is required'),
+  dueDate: z.string().min(1, 'Due date is required'),
+  notes: z.string().optional(),
+  taxRate: z.number().min(0).max(100),
+  discount: z.number().min(0).max(100),
+  currency: z.string(),
+  isRecurring: z.boolean(),
+  recurrence: z.enum(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).optional(),
+  nextIssueDate: z.string().optional(),
+  items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
+})
+
+type InvoiceFormData = z.infer<typeof invoiceSchema>
 
 interface Client {
   id: string
@@ -18,84 +43,112 @@ interface Client {
 
 interface InvoiceFormProps {
   clients: Client[]
+  onSuccess?: () => void
 }
 
-export default function InvoiceForm({ clients }: InvoiceFormProps) {
-  const { register, handleSubmit } = useForm()
+export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    invoiceNumber: '',
-    clientId: '',
-    dueDate: '',
-    notes: '',
-    taxRate: '0',
-    discount: '0',
+  
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+    watch,
+  } = useForm<InvoiceFormData>({
+    resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      invoiceNumber: '',
+      clientId: '',
+      dueDate: '',
+      notes: '',
+      taxRate: 0,
+      discount: 0,
+      currency: 'INR',
+      isRecurring: false,
+      items: [{ description: '', quantity: 1, rate: 0 }],
+    },
   })
 
-  const onSubmit = async (data: any) => {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'items',
+  })
+
+  const watchedItems = watch('items')
+  const taxRate = watch('taxRate')
+  const discount = watch('discount')
+
+  const subtotal = watchedItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0)
+  const taxAmount = subtotal * (taxRate / 100)
+  const discountAmount = subtotal * (discount / 100)
+  const total = subtotal + taxAmount - discountAmount
+
+  const onSubmit = async (data: InvoiceFormData) => {
     setLoading(true)
-    if (!data.invoiceNumber || !data.clientId || !data.dueDate) {
-      toast.error('Please fill in all required fields')
-      setLoading(false)
-      return
-    }
-
     try {
-      const result = await generatePdf(data)
-      toast.success(`Invoice ${result.invoice.invoiceNumber} created successfully!`)
-
-      // Reset form
-      setFormData({
-        invoiceNumber: '',
-        clientId: '',
-        dueDate: '',
-        notes: '',
-        taxRate: '0',
-        discount: '0',
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to create invoice')
+      }
+
+      const invoice = await response.json()
+      toast.success(`Invoice ${invoice.invoiceNumber} created successfully!`)
+      reset()
+      onSuccess?.()
     } catch (error) {
-      console.error('Error generating invoice:', error)
-      toast.error('Failed to generate invoice')
+      console.error('Error creating invoice:', error)
+      toast.error('Failed to create invoice')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleInputChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Create New Invoice</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoiceNumber">Invoice Number *</Label>
               <Input
-                placeholder="Invoice Number (e.g. INV-0001)"
+                id="invoiceNumber"
                 {...register('invoiceNumber')}
-                value={formData.invoiceNumber}
-                onChange={(e) => handleInputChange('invoiceNumber', e.target.value)}
-                required
+                placeholder="e.g. INV-0001"
               />
+              {errors.invoiceNumber && (
+                <p className="text-sm text-red-500">{errors.invoiceNumber.message}</p>
+              )}
             </div>
-            <div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date *</Label>
               <Input
-                placeholder="Due Date (YYYY-MM-DD)"
+                id="dueDate"
                 type="date"
                 {...register('dueDate')}
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                required
               />
+              {errors.dueDate && (
+                <p className="text-sm text-red-500">{errors.dueDate.message}</p>
+              )}
             </div>
           </div>
 
-          <div>
-            <Select value={formData.clientId} onValueChange={(value) => handleInputChange('clientId', value)}>
+          <div className="space-y-2">
+            <Label htmlFor="clientId">Client *</Label>
+            <Select onValueChange={(value) => setValue('clientId', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a client" />
               </SelectTrigger>
@@ -107,41 +160,148 @@ export default function InvoiceForm({ clients }: InvoiceFormProps) {
                 ))}
               </SelectContent>
             </Select>
+            {errors.clientId && (
+              <p className="text-sm text-red-500">{errors.clientId.message}</p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Label className="text-lg font-semibold">Invoice Items</Label>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => append({ description: '', quantity: 1, rate: 0 })}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
+
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor={`items.${index}.description`}>Description</Label>
+                  <Input
+                    {...register(`items.${index}.description`)}
+                    placeholder="Item description"
+                  />
+                  {errors.items?.[index]?.description && (
+                    <p className="text-sm text-red-500">{errors.items[index]?.description?.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`items.${index}.quantity`}>Quantity</Label>
+                  <Input
+                    type="number"
+                    {...register(`items.${index}.quantity`, { valueAsNumber: true })}
+                    placeholder="1"
+                  />
+                  {errors.items?.[index]?.quantity && (
+                    <p className="text-sm text-red-500">{errors.items[index]?.quantity?.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`items.${index}.rate`}>Rate</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...register(`items.${index}.rate`, { valueAsNumber: true })}
+                      placeholder="0.00"
+                    />
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {errors.items?.[index]?.rate && (
+                    <p className="text-sm text-red-500">{errors.items[index]?.rate?.message}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="taxRate">Tax Rate (%)</Label>
               <Input
-                placeholder="Tax Rate (e.g. 18%)"
+                id="taxRate"
                 type="number"
-                {...register('taxRate')}
-                value={formData.taxRate}
-                onChange={(e) => handleInputChange('taxRate', e.target.value)}
+                step="0.01"
+                {...register('taxRate', { valueAsNumber: true })}
+                placeholder="0"
               />
             </div>
-            <div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="discount">Discount (%)</Label>
               <Input
-                placeholder="Discount (%)"
+                id="discount"
                 type="number"
-                {...register('discount')}
-                value={formData.discount}
-                onChange={(e) => handleInputChange('discount', e.target.value)}
+                step="0.01"
+                {...register('discount', { valueAsNumber: true })}
+                placeholder="0"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select onValueChange={(value) => setValue('currency', value)} defaultValue="INR">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INR">INR</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
             <Textarea
-              placeholder="Notes (Optional)"
+              id="notes"
               {...register('notes')}
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              placeholder="Additional notes (optional)"
               rows={3}
             />
           </div>
 
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Generating...' : 'Generate PDF Invoice'}
+          <Card className="p-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tax ({taxRate}%):</span>
+                <span>₹{taxAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Discount ({discount}%):</span>
+                <span>-₹{discountAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <span>Total:</span>
+                <span>₹{total.toFixed(2)}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Creating Invoice...' : 'Create Invoice'}
           </Button>
         </form>
       </CardContent>
