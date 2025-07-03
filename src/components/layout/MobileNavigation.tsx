@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from '@/components/ui/navigation-menu'
 import { cn } from '@/lib/utils'
@@ -45,23 +45,26 @@ export function MobileNavigation({ navLinks }: MobileNavigationProps) {
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-2">
-              <img src="/nesternity.svg" alt="Nesternity" className="w-8 h-8" />
-              <span className="font-bold text-lg">Nesternity</span>
+          {/* Accessible Header with Title */}
+          <SheetHeader className="p-0 border-b">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-2">
+                <img src="/nesternity.svg" alt="Nesternity" className="w-8 h-8" />
+                <SheetTitle className="font-bold text-lg">Nesternity</SheetTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          </SheetHeader>
           
           {/* Navigation */}
-          <nav className="flex-1 p-4">
+          <nav className="flex-1 p-4" role="navigation" aria-label="Main navigation">
             <NavigationMenu orientation="vertical" className="w-full">
               <NavigationMenuList className="flex flex-col gap-2 w-full">
                 {navLinks.map((link) => {
@@ -80,8 +83,9 @@ export function MobileNavigation({ navLinks }: MobileNavigationProps) {
                             ? "bg-primary text-primary-foreground"
                             : "text-foreground hover:bg-muted"
                         )}
+                        aria-current={isActive ? "page" : undefined}
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="h-4 w-4" aria-hidden="true" />
                         {link.label}
                       </Link>
                     </NavigationMenuItem>

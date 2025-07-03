@@ -68,3 +68,69 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// GET /api/teams/[teamId]/projects
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  try {
+    const { teamId } = await params;
+    
+    // Get auth token from request headers
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if user is a member of the team
+    const teamMember = await prisma.teamMember.findFirst({
+      where: {
+        teamId,
+        userId: user.id
+      }
+    });
+
+    if (!teamMember) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const projects = await prisma.project.findMany({
+      where: {
+        teamId
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            company: true
+          }
+        },
+        _count: {
+          select: {
+            boards: true,
+            issues: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return NextResponse.json(projects);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

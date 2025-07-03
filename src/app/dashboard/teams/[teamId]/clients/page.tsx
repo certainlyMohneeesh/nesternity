@@ -1,17 +1,16 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSession } from "@/components/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Users, Building, Mail, Phone, Calendar, FolderOpen, Plus } from "lucide-react";
+import { ClientForm } from "@/components/clients/ClientForm";
+import { toast } from "sonner";
 
 interface Client {
   id: string;
@@ -62,14 +61,6 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-    address: "",
-    notes: "",
-  });
 
   useEffect(() => {
     if (!sessionLoading && session?.user) {
@@ -124,56 +115,19 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
 
   function handleOpen(editClient?: Client) {
     setEditing(editClient || null);
-    setForm(
-      editClient
-        ? { 
-            name: editClient.name, 
-            email: editClient.email, 
-            phone: editClient.phone || "",
-            company: editClient.company || "",
-            address: editClient.address || "",
-            notes: editClient.notes || ""
-          }
-        : { name: "", email: "", phone: "", company: "", address: "", notes: "" }
-    );
     setOpen(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.error('No session found');
-        return;
-      }
+  function handleFormSuccess() {
+    setOpen(false);
+    setEditing(null);
+    fetchClients();
+    toast.success(editing ? 'Client updated successfully' : 'Client created successfully');
+  }
 
-      if (editing) {
-        // Update
-        await fetch(`/api/teams/${teamId}/clients/${editing.id}`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify(form)
-        });
-      } else {
-        // Insert
-        await fetch(`/api/teams/${teamId}/clients`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify(form)
-        });
-      }
-      setOpen(false);
-      fetchClients();
-    } catch (error) {
-      console.error('Error saving client:', error);
-    }
+  function handleFormCancel() {
+    setOpen(false);
+    setEditing(null);
   }
 
   async function handleDelete(id: string) {
@@ -246,68 +200,23 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
                 {editing ? "Edit Client" : "Add Client"}
               </SheetTitle>
             </SheetHeader>
-            <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input 
-                    id="name"
-                    value={form.name} 
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input 
-                    id="email"
-                    type="email" 
-                    value={form.email} 
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))} 
-                    required 
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input 
-                    id="phone"
-                    value={form.phone} 
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input 
-                    id="company"
-                    value={form.company} 
-                    onChange={e => setForm(f => ({ ...f, company: e.target.value }))} 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea 
-                  id="address"
-                  value={form.address} 
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea 
-                  id="notes"
-                  value={form.notes} 
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                {editing ? "Update" : "Add"} Client
-              </Button>
-            </form>
+            <div className="mt-6">
+              <ClientForm
+                client={editing ? {
+                  id: editing.id,
+                  name: editing.name,
+                  email: editing.email,
+                  phone: editing.phone || undefined,
+                  company: editing.company || undefined,
+                  address: editing.address || undefined,
+                  notes: editing.notes || undefined,
+                  projects: editing.projects
+                } : undefined}
+                teamId={teamId}
+                onSuccess={handleFormSuccess}
+                onCancel={handleFormCancel}
+              />
+            </div>
           </SheetContent>
         </Sheet>
       </div>

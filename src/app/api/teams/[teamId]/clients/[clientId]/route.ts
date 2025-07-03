@@ -38,10 +38,24 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, email, phone, company, address, notes } = body;
+    const { name, email, phone, company, address, notes, projectIds } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    }
+
+    // Validate projectIds belong to this team
+    if (projectIds && projectIds.length > 0) {
+      const validProjects = await prisma.project.findMany({
+        where: {
+          id: { in: projectIds },
+          teamId
+        }
+      });
+
+      if (validProjects.length !== projectIds.length) {
+        return NextResponse.json({ error: 'Invalid project IDs' }, { status: 400 });
+      }
     }
 
     const client = await prisma.client.update({
@@ -53,6 +67,11 @@ export async function PUT(
         company,
         address,
         notes,
+        projects: projectIds ? {
+          set: projectIds.map((id: string) => ({ id }))
+        } : {
+          set: []
+        },
       },
       include: {
         projects: {
