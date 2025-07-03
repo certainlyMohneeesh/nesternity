@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
         await handleSubscriptionDeleted(event.data.object)
         break
       
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object)
+        break
+      
       case 'invoice.payment_succeeded':
         await handleInvoicePaymentSucceeded(event.data.object)
         break
@@ -168,4 +172,31 @@ async function handleInvoicePaymentFailed(invoice: any) {
 async function handleInvoiceCreated(invoice: any) {
   // Log invoice creation
   console.log(`Invoice created: ${invoice.id}`)
+}
+
+async function handleCheckoutSessionCompleted(session: any) {
+  try {
+    const invoiceId = session.metadata?.invoiceId
+    const userId = session.metadata?.userId
+
+    if (!invoiceId || !userId) {
+      console.log('Missing metadata in checkout session:', session.id)
+      return
+    }
+
+    // Update invoice status to PAID
+    await prisma.invoice.updateMany({
+      where: {
+        id: invoiceId,
+        issuedById: userId,
+      },
+      data: {
+        status: 'PAID',
+      },
+    })
+
+    console.log(`Invoice ${invoiceId} marked as paid via checkout session ${session.id}`)
+  } catch (error) {
+    console.error('Error handling checkout session completion:', error)
+  }
 }

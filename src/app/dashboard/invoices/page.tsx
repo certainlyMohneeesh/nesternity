@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
+import { PayNowButton } from '@/components/invoices/PayNowButton'
 import InvoiceForm from '@/components/invoices/InvoiceForm'
 import { toast } from 'sonner'
 import { Plus, Eye, FileText } from 'lucide-react'
+import Link from 'next/link'
 
 interface Invoice {
   id: string
@@ -193,13 +195,23 @@ export default function InvoiceHistoryPage() {
                   </div>
                   
                   <div className="flex gap-2">
+                    <PayNowButton
+                      invoiceId={invoice.id}
+                      invoiceNumber={invoice.invoiceNumber}
+                      status={invoice.status}
+                      amount={calculateTotal(invoice)}
+                      currency={invoice.currency}
+                      size="sm"
+                    />
                     <DownloadInvoiceButton
                       pdfUrl={invoice.pdfUrl}
                       invoiceNumber={invoice.invoiceNumber}
                     />
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Details
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/invoices/${invoice.id}`}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </Link>
                     </Button>
                   </div>
                 </div>

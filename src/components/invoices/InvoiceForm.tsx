@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const invoiceItemSchema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -31,6 +32,7 @@ const invoiceSchema = z.object({
   recurrence: z.enum(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).optional(),
   nextIssueDate: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
+  enablePaymentLink: z.boolean().default(false),
 })
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>
@@ -68,6 +70,7 @@ export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
       discount: 0,
       currency: 'INR',
       isRecurring: false,
+      enablePaymentLink: false,
       items: [{ description: '', quantity: 1, rate: 0 }],
     },
   })
@@ -277,6 +280,16 @@ export default function InvoiceForm({ clients, onSuccess }: InvoiceFormProps) {
               placeholder="Additional notes (optional)"
               rows={3}
             />
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <Checkbox
+              id="enablePaymentLink"
+              {...register('enablePaymentLink')}
+            />
+            <Label htmlFor="enablePaymentLink" className="font-normal">
+              Enable "Pay Now" button for online payments
+            </Label>
           </div>
 
           <Card className="p-4">
