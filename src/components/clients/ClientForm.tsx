@@ -37,7 +37,7 @@ interface Project {
 
 interface ClientFormProps {
   client?: ClientFormData & { id: string; projects?: Project[] }
-  teamId: string
+  teamId?: string  // Make teamId optional
   onSuccess?: () => void
   onCancel?: () => void
 }
@@ -69,8 +69,10 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
     },
   })
 
-  // Fetch available projects for this team
+  // Fetch available projects for this team (only if teamId is provided)
   useEffect(() => {
+    if (!teamId) return; // Skip if no teamId (general clients)
+    
     const fetchProjects = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -103,27 +105,39 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
     setIsLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
+      if (!session) {
         throw new Error('No authentication session found')
       }
 
-      // Include selected project IDs in the data
+      // Include selected project IDs in the data (only if teamId is provided)
       const submitData = {
         ...data,
-        projectIds: selectedProjectIds,
+        ...(teamId && { projectIds: selectedProjectIds }),
       }
 
-      const url = client 
-        ? `/api/teams/${teamId}/clients/${client.id}` 
-        : `/api/teams/${teamId}/clients`
+      // Use different API endpoints based on whether teamId is provided
+      const url = teamId 
+        ? client 
+          ? `/api/teams/${teamId}/clients/${client.id}` 
+          : `/api/teams/${teamId}/clients`
+        : client
+          ? `/api/clients/${client.id}`
+          : '/api/clients'
+      
       const method = client ? 'PUT' : 'POST'
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      // Only add authorization header for team-specific endpoints
+      if (teamId && session.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+        headers,
         body: JSON.stringify(submitData),
       })
 
@@ -218,15 +232,16 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
             />
           </div>
 
-          {/* Projects Section */}
-          <div className="space-y-4 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
-              <Label className="text-base font-medium">Link to Projects</Label>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Select existing projects to associate with this client, or leave empty to create projects later.
-            </p>
+          {/* Projects Section - Only show for team-specific clients */}
+          {teamId && (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                <Label className="text-base font-medium">Link to Projects</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Select existing projects to associate with this client, or leave empty to create projects later.
+              </p>
             
             {projects.length > 0 ? (
               <div className="space-y-3">
@@ -305,7 +320,8 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
                 <p className="text-sm">Create projects first to link them to clients</p>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-4">
             <Button type="submit" disabled={isLoading}>
