@@ -32,7 +32,7 @@ const invoiceSchema = z.object({
   recurrence: z.enum(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).optional(),
   nextIssueDate: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
-  enablePaymentLink: z.boolean().default(false),
+  enablePaymentLink: z.boolean(),
 })
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>
