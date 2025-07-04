@@ -32,6 +32,10 @@ interface InvoiceData {
   taxRate: number | null
   discount: number | null
   currency: string
+  enablePaymentLink?: boolean
+  paymentUrl?: string | null
+  watermarkText?: string | null
+  eSignatureUrl?: string | null
   client: {
     name: string
     email: string

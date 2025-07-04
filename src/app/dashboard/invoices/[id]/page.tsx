@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
 
-import { PayNowButtonWithModal } from '@/components/invoices/PayNowButtonWithModal'
 import { ArrowLeft, Calendar, User, Mail, FileText, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -41,6 +40,10 @@ interface Invoice {
   discount: number
   currency: string
   notes?: string
+  enablePaymentLink?: boolean
+  paymentUrl?: string | null
+  watermarkText?: string | null
+  eSignatureUrl?: string | null
   client: {
     id: string
     name: string
@@ -338,15 +341,6 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 flex-wrap">
-              <PayNowButtonWithModal
-                invoiceId={invoice.id}
-                invoiceNumber={invoice.invoiceNumber}
-                status={invoice.status}
-                amount={calculateTotal()}
-                currency={invoice.currency}
-                clientName={invoice.client.name}
-                showModal={true}
-              />
               <DownloadInvoiceButton
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoiceNumber}
@@ -376,7 +370,11 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
                     createdAt: invoice.issuedDate,
                     dueDate: invoice.dueDate,
                     taxRate: invoice.taxRate,
-                    discount: invoice.discount
+                    discount: invoice.discount,
+                    enablePaymentLink: invoice.enablePaymentLink,
+                    paymentUrl: invoice.paymentUrl,
+                    watermarkText: invoice.watermarkText,
+                    eSignatureUrl: invoice.eSignatureUrl
                   }} 
                   showPreview={true}
                 />

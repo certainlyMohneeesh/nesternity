@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
-import { PayNowButton } from '@/components/invoices/PayNowButton'
 import InvoiceForm from '@/components/invoices/InvoiceForm'
 import { toast } from 'sonner'
 import { Plus, Eye, FileText } from 'lucide-react'
@@ -190,13 +189,6 @@ export default function InvoiceHistoryPage() {
                   </div>
                   
                   <div className="flex gap-2">
-                    <PayNowButton
-                      invoiceId={invoice.id}
-                      status={invoice.status}
-                      amount={calculateTotal(invoice)}
-                      currency={invoice.currency}
-                      size="sm"
-                    />
                     <DownloadInvoiceButton
                       invoiceId={invoice.id}
                       invoiceNumber={invoice.invoiceNumber}

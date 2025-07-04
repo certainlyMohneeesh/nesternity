@@ -51,7 +51,11 @@ const testInvoiceCreation = async () => {
       currency: 'INR',
       dueDate: new Date(),
       issuedDate: new Date(),
-      notes: 'Test invoice'
+      notes: 'Test invoice',
+      enablePaymentLink: true,
+      paymentUrl: 'https://checkout.stripe.com/pay/test',
+      watermarkText: 'SAMPLE INVOICE',
+      eSignatureUrl: null
     };
     
     console.log('Testing PDF generation...');
