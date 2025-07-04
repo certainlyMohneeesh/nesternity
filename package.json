@@ -82,8 +82,8 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "pnpm": ">=10.0.0"
+    "node": ">=18.17.0",
+    "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@10.12.4"
+  "packageManager": "pnpm@8.15.0"
 }
