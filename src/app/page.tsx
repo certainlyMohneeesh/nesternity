@@ -17,8 +17,8 @@ export default function HomePage() {
           <span className="text-xl font-bold">Nesternity</span>
         </div>
         <div className="hidden md:flex items-center space-x-6">
-          <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link>
-          <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+          {/* <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link>
+          <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link> */}
           <Link href="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Sign In</Link>
           <Link href="/dashboard">
             <Button size="sm">Get Started</Button>
