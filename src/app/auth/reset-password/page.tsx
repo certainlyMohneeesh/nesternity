@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/auth-layout";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,8 +56,8 @@ export default function ResetPasswordPage() {
     checkSession();
   }, [searchParams]);
 
-  async function handleResetPassword(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleResetPassword(_e: React.FormEvent) {
+    _e.preventDefault();
     setError("");
     setSuccess("");
 
@@ -221,5 +221,26 @@ export default function ResetPasswordPage() {
         </div>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout
+        title="Set new password"
+        subtitle="Enter your new password below."
+      >
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+        </div>
+      </AuthLayout>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+// import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -16,8 +17,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  // const router = useRouter();
+  // const searchParams = useSearchParams();
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -148,5 +149,28 @@ export default function RegisterPage() {
         </div>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout
+        title="Create your account"
+        subtitle="Join thousands of professionals managing projects efficiently."
+      >
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+        </div>
+      </AuthLayout>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

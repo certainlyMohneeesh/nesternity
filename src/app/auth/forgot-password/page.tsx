@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout 
       title="Forgot your password?"
-      subtitle="No worries, we'll send you reset instructions."
+      subtitle="No worries, we&apos;ll send you reset instructions."
     >
       <form onSubmit={handleForgotPassword} className="space-y-6">
         <div>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             className="mt-1"
           />
           <p className="mt-1 text-xs text-gray-500">
-            We'll send a password reset link to this email
+            We&apos;ll send a password reset link to this email
           </p>
         </div>
 

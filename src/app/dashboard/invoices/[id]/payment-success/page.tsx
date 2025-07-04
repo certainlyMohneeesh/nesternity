@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,18 +29,14 @@ interface Invoice {
   pdfUrl?: string
 }
 
-export default function PaymentSuccessPage({ params }: { params: Promise<{ id: string }> }) {
+function PaymentSuccessContent({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
 
-  useEffect(() => {
-    fetchInvoice()
-  }, [resolvedParams.id])
-
-  const fetchInvoice = async () => {
+  const fetchInvoice = useCallback(async () => {
     try {
       const response = await fetch(`/api/invoices/${resolvedParams.id}`)
       if (response.ok) {
@@ -53,7 +49,11 @@ export default function PaymentSuccessPage({ params }: { params: Promise<{ id: s
     } finally {
       setLoading(false)
     }
-  }
+  }, [resolvedParams.id])
+
+  useEffect(() => {
+    fetchInvoice()
+  }, [fetchInvoice])
 
   const calculateTotal = () => {
     if (!invoice) return 0
@@ -180,7 +180,7 @@ export default function PaymentSuccessPage({ params }: { params: Promise<{ id: s
           <CardContent>
             <ul className="space-y-2 text-gray-600">
               <li>• You will receive a payment confirmation email shortly</li>
-              <li>• Your invoice status has been updated to "PAID"</li>
+              <li>• Your invoice status has been updated to &quot;PAID&quot;</li>
               <li>• You can download your receipt using the button above</li>
               <li>• For any questions, please contact support</li>
             </ul>
@@ -188,5 +188,35 @@ export default function PaymentSuccessPage({ params }: { params: Promise<{ id: s
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function PaymentSuccessPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="animate-pulse">
+                <div className="h-12 w-12 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded mx-auto mb-2" style={{width: '200px'}}></div>
+                <div className="h-4 bg-gray-200 rounded mx-auto" style={{width: '300px'}}></div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <PaymentSuccessContent params={params} />
+    </Suspense>
   )
 }
