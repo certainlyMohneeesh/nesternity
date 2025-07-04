@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Plus, AlertCircle, Clock, CheckCircle, XCircle, Filter, Search } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Issue {
   id: string
@@ -67,6 +68,18 @@ export default function IssuesPage() {
     boardId: ''
   })
 
+  // Helper function to get auth headers
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('Not authenticated')
+    }
+    return {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json'
+    }
+  }
+
   useEffect(() => {
     fetchIssues()
     fetchProjects()
@@ -75,15 +88,19 @@ export default function IssuesPage() {
 
   const fetchIssues = async () => {
     try {
+      const headers = await getAuthHeaders()
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (priorityFilter !== 'all') params.append('priority', priorityFilter)
       if (searchQuery) params.append('search', searchQuery)
 
-      const response = await fetch(`/api/issues?${params}`)
+      const response = await fetch(`/api/issues?${params}`, { headers })
       if (response.ok) {
         const data = await response.json()
         setIssues(data)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.error || 'Failed to fetch issues')
       }
     } catch (error) {
       console.error('Error fetching issues:', error)
@@ -95,10 +112,13 @@ export default function IssuesPage() {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('/api/projects')
+      const headers = await getAuthHeaders()
+      const response = await fetch('/api/projects', { headers })
       if (response.ok) {
         const data = await response.json()
         setProjects(data)
+      } else {
+        console.error('Failed to fetch projects')
       }
     } catch (error) {
       console.error('Error fetching projects:', error)
@@ -107,10 +127,13 @@ export default function IssuesPage() {
 
   const fetchBoards = async () => {
     try {
-      const response = await fetch('/api/boards/with-clients')
+      const headers = await getAuthHeaders()
+      const response = await fetch('/api/boards/with-clients', { headers })
       if (response.ok) {
         const data = await response.json()
         setBoards(data)
+      } else {
+        console.error('Failed to fetch boards')
       }
     } catch (error) {
       console.error('Error fetching boards:', error)
@@ -120,9 +143,10 @@ export default function IssuesPage() {
   const handleCreateIssue = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch('/api/issues', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           ...formData,
           projectId: formData.projectId === 'none' ? null : formData.projectId || null,
@@ -147,9 +171,10 @@ export default function IssuesPage() {
 
   const handleStatusChange = async (issueId: string, newStatus: string) => {
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`/api/issues/${issueId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ status: newStatus })
       })
 

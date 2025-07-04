@@ -1,20 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getSafeUser } from '@/lib/safe-auth';
+import { createClient } from '@supabase/supabase-js';
+
+// Create Supabase client for auth verification
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error('Auth error:', error);
+    return null;
+  }
+}
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSafeUser();
+    const user = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const issue = await prisma.issue.findFirst({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         OR: [
           { createdBy: user.id },
           { assignedTo: user.id },
@@ -92,13 +120,15 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSafeUser();
+    const user = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const resolvedParams = await params;
 
     const body = await req.json();
     const {
@@ -111,7 +141,7 @@ export async function PUT(
 
     const issue = await prisma.issue.updateMany({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         OR: [
           { createdBy: user.id },
           { assignedTo: user.id },
@@ -131,7 +161,7 @@ export async function PUT(
     }
 
     const updatedIssue = await prisma.issue.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         creator: {
           select: {
@@ -167,17 +197,18 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSafeUser();
+    const user = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
     const issue = await prisma.issue.deleteMany({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
         createdBy: user.id, // Only creator can delete
       },
     });
