@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
         data: { 
           displayName,
           display_name: displayName // Supabase uses both formats
-        }
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
       }
     });
 
