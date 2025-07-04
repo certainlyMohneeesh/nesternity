@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error('❌ Register API: Unexpected error:', err);
     return NextResponse.json({ 
-      error: err.message || 'Registration failed. Please try again.' 
+      error: err.message || 'Registration failed. Please try again' 
     }, { status: 500 });
   }
 }
