@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Team not found or access denied' }, { status: 404 });
     }
 
-    return NextResponse.json(team);
+    return NextResponse.json({ team });
   } catch (error) {
     console.error('Get team error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -351,9 +351,22 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
       ]);
       setLists(listsResponse.lists || []);
       setTasks(tasksResponse.tasks || []);
-      const teamResponse = await api.getTeam(resolvedParams.teamId);
-      const members = teamResponse.team.members || [];
-      setTeamMembers(members);
+      
+      // Fetch team members separately to avoid blocking the main board data
+      try {
+        console.log('🔄 Fetching team members for team:', resolvedParams.teamId);
+        const teamResponse = await api.getTeam(resolvedParams.teamId);
+        console.log('✅ Team response:', teamResponse);
+        
+        const members = teamResponse.team.members || [];
+        console.log('👥 Team members found:', members.length, members);
+        setTeamMembers(members);
+      } catch (teamError) {
+        console.error('❌ Error fetching team members:', teamError);
+        // Don't block the board loading if team fetch fails
+        setTeamMembers([]);
+        toast.error("Could not load team members for task assignment");
+      }
     } catch (error) {
       console.error("Error fetching board data:", error);
       if (error instanceof APIError) {
@@ -666,12 +679,23 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                             className="w-full p-2 border rounded"
                           >
                             <option value="">Unassigned</option>
-                            {teamMembers.map(member => (
-                              <option key={member.userId} value={member.userId}>
-                                {member.user?.displayName || member.user?.email || member.userId}
-                              </option>
-                            ))}
+                            {teamMembers.length === 0 ? (
+                              <option value="" disabled>Loading team members...</option>
+                            ) : (
+                              teamMembers.map(member => {
+                                console.log('👤 Rendering member:', member);
+                                return (
+                                  <option key={member.userId} value={member.userId}>
+                                    {member.user?.displayName || member.user?.email || member.userId}
+                                  </option>
+                                );
+                              })
+                            )}
                           </select>
+                          {/* Debug info */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Team members loaded: {teamMembers.length}
+                          </div>
                         </div>
                         <div>
                           <Label>Priority</Label>
