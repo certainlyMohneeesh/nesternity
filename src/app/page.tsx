@@ -41,16 +41,16 @@ export default function HomePage() {
           🚀 Now in Beta - Join the waitlist
         </Badge>
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
-          The Freelancer's Nest for Clients, Contracts & Clarity
+          The Freelancer's Nest for Clients, Teams & Clarity. 
+          Build, Collaborate, Thrive.
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed relative z-10">
-          Nesternity helps solo professionals manage client relationships, send smart contracts,
-          and stay paid — all from one calm, cozy hub.
+          Nesternity is your all-in-one workspace for managing clients, projects, tasks, and invoices — all from one calm, cozy hub.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12 relative z-10">
           <Link href="/dashboard">
         <Button size="lg" className="gap-2 text-lg px-8 py-6">
-          Try it Free
+          Get Started Free
           <ArrowRight className="h-5 w-5" />
         </Button>
           </Link>
@@ -79,40 +79,44 @@ export default function HomePage() {
       {/* Problem-Solution Section */}
       <section className="py-20 px-6 bg-gradient-to-r from-muted/30 to-muted/10">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4">End the freelance workflow chaos</h2>
-          <p className="text-xl text-muted-foreground text-center mb-16">Transform scattered tools into one seamless experience</p>
+          <h2 className="text-3xl font-bold text-center mb-4">Why Nesternity?</h2>
+          <p className="text-xl text-muted-foreground text-center mb-16"> To transform scattered tools into one seamless experience</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
               <CardHeader className="text-center">
                 <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">😵</span>
+                  <span className="text-2xl">🧠</span>
                 </div>
-                <CardTitle className="text-lg">Scattered Client Info</CardTitle>
+                <CardTitle className="text-lg">Smart Boards</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Notes in emails, contacts in phone, project details everywhere but where you need them.</p>
+                <p className="text-muted-foreground text-center">Plan projects with Kanban-style ease — assign, drag, and ship like a pro.</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
               <CardHeader className="text-center">
                 <div className="w-16 h-16 mx-auto bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">📄</span>
+                  <span className="text-2xl">🧾</span>
                 </div>
-                <CardTitle className="text-lg">Messy Contracts</CardTitle>
+                <CardTitle className="text-lg">Instant Invoicing</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Word docs, PDFs, email threads. Professional contracts shouldn't feel this complicated.</p>
+                <p className="text-muted-foreground text-center">Generate beautiful, exportable PDFs and track payments effortlessly.</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
               <CardHeader className="text-center">
                 <div className="w-16 h-16 mx-auto bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">💸</span>
+                  <span className="text-2xl">🧍‍♂️</span>
                 </div>
-                <CardTitle className="text-lg">Payment Stress</CardTitle>
+                <CardTitle className="text-lg">Client-Centric</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Manually tracking who paid what when. Your time is worth more than spreadsheet hell.</p>
+                <p className="text-muted-foreground text-center">Keep all client details, tasks, and communication in one elegant place.
+                 <br />
+                 <span className="font-medium">Your time is worth more than spreadsheets hell.</span>
+                 <br />
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -130,17 +134,17 @@ export default function HomePage() {
             <FeatureCard 
               icon={<Users className="h-8 w-8 text-primary" />}
               title="Client Capsule" 
-              description="Track contacts, projects, and timelines all in one organized space. Never lose track of client details again." 
+              description="Track boards, projects, and issues all in one organized space. Never lose track of client details again." 
             />
             <FeatureCard 
               icon={<Shield className="h-8 w-8 text-primary" />}
-              title="Contract Composer" 
-              description="Generate, customize, and e-sign contracts in minutes. Professional documents without the complexity." 
+              title="Invoice Composer" 
+              description="Generate, customize, and e-sign invoices in minutes. Professional documents without the complexity." 
             />
             <FeatureCard 
               icon={<Zap className="h-8 w-8 text-primary" />}
-              title="Smart Invoicing" 
-              description="Send invoices and monitor payment statuses in real-time. Get paid faster with automated follow-ups." 
+              title="Lightweight & Blazing Fast" 
+              description="Built with Next.js and optimized for speed. No bloat, just brilliance." 
             />
             <FeatureCard 
               icon={<Star className="h-8 w-8 text-primary" />}
@@ -149,20 +153,35 @@ export default function HomePage() {
             />
             <FeatureCard 
               icon={<CheckCircle className="h-8 w-8 text-primary" />}
-              title="Project Tracking" 
-              description="Kanban boards, deadlines, and progress tracking. Keep projects moving without the overwhelm." 
+              title="Activity Tracking" 
+              description="From task edits to comment threads — know who did what, when." 
             />
             <FeatureCard 
               icon={<ArrowRight className="h-8 w-8 text-primary" />}
               title="Team Collaboration" 
-              description="Invite clients and team members. Share progress, get feedback, and stay aligned effortlessly." 
+              description="Invite team members. Share progress, get feedback, and stay aligned effortlessly." 
             />
           </div>
         </div>
       </section>
 
+      <section className="py-24 px-6 bg-gradient-to-r from-secondary/10 to-primary/5">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="flex justify-center mb-6">
+            <span className="text-5xl">💼</span>
+          </div>
+          <h2 className="text-4xl font-bold mb-4">Who It’s For</h2>
+          <p className="text-2xl font-semibold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Freelancers. Agencies. Indie Hackers. Creators.
+          </p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Whether you work solo or with a small team, Nesternity brings your whole operation into one intuitive space.
+          </p>
+        </div>
+      </section>
+
       {/* Pricing Preview */}
-      <section className="py-20 px-6 bg-gradient-to-r from-primary/5 to-secondary/5">
+      {/* <section className="py-20 px-6 bg-gradient-to-r from-primary/5 to-secondary/5">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Simple pricing for growing freelancers</h2>
           <p className="text-xl text-muted-foreground mb-12">Start free, scale when you're ready. No hidden fees, no surprises.</p>
@@ -239,7 +258,7 @@ export default function HomePage() {
             </Card>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Newsletter / Waitlist */}
       <section className="py-20 px-6">
@@ -277,8 +296,9 @@ export default function HomePage() {
                 </div> */}
                 <span className="text-xl font-bold">Nesternity</span>
               </div>
+              <p className="font-bold mb-2">The Philosophy Behind Nesternity</p>
               <p className="text-muted-foreground mb-4 max-w-md">
-                The all-in-one workspace for freelancers who want to focus on their craft, not their admin.
+                Inspired by the idea of a nest: secure, supportive, and ever-growing. Nesternity empowers modern professionals to work smarter, not harder.
               </p>
               <div className="flex space-x-4">
                 <Badge variant="outline">🚀 Beta</Badge>
@@ -305,7 +325,9 @@ export default function HomePage() {
             </div>
           </div>
           <div className="pt-8 border-t border-muted/20 text-center text-muted-foreground">
-            <p>Built with ❤️ by Mohneesh Naidu • © {new Date().getFullYear()} Nesternity</p>
+            <p>
+              Built with ❤️ <a href="https://cythical.cyth.me" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">Cythical Labs</a> • © {new Date().getFullYear()} <a>Nesternity</a>
+            </p>
           </div>
         </div>
       </footer>
