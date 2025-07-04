@@ -6,7 +6,6 @@ const globalForPrisma = globalThis as unknown as {
 
 export const db = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  // Configure for production deployment
   datasources: {
     db: {
       url: process.env.DATABASE_URL,
@@ -18,19 +17,23 @@ export const prisma = db // Export for compatibility
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
-// Test database connection
+// Add connection testing
 export async function testDatabaseConnection() {
   try {
     await db.$connect()
     console.log('✅ Database connected successfully')
+    await db.$queryRaw`SELECT 1`
+    console.log('✅ Database query test successful')
     return true
   } catch (error) {
     console.error('❌ Database connection failed:', error)
-    return false
+    throw error
   }
 }
 
 // Graceful shutdown
-process.on('beforeExit', async () => {
-  await db.$disconnect()
-})
+if (typeof window === 'undefined') {
+  process.on('beforeExit', async () => {
+    await db.$disconnect()
+  })
+}
