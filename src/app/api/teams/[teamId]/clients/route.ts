@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { checkTeamAccess } from '@/lib/team-auth';
 
 // GET /api/teams/[teamId]/clients
 export async function GET(
@@ -25,15 +26,9 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is a member of the team
-    const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    if (!teamMember) {
+    // Check if user has access to the team
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -99,15 +94,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is a member of the team
-    const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    if (!teamMember) {
+    // Check if user has access to the team
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

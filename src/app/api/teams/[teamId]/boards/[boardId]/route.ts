@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { checkTeamAccess, checkTeamAdminAccess } from '@/lib/team-auth';
 
 interface RouteParams {
   params: Promise<{ teamId: string; boardId: string }>
@@ -26,22 +27,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user has access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    // Check team access
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -111,23 +99,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { name, description, settings } = await request.json();
 
-    // Verify user has admin access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id,
-        role: 'admin'
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    // Check team admin access
+    const hasAdminAccess = await checkTeamAdminAccess(teamId, user.id);
+    if (!hasAdminAccess) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -197,23 +171,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user has admin access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id,
-        role: 'admin'
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    // Check team admin access
+    const hasAdminAccess = await checkTeamAdminAccess(teamId, user.id);
+    if (!hasAdminAccess) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

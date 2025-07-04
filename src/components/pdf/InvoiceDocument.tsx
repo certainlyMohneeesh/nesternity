@@ -43,10 +43,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     padding: 40,
     fontFamily: 'Helvetica',
+    position: 'relative',
   },
-  header: {
-    marginBottom: 30,
+  watermarkContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1,
+    pointerEvents: 'none',
+  },
+  watermark: {
+    fontSize: 60,
+    color: '#e5e7eb',
+    fontWeight: 'bold',
+    opacity: 0.5,
+    transform: 'rotate(-45deg)',
+    textAlign: 'center',
+    lineHeight: 1.2,
+  },
+  content: {
+    zIndex: 2,
+    position: 'relative',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 30,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
   },
   title: {
     fontSize: 28,
@@ -59,6 +92,45 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontWeight: 'bold',
     color: '#374151',
+  },
+  brandingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    padding: 8,
+    borderRadius: 8,
+    border: '1 solid #cbd5e1',
+    minWidth: 130,
+  },
+  brandingText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginRight: 4,
+  },
+  brandingLogo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 30,
+    height: 30,
+    objectFit: 'contain',
+    marginRight: 2,
+  },
+  logoText: {
+    fontSize: 11,
+    color: '#000000',
+    fontWeight: 'bold',
+    letterSpacing: 0.3,
+  },
+  logoFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoIcon: {
+    fontSize: 20,
+    color: '#000000',
+    marginRight: 2,
   },
   dateSection: {
     flexDirection: 'row',
@@ -205,25 +277,6 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
     color: '#6b7280',
   },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    textAlign: 'center',
-    fontSize: 9,
-    color: '#9ca3af',
-  },
-  watermark: {
-    position: 'absolute',
-    top: '40%',
-    left: '20%',
-    fontSize: 48,
-    color: '#d1d5db',
-    fontWeight: 'bold',
-    opacity: 0.5,
-    zIndex: 0,
-  },
   paymentSection: {
     marginTop: 30,
     padding: 20,
@@ -281,6 +334,18 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
   },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    textAlign: 'center',
+    fontSize: 9,
+    color: '#9ca3af',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 10,
+  },
 })
 
 export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
@@ -306,159 +371,177 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Watermark */}
+        {/* Watermark Background */}
         {invoice.watermarkText && (
-          <View style={styles.watermark}>
-            <Text>{invoice.watermarkText}</Text>
+          <View style={styles.watermarkContainer}>
+            <Text style={styles.watermark}>{invoice.watermarkText}</Text>
           </View>
         )}
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>INVOICE</Text>
-          <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
-        </View>
-
-        {/* Date Section */}
-        <View style={styles.dateSection}>
-          <View style={styles.dateItem}>
-            <Text style={styles.dateLabel}>Issue Date</Text>
-            <Text style={styles.dateValue}>{formatDate(invoice.createdAt)}</Text>
-          </View>
-          <View style={styles.dateItem}>
-            <Text style={styles.dateLabel}>Due Date</Text>
-            <Text style={styles.dateValue}>{formatDate(invoice.dueDate)}</Text>
-          </View>
-        </View>
-
-        {/* Client Information */}
-        <View style={styles.clientSection}>
-          <Text style={styles.clientTitle}>Bill To:</Text>
-          <Text style={styles.clientName}>{invoice.client.name}</Text>
-          {invoice.client.company && (
-            <Text style={styles.clientInfo}>{invoice.client.company}</Text>
-          )}
-          <Text style={styles.clientInfo}>{invoice.client.email}</Text>
-          {invoice.client.address && (
-            <Text style={styles.clientInfo}>{invoice.client.address}</Text>
-          )}
-        </View>
-
-        {/* Items Table */}
-        <View style={styles.table}>
-          {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <View style={[styles.tableColHeader, styles.tableColDescription]}>
-              <Text style={styles.tableCellHeader}>Description</Text>
+        {/* Main Content */}
+        <View style={styles.content}>
+          {/* Header with Logo */}
+          <View style={styles.headerContainer}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>INVOICE</Text>
+              <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
             </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Qty</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Rate</Text>
-            </View>
-            <View style={[styles.tableColHeader, styles.tableColAmount]}>
-              <Text style={styles.tableCellHeader}>Amount</Text>
+            <View style={styles.headerRight}>
+              <View style={styles.brandingContainer}>
+                <Text style={styles.brandingText}>Built with</Text>
+                <View style={styles.brandingLogo}>
+                  {/* Try to load PNG logo first, fallback to text */}
+                  <Image 
+                    style={styles.logoImage}
+                    src="/nesternity_l.png"
+                  />
+                  <Text style={styles.logoText}>Nesternity</Text>
+                </View>
+              </View>
             </View>
           </View>
 
-          {/* Table Rows */}
-          {invoice.items.map((item, index) => (
-            <View style={styles.tableRow} key={item.id || index}>
-              <View style={[styles.tableCol, styles.tableColDescription]}>
-                <Text style={styles.tableCell}>{item.description}</Text>
+          {/* Date Section */}
+          <View style={styles.dateSection}>
+            <View style={styles.dateItem}>
+              <Text style={styles.dateLabel}>Issue Date</Text>
+              <Text style={styles.dateValue}>{formatDate(invoice.createdAt)}</Text>
+            </View>
+            <View style={styles.dateItem}>
+              <Text style={styles.dateLabel}>Due Date</Text>
+              <Text style={styles.dateValue}>{formatDate(invoice.dueDate)}</Text>
+            </View>
+          </View>
+
+          {/* Client Information */}
+          <View style={styles.clientSection}>
+            <Text style={styles.clientTitle}>Bill To:</Text>
+            <Text style={styles.clientName}>{invoice.client.name}</Text>
+            {invoice.client.company && (
+              <Text style={styles.clientInfo}>{invoice.client.company}</Text>
+            )}
+            <Text style={styles.clientInfo}>{invoice.client.email}</Text>
+            {invoice.client.address && (
+              <Text style={styles.clientInfo}>{invoice.client.address}</Text>
+            )}
+          </View>
+
+          {/* Items Table */}
+          <View style={styles.table}>
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <View style={[styles.tableColHeader, styles.tableColDescription]}>
+                <Text style={styles.tableCellHeader}>Description</Text>
               </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>{item.quantity}</Text>
+              <View style={styles.tableColHeader}>
+                <Text style={styles.tableCellHeader}>Qty</Text>
               </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>
-                  {invoice.currency} {item.rate.toFixed(2)}
-                </Text>
+              <View style={styles.tableColHeader}>
+                <Text style={styles.tableCellHeader}>Rate</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableColAmount]}>
-                <Text style={styles.tableCellAmount}>
-                  {invoice.currency} {item.total.toFixed(2)}
-                </Text>
+              <View style={[styles.tableColHeader, styles.tableColAmount]}>
+                <Text style={styles.tableCellHeader}>Amount</Text>
               </View>
             </View>
-          ))}
-        </View>
 
-        {/* Totals Section */}
-        <View style={styles.totalsSection}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Subtotal:</Text>
-            <Text style={styles.totalValue}>
-              {invoice.currency} {subtotal.toFixed(2)}
-            </Text>
+            {/* Table Rows */}
+            {invoice.items.map((item, index) => (
+              <View style={styles.tableRow} key={item.id || index}>
+                <View style={[styles.tableCol, styles.tableColDescription]}>
+                  <Text style={styles.tableCell}>{item.description}</Text>
+                </View>
+                <View style={styles.tableCol}>
+                  <Text style={styles.tableCell}>{item.quantity}</Text>
+                </View>
+                <View style={styles.tableCol}>
+                  <Text style={styles.tableCell}>
+                    {invoice.currency} {item.rate.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableColAmount]}>
+                  <Text style={styles.tableCellAmount}>
+                    {invoice.currency} {item.total.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
-          
-          {discount > 0 && (
+
+          {/* Totals Section */}
+          <View style={styles.totalsSection}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Discount ({discount}%):</Text>
+              <Text style={styles.totalLabel}>Subtotal:</Text>
               <Text style={styles.totalValue}>
-                -{invoice.currency} {discountAmount.toFixed(2)}
+                {invoice.currency} {subtotal.toFixed(2)}
+              </Text>
+            </View>
+            
+            {discount > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Discount ({discount}%):</Text>
+                <Text style={styles.totalValue}>
+                  -{invoice.currency} {discountAmount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+            
+            {taxRate > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Tax ({taxRate}%):</Text>
+                <Text style={styles.totalValue}>
+                  {invoice.currency} {taxAmount.toFixed(2)}
+                </Text>
+              </View>
+            )}
+            
+            <View style={styles.finalTotal}>
+              <Text style={styles.finalTotalLabel}>Total:</Text>
+              <Text style={styles.finalTotalValue}>
+                {invoice.currency} {total.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Payment Section */}
+          {invoice.enablePaymentLink && invoice.paymentUrl && (
+            <View style={styles.paymentSection}>
+              <Text style={styles.paymentTitle}>💳 Pay Online</Text>
+              <Link src={invoice.paymentUrl} style={styles.paymentButton}>
+                PAY NOW - {invoice.currency} {total.toFixed(2)}
+              </Link>
+              <Text style={styles.paymentText}>
+                Click the button above to pay securely online with your credit card
               </Text>
             </View>
           )}
-          
-          {taxRate > 0 && (
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Tax ({taxRate}%):</Text>
-              <Text style={styles.totalValue}>
-                {invoice.currency} {taxAmount.toFixed(2)}
-              </Text>
+
+          {/* Notes Section */}
+          {invoice.notes && (
+            <View style={styles.notesSection}>
+              <Text style={styles.notesTitle}>Notes:</Text>
+              <Text style={styles.notesText}>{invoice.notes}</Text>
             </View>
           )}
-          
-          <View style={styles.finalTotal}>
-            <Text style={styles.finalTotalLabel}>Total:</Text>
-            <Text style={styles.finalTotalValue}>
-              {invoice.currency} {total.toFixed(2)}
-            </Text>
-          </View>
+
+          {/* E-Signature Section */}
+          {invoice.eSignatureUrl && (
+            <View style={styles.signatureSection}>
+              <Text style={styles.signatureTitle}>Authorized Signature:</Text>
+              <Image 
+                style={styles.signatureImage} 
+                src={invoice.eSignatureUrl}
+              />
+            </View>
+          )}
+
+          {/* Alternative signature line if no e-signature */}
+          {!invoice.eSignatureUrl && (
+            <View style={styles.signatureSection}>
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureLabel}>Authorized Signature</Text>
+            </View>
+          )}
         </View>
-
-        {/* Payment Section */}
-        {invoice.enablePaymentLink && invoice.paymentUrl && (
-          <View style={styles.paymentSection}>
-            <Text style={styles.paymentTitle}>💳 Pay Online</Text>
-            <Link src={invoice.paymentUrl} style={styles.paymentButton}>
-              PAY NOW - {invoice.currency} {total.toFixed(2)}
-            </Link>
-            <Text style={styles.paymentText}>
-              Click the button above to pay securely online with your credit card
-            </Text>
-          </View>
-        )}
-
-        {/* Notes Section */}
-        {invoice.notes && (
-          <View style={styles.notesSection}>
-            <Text style={styles.notesTitle}>Notes:</Text>
-            <Text style={styles.notesText}>{invoice.notes}</Text>
-          </View>
-        )}
-
-        {/* E-Signature Section */}
-        {invoice.eSignatureUrl && (
-          <View style={styles.signatureSection}>
-            <Text style={styles.signatureTitle}>Authorized Signature:</Text>
-            <Image 
-              style={styles.signatureImage} 
-              src={invoice.eSignatureUrl}
-            />
-          </View>
-        )}
-
-        {/* Alternative signature line if no e-signature */}
-        {!invoice.eSignatureUrl && (
-          <View style={styles.signatureSection}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Authorized Signature</Text>
-          </View>
-        )}
 
         {/* Footer */}
         <Text style={styles.footer}>

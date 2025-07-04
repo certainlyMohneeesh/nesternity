@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { checkTeamAccess, checkTeamAdminAccess } from '@/lib/team-auth';
 
 interface RouteParams {
   params: Promise<{ teamId: string }>
@@ -27,21 +28,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify user has access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -117,22 +105,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify user has admin access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id,
-        role: 'admin'
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    const hasAdminAccess = await checkTeamAdminAccess(teamId, user.id);
+    if (!hasAdminAccess) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

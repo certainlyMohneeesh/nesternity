@@ -140,17 +140,17 @@ export function InvoicePDFClient({ invoice, showPreview = false }: InvoicePDFCli
       {/* PDF Controls */}
       <div className="flex gap-2 flex-wrap">
         {/* Server-side PDF Download (with fallback) */}
-        <Button
+        {/* <Button
           onClick={handleServerDownload}
           disabled={isGenerating}
           className="flex items-center gap-2"
         >
           <Download className="h-4 w-4" />
           {isGenerating ? 'Generating...' : 'Download PDF (Server)'}
-        </Button>
+        </Button> */}
 
         {/* Client-side PDF Download */}
-        <Button
+        {/* <Button
           variant="outline"
           onClick={handleClientDownload}
           disabled={isGenerating}
@@ -158,7 +158,7 @@ export function InvoicePDFClient({ invoice, showPreview = false }: InvoicePDFCli
         >
           <Download className="h-4 w-4" />
           {isGenerating ? 'Generating...' : 'Download PDF (Client)'}
-        </Button>
+        </Button> */}
 
         {/* React PDF Download Link (native component) */}
         <React.Suspense fallback={
@@ -178,7 +178,7 @@ export function InvoicePDFClient({ invoice, showPreview = false }: InvoicePDFCli
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                {loading ? 'Generating PDF...' : 'Download PDF (React)'}
+                {loading ? 'Generating PDF...' : 'Download PDF'}
               </Button>
             )}
           </PDFDownloadLink>

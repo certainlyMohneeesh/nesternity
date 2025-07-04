@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { checkTeamAccess } from '@/lib/team-auth';
 
 interface RouteParams {
   params: Promise<{ teamId: string; boardId: string; taskId: string }>
@@ -26,22 +27,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user has access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    // Check team access
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -211,22 +199,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user has access to the team
-    const teamMember = await db.teamMember.findFirst({
-      where: {
-        teamId,
-        userId: user.id
-      }
-    });
-
-    const team = await db.team.findFirst({
-      where: {
-        id: teamId,
-        createdBy: user.id
-      }
-    });
-
-    if (!teamMember && !team) {
+    // Check team access
+    const hasAccess = await checkTeamAccess(teamId, user.id);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
