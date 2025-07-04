@@ -54,11 +54,11 @@ export default function HomePage() {
           <ArrowRight className="h-5 w-5" />
         </Button>
           </Link>
-          <Link href="/demo">
+          {/* <Link href="/demo">
         <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-6">
           Watch Demo
         </Button>
-          </Link>
+          </Link> */}
         </div>
         <div className="flex justify-center items-center gap-6 text-muted-foreground relative z-10">
           <div className="flex items-center gap-2">
