@@ -10,12 +10,14 @@ export async function GET(
 ) {
   try {
     const { teamId } = await params;
+    console.log('GET clients - Starting request for team:', teamId);
     
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     
     if (!token) {
+      console.log('No token provided');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -23,12 +25,17 @@ export async function GET(
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
+      console.log('Auth error:', authError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('User authenticated:', user.id);
+
     // Check if user has access to the team
     const hasAccess = await checkTeamAccess(teamId, user.id);
+    console.log('Team access check result:', hasAccess);
     if (!hasAccess) {
+      console.log('Access denied for user:', user.id, 'to team:', teamId);
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -64,6 +71,7 @@ export async function GET(
       }
     });
 
+    console.log('Clients found:', clients.length);
     return NextResponse.json(clients);
   } catch (error) {
     console.error('Error fetching clients:', error);

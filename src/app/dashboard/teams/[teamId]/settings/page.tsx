@@ -114,14 +114,15 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
       }
 
       const data = await response.json();
-      setTeam(data);
-      setTeamName(data.name);
-      setTeamDescription(data.description || "");
+      const teamData = data.team || data; // Handle both { team } and direct team object
+      setTeam(teamData);
+      setTeamName(teamData.name);
+      setTeamDescription(teamData.description || "");
       
-      // Check user permissions
-      const currentUserMember = data.members.find((m: TeamMember) => m.userId === session?.user.id);
-      setIsOwner(data.createdBy === session?.user.id);
-      setIsAdmin(currentUserMember?.role === 'admin' || data.createdBy === session?.user.id);
+      // Check user permissions - safely handle undefined members
+      const currentUserMember = teamData.members?.find((m: TeamMember) => m.userId === session?.user.id);
+      setIsOwner(teamData.createdBy === session?.user.id);
+      setIsAdmin(currentUserMember?.role === 'admin' || teamData.createdBy === session?.user.id);
       
     } catch (error) {
       console.error('Error fetching team:', error);
@@ -136,7 +137,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (!authSession?.access_token) return;
 
-      const response = await fetch(`/api/teams/${teamId}/invites`, {
+      const response = await fetch(`/api/teams/invites?teamId=${teamId}`, {
         headers: {
           'Authorization': `Bearer ${authSession.access_token}`
         }

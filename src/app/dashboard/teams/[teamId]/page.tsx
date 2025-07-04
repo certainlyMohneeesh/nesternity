@@ -92,11 +92,12 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
       }
 
       const teamData = await teamResponse.json();
-      setTeam(teamData.team);
+      const team = teamData.team || teamData; // Handle both response formats
+      setTeam(team);
 
       // Fetch pending invites if user is admin/owner
-      if (teamData.team.createdBy === userId || 
-          teamData.team.members.some((m: any) => m.user.id === userId && m.role === 'admin')) {
+      if (team.createdBy === userId || 
+          team.members?.some((m: any) => m.user.id === userId && m.role === 'admin')) {
         await fetchInvites();
       }
     } catch (error) {

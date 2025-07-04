@@ -78,17 +78,27 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
         return;
       }
 
+      console.log('Fetching clients for team:', teamId);
       const response = await fetch(`/api/teams/${teamId}/clients`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
+      
+      console.log('Clients response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Clients data received:', data);
         setClients(data);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to fetch clients:', response.status, errorData);
+        toast.error(`Failed to fetch clients: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
+      toast.error('Failed to fetch clients');
     } finally {
       setLoading(false);
     }
