@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Plus, AlertCircle, Clock, CheckCircle, XCircle, Filter, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { IssueCard } from '@/components/issues/IssueCard'
 
 interface Issue {
   id: string
@@ -35,7 +36,7 @@ interface Issue {
   }
   board?: {
     id: string
-    title: string
+    name: string
   }
 }
 
@@ -46,7 +47,15 @@ interface Project {
 
 interface Board {
   id: string
-  title: string
+  name: string
+  project?: {
+    id: string
+    name: string
+    client?: {
+      id: string
+      name: string
+    }
+  }
 }
 
 export default function IssuesPage() {
@@ -190,45 +199,6 @@ export default function IssuesPage() {
     }
   }
 
-  const getStatusIcon = (status: Issue['status']) => {
-    switch (status) {
-      case 'OPEN':
-        return <AlertCircle className="w-4 h-4 text-blue-500" />
-      case 'IN_PROGRESS':
-        return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'RESOLVED':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'CLOSED':
-        return <XCircle className="w-4 h-4 text-gray-500" />
-    }
-  }
-
-  const getStatusVariant = (status: Issue['status']) => {
-    switch (status) {
-      case 'OPEN':
-        return 'default'
-      case 'IN_PROGRESS':
-        return 'secondary'
-      case 'RESOLVED':
-        return 'outline'
-      case 'CLOSED':
-        return 'secondary'
-    }
-  }
-
-  const getPriorityColor = (priority: Issue['priority']) => {
-    switch (priority) {
-      case 'LOW':
-        return 'bg-gray-100 text-gray-800'
-      case 'MEDIUM':
-        return 'bg-blue-100 text-blue-800'
-      case 'HIGH':
-        return 'bg-orange-100 text-orange-800'
-      case 'CRITICAL':
-        return 'bg-red-100 text-red-800'
-    }
-  }
-
   const filteredIssues = issues.filter(issue => {
     const matchesStatus = statusFilter === 'all' || issue.status === statusFilter
     const matchesPriority = priorityFilter === 'all' || issue.priority === priorityFilter
@@ -331,7 +301,12 @@ export default function IssuesPage() {
                       <SelectItem value="none">No board</SelectItem>
                       {boards.map((board) => (
                         <SelectItem key={board.id} value={board.id}>
-                          {board.title}
+                          {board.name}
+                          {board.project && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({board.project.name}{board.project.client && ` - ${board.project.client.name}`})
+                            </span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -406,55 +381,13 @@ export default function IssuesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredIssues.map((issue) => (
-            <Card key={issue.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {getStatusIcon(issue.status)}
-                        <h3 className="text-lg font-semibold">{issue.title}</h3>
-                      </div>
-                      <Badge className={getPriorityColor(issue.priority)} variant="secondary">
-                        {issue.priority}
-                      </Badge>
-                    </div>
-                    <p className="text-gray-600 line-clamp-2">{issue.description}</p>
-                    <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                      <span>Created by {issue.creator.email}</span>
-                      {issue.project && (
-                        <span>• Project: {issue.project.name}</span>
-                      )}
-                      {issue.board && (
-                        <span>• Board: {issue.board.title}</span>
-                      )}
-                      <span>• {new Date(issue.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <Select
-                      value={issue.status}
-                      onValueChange={(value) => handleStatusChange(issue.id, value)}
-                    >
-                      <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="OPEN">Open</SelectItem>
-                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                        <SelectItem value="RESOLVED">Resolved</SelectItem>
-                        <SelectItem value="CLOSED">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Badge variant={getStatusVariant(issue.status)}>
-                      {issue.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <IssueCard
+              key={issue.id}
+              issue={issue}
+              onStatusChange={handleStatusChange}
+            />
           ))}
         </div>
       )}
