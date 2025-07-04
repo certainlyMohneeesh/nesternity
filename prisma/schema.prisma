@@ -66,29 +66,32 @@ model Client {
 }
 
 model Invoice {
-  id            String             @id @default(cuid())
-  invoiceNumber String             @unique
-  clientId      String             @map("client_id")
-  issuedById    String             @map("issued_by_id")
-  dueDate       DateTime           @map("due_date")
-  issuedDate    DateTime           @default(now()) @map("issued_date")
-  status        InvoiceStatus      @default(PENDING)
-  paymentMethod PaymentMethod?
-  notes         String?
-  taxRate       Float?             @map("tax_rate")
-  discount      Float?             @default(0)
-  currency      String             @default("INR")
-  pdfUrl        String?            @map("pdf_url")
-  isRecurring   Boolean            @default(false) @map("is_recurring")
-  recurrence    InvoiceRecurrence?
-  nextIssueDate DateTime?          @map("next_issue_date")
-  lastSentDate  DateTime?          @map("last_sent_date")
-  reminderSent  Boolean            @default(false) @map("reminder_sent")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
-  items         InvoiceItem[]
-  client        Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  issuedBy      User               @relation("IssuedBy", fields: [issuedById], references: [id])
+  id               String             @id @default(cuid())
+  invoiceNumber    String             @unique
+  clientId         String             @map("client_id")
+  issuedById       String             @map("issued_by_id")
+  dueDate          DateTime           @map("due_date")
+  issuedDate       DateTime           @default(now()) @map("issued_date")
+  status           InvoiceStatus      @default(PENDING)
+  paymentMethod    PaymentMethod?
+  notes            String?
+  taxRate          Float?             @map("tax_rate")
+  discount         Float?             @default(0)
+  currency         String             @default("INR")
+  pdfUrl           String?            @map("pdf_url")
+  isRecurring      Boolean            @default(false) @map("is_recurring")
+  recurrence       InvoiceRecurrence?
+  nextIssueDate    DateTime?          @map("next_issue_date")
+  lastSentDate     DateTime?          @map("last_sent_date")
+  reminderSent     Boolean            @default(false) @map("reminder_sent")
+  enablePaymentLink Boolean           @default(false) @map("enable_payment_link")
+  watermarkText    String?            @map("watermark_text")
+  eSignatureUrl    String?            @map("e_signature_url")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  items            InvoiceItem[]
+  client           Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  issuedBy         User               @relation("IssuedBy", fields: [issuedById], references: [id])
 
   @@map("invoices")
 }

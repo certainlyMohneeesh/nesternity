@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Link, Image } from '@react-pdf/renderer'
 
 interface InvoiceProps {
   invoice: {
@@ -11,6 +11,10 @@ interface InvoiceProps {
     taxRate: number | null
     discount: number | null
     currency: string
+    enablePaymentLink?: boolean
+    paymentUrl?: string | null
+    watermarkText?: string | null
+    eSignatureUrl?: string | null
     client: {
       id?: string
       name: string
@@ -210,6 +214,74 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#9ca3af',
   },
+  watermark: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'rotate(-45deg) translate(-50%, -50%)',
+    fontSize: 60,
+    color: '#f3f4f6',
+    fontWeight: 'bold',
+    zIndex: -1,
+    opacity: 0.1,
+  },
+  paymentSection: {
+    marginTop: 30,
+    padding: 20,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    border: '2 solid #3b82f6',
+    alignItems: 'center',
+  },
+  paymentTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1d4ed8',
+    marginBottom: 8,
+  },
+  paymentButton: {
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    padding: 12,
+    borderRadius: 6,
+    textDecoration: 'none',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    minWidth: 150,
+  },
+  paymentText: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  signatureSection: {
+    marginTop: 30,
+    alignItems: 'flex-end',
+  },
+  signatureTitle: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  signatureImage: {
+    width: 120,
+    height: 60,
+    objectFit: 'contain',
+  },
+  signatureLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#6b7280',
+    width: 150,
+    marginTop: 40,
+    marginBottom: 5,
+  },
+  signatureLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
 })
 
 export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
@@ -235,6 +307,13 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Watermark */}
+        {invoice.watermarkText && (
+          <View style={styles.watermark}>
+            <Text>{invoice.watermarkText}</Text>
+          </View>
+        )}
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>INVOICE</Text>
@@ -342,11 +421,43 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
           </View>
         </View>
 
+        {/* Payment Section */}
+        {invoice.enablePaymentLink && invoice.paymentUrl && (
+          <View style={styles.paymentSection}>
+            <Text style={styles.paymentTitle}>💳 Pay Online</Text>
+            <Link src={invoice.paymentUrl} style={styles.paymentButton}>
+              PAY NOW - {invoice.currency} {total.toFixed(2)}
+            </Link>
+            <Text style={styles.paymentText}>
+              Click the button above to pay securely online with your credit card
+            </Text>
+          </View>
+        )}
+
         {/* Notes Section */}
         {invoice.notes && (
           <View style={styles.notesSection}>
             <Text style={styles.notesTitle}>Notes:</Text>
             <Text style={styles.notesText}>{invoice.notes}</Text>
+          </View>
+        )}
+
+        {/* E-Signature Section */}
+        {invoice.eSignatureUrl && (
+          <View style={styles.signatureSection}>
+            <Text style={styles.signatureTitle}>Authorized Signature:</Text>
+            <Image 
+              style={styles.signatureImage} 
+              src={invoice.eSignatureUrl}
+            />
+          </View>
+        )}
+
+        {/* Alternative signature line if no e-signature */}
+        {!invoice.eSignatureUrl && (
+          <View style={styles.signatureSection}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureLabel}>Authorized Signature</Text>
           </View>
         )}
 

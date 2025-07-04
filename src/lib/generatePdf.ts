@@ -26,6 +26,9 @@ interface InvoiceData {
   // Optional watermark and signature fields
   watermarkText?: string | null;
   eSignatureUrl?: string | null;
+  // Payment link options
+  enablePaymentLink?: boolean;
+  paymentUrl?: string | null;
 }
 
 export async function generateInvoicePDF(

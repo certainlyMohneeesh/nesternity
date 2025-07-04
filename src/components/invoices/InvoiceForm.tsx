@@ -34,6 +34,8 @@ const invoiceSchema = z.object({
   nextIssueDate: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one item is required'),
   enablePaymentLink: z.boolean(),
+  watermarkText: z.string().optional(),
+  eSignatureUrl: z.string().url().optional().or(z.literal('')),
 })
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>
@@ -76,6 +78,8 @@ export default function InvoiceForm({ teamId, clients: propClients, onSuccess }:
       currency: 'INR',
       isRecurring: false,
       enablePaymentLink: false,
+      watermarkText: '',
+      eSignatureUrl: '',
       items: [{ description: '', quantity: 1, rate: 0 }],
     },
   })
@@ -357,6 +361,36 @@ export default function InvoiceForm({ teamId, clients: propClients, onSuccess }:
             <Label htmlFor="enablePaymentLink" className="font-normal">
               Enable "Pay Now" button for online payments
             </Label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="watermarkText">Watermark Text (Optional)</Label>
+              <Input
+                id="watermarkText"
+                {...register('watermarkText')}
+                placeholder="e.g., CONFIDENTIAL, DRAFT, COPY"
+              />
+              <p className="text-xs text-gray-500">
+                Add a watermark text that will appear across the PDF background
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="eSignatureUrl">E-Signature URL (Optional)</Label>
+              <Input
+                id="eSignatureUrl"
+                {...register('eSignatureUrl')}
+                placeholder="https://example.com/signature.png"
+                type="url"
+              />
+              <p className="text-xs text-gray-500">
+                URL to your digital signature image (PNG or JPG)
+              </p>
+              {errors.eSignatureUrl && (
+                <p className="text-sm text-red-500">{errors.eSignatureUrl.message}</p>
+              )}
+            </div>
           </div>
 
           <Card className="p-4">

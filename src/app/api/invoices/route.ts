@@ -97,6 +97,8 @@ export async function POST(req: NextRequest) {
       nextIssueDate,
       items,
       enablePaymentLink,
+      watermarkText,
+      eSignatureUrl,
     } = body;
 
     if (!invoiceNumber || !clientId || !dueDate || !items || items.length === 0) {
@@ -181,6 +183,9 @@ export async function POST(req: NextRequest) {
         isRecurring: isRecurring || false,
         recurrence,
         nextIssueDate: nextIssueDate ? new Date(nextIssueDate) : null,
+        enablePaymentLink: enablePaymentLink || false,
+        watermarkText: watermarkText || null,
+        eSignatureUrl: eSignatureUrl || null,
         items: {
           create: processedItems,
         },
@@ -197,13 +202,120 @@ export async function POST(req: NextRequest) {
     if (enablePaymentLink) {
       console.log('📄 PDF generation requested, starting process...');
       try {
+        // Generate payment URL first if needed
+        let paymentUrl = null;
+        if (enablePaymentLink) {
+          console.log('💳 Generating payment link...');
+          try {
+            // Import stripe temporarily to create payment link
+            const { stripe } = await import('@/lib/stripe');
+            
+            // Create line items for Stripe
+            const lineItems = processedItems.map((item: any) => ({
+              price_data: {
+                currency: (currency || 'INR').toLowerCase(),
+                product_data: {
+                  name: item.description,
+                },
+                unit_amount: Math.round(item.rate * 100), // Convert to cents
+              },
+              quantity: item.quantity,
+            }));
+
+            // Add tax as a separate line item if applicable
+            if (taxAmount > 0) {
+              lineItems.push({
+                price_data: {
+                  currency: (currency || 'INR').toLowerCase(),
+                  product_data: {
+                    name: `Tax (${taxRate || 0}%)`,
+                  },
+                  unit_amount: Math.round(taxAmount * 100),
+                },
+                quantity: 1,
+              });
+            }
+
+            // Prepare discount coupon if applicable
+            let discounts = undefined;
+            if (discountAmount > 0) {
+              const coupon = await stripe.coupons.create({
+                percent_off: discount,
+                duration: 'once',
+                name: `Discount (${discount}%)`,
+              });
+              
+              discounts = [{
+                coupon: coupon.id
+              }];
+            }
+
+            // Create Stripe checkout session
+            const sessionData: any = {
+              payment_method_types: ['card'],
+              line_items: lineItems,
+              mode: 'payment',
+              success_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+              cancel_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}?payment=cancelled`,
+              metadata: {
+                invoiceId: invoice.id,
+                userId: user.id,
+              },
+              customer_email: client.email,
+              invoice_creation: {
+                enabled: true,
+                invoice_data: {
+                  description: `Payment for Invoice ${invoice.invoiceNumber}`,
+                  metadata: {
+                    invoiceId: invoice.id,
+                    invoiceNumber: invoice.invoiceNumber,
+                  },
+                },
+              },
+            };
+
+            if (discounts) {
+              sessionData.discounts = discounts;
+            }
+
+            const session = await stripe.checkout.sessions.create(sessionData);
+            paymentUrl = session.url;
+            console.log('✅ Payment link generated:', paymentUrl);
+          } catch (paymentError) {
+            console.error('❌ Failed to generate payment link:', paymentError);
+            // Continue without payment link
+          }
+        }
+
         // Import the PDF generation function
         const { generateInvoicePDF } = await import('@/lib/generatePdf');
         
         // Create invoice data for PDF generation
         const invoiceForPDF = {
-          ...invoice,
-          issuedDate: invoice.createdAt // Use createdAt as issuedDate for PDF
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          createdAt: invoice.createdAt,
+          dueDate: invoice.dueDate,
+          notes: invoice.notes,
+          taxRate: invoice.taxRate,
+          discount: invoice.discount,
+          currency: invoice.currency,
+          enablePaymentLink: enablePaymentLink || false,
+          paymentUrl,
+          watermarkText: watermarkText || null,
+          eSignatureUrl: eSignatureUrl || null,
+          client: {
+            name: client.name,
+            email: client.email,
+            company: client.company,
+            address: client.address,
+          },
+          items: invoice.items.map((item: any) => ({
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            total: item.total,
+          })),
         };
         
         console.log('🔧 Generating PDF...');
