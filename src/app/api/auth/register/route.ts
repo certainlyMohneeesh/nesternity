@@ -40,10 +40,59 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Register API: User registered successfully in Supabase');
 
-    // If user was created, also create user record in our database
-    if (data.user) {
+    // If user was created and has a session, sync to database using sync-user endpoint
+    if (data.user && data.session) {
       try {
-        console.log('🔄 Register API: Creating user record in database');
+        console.log('🔄 Register API: Syncing user to database via sync-user API');
+        
+        const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/sync-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${data.session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (syncResponse.ok) {
+          console.log('✅ Register API: User synced successfully to database');
+        } else {
+          console.warn('⚠️ Register API: Failed to sync user to database via API');
+          // Fallback: create user record directly
+          try {
+            await db.user.create({
+              data: {
+                id: data.user.id,
+                email: data.user.email!,
+                displayName: displayName,
+              }
+            });
+            console.log('✅ Register API: User record created directly in database');
+          } catch (dbError: any) {
+            console.warn('⚠️ Register API: Failed to create user in database:', dbError);
+          }
+        }
+        
+      } catch (syncError) {
+        console.warn('⚠️ Register API: Failed to sync user via API:', syncError);
+        // Fallback: create user record directly without team setup
+        try {
+          await db.user.create({
+            data: {
+              id: data.user.id,
+              email: data.user.email!,
+              displayName: displayName,
+            }
+          });
+          console.log('✅ Register API: User record created directly in database (fallback)');
+        } catch (dbError: any) {
+          console.warn('⚠️ Register API: Failed to create user in database:', dbError);
+        }
+      }
+    } else if (data.user) {
+      // User created but no session (email confirmation required)
+      // Create basic user record without team setup
+      try {
+        console.log('🔄 Register API: Creating basic user record (email confirmation pending)');
         
         await db.user.create({
           data: {
@@ -53,11 +102,9 @@ export async function POST(request: NextRequest) {
           }
         });
         
-        console.log('✅ Register API: User record created in database');
+        console.log('✅ Register API: Basic user record created in database');
       } catch (dbError: any) {
         console.warn('⚠️ Register API: Failed to create user in database:', dbError);
-        // Don't fail the registration if database creation fails
-        // The user is still created in Supabase Auth
       }
     }
 
