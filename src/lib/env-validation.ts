@@ -18,8 +18,8 @@ export function logEnvironmentInfo() {
   console.log('🔧 Environment Info:');
   console.log('- NODE_ENV:', process.env.NODE_ENV);
   console.log('- DATABASE_URL present:', !!process.env.DATABASE_URL);
-  console.log('- SUPABASE_URL present:', !!process.env.SUPABASE_URL);
-  console.log('- SUPABASE_ANON_KEY present:', !!process.env.SUPABASE_ANON_KEY);
+  console.log('- SUPABASE_URL present:', !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log('- SUPABASE_ANON_KEY present:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   console.log('- VERCEL:', process.env.VERCEL);
   console.log('- VERCEL_ENV:', process.env.VERCEL_ENV);
 }
