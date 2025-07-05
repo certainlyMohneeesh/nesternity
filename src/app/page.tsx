@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle, Star, Zap, Shield, Users } from "lucide-react";
-import { Carousel } from "@/components/ui/carousel";
+import InteractiveDemo from "@/components/demo/InteractiveDemo";
 
 export default function HomePage() {
   return (
@@ -78,71 +78,45 @@ export default function HomePage() {
       </section>
 
       {/* Product Demo Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-background to-muted/10">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <Badge variant="secondary" className="mb-6">
-              ✨ Product Preview
-            </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-              Your Work, Beautifully Organized
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              See how Nesternity transforms chaotic workflows into seamless experiences. 
-              Every feature designed with your productivity in mind.
-            </p>
+      <section className="py-12 px-6 bg-gradient-to-br from-background to-muted/10">
+          <div className="text-center mb-12">
+        <Badge variant="secondary" className="mb-4">
+          ✨ Product Preview
+        </Badge>
+        <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+          Your Work, Beautifully Organized
+        </h2>
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          See how Nesternity transforms chaotic workflows into seamless experiences. 
+          Every feature designed with your productivity in mind.
+        </p>
           </div>
-          
-          <div className="relative max-w-4xl mx-auto">
-            {/* Product Screenshots Carousel */}
-            <div className="bg-gradient-to-r from-background/50 to-muted/30 rounded-3xl p-8 pb-12 backdrop-blur-sm border border-border/50 shadow-2xl">
-              <Carousel 
-                slides={[
-                  {
-                    title: "Dashboard Overview",
-                    button: "Explore Features",
-                    src: "/nesternity.svg"
-                  },
-                  {
-                    title: "Project Management",
-                    button: "See Boards",
-                    src: "/nesternity.svg"
-                  },
-                  {
-                    title: "Team Collaboration",
-                    button: "Join Teams",
-                    src: "/nesternity.svg"
-                  },
-                  {
-                    title: "Invoice Generation",
-                    button: "Create Invoices",
-                    src: "/nesternity.svg"
-                  },
-                  {
-                    title: "Client Management",
-                    button: "Manage Clients",
-                    src: "/nesternity.svg"
-                  }
-                ]}
-              />
-              {/* Add spacing to prevent overlap with navigation controls */}
-              <div className="h-16 md:h-20"></div>
-              <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm border border-border/30 mx-4">
-                <p className="text-center text-sm text-muted-foreground font-medium">
-                  Use navigation controls above to explore different features of Nesternity
-                </p>
-              </div>
-            </div>
 
-            
-            <div className="text-center mt-12">
-              <Link href="/dashboard">
-                <Button size="lg" className="gap-2 text-lg px-8 py-4">
-                  Experience It Yourself
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
+      {/* Interactive Product Demo Section */}
+        <div className="max-w-7xl mx-auto">
+          <InteractiveDemo />
+        </div>
+      </section>
+
+      {/* Call to Action After Demo */}
+      <section className="py-16 px-6 bg-gradient-to-r from-primary/5 to-purple-500/5">
+        <div className="max-w-4xl mx-auto text-center">
+          <h3 className="text-3xl font-bold mb-4">Ready to Build Your Next Project?</h3>
+          <p className="text-xl text-muted-foreground mb-8">
+            Join thousands of teams who trust Nesternity to streamline their workflow
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/dashboard">
+              <Button size="lg" className="gap-2 text-lg px-8 py-4">
+                Start For Free Now 
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
+            {/* <Link href="/pricing">
+              <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-4">
+                View Pricing
+              </Button>
+            </Link> */}
           </div>
         </div>
       </section>
