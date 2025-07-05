@@ -66,7 +66,7 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
     }
   };
 
-  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
 
   if (!recaptchaSiteKey) {
     console.error('reCAPTCHA site key not configured');
@@ -75,7 +75,7 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
   return (
     <section className={`py-20 px-6 ${className}`}>
       <div className="max-w-2xl mx-auto text-center">
-        <h2 className="text-3xl font-bold mb-4">We're building Nesternity in public</h2>
+        <h2 className="text-3xl font-bold mb-4">We're building Nesternity in public.</h2>
         <p className="text-xl text-muted-foreground mb-8">
           Join our community and be the first to know about new features, updates, and launch announcements.
         </p>
