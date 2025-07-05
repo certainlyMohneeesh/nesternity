@@ -66,7 +66,7 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
     }
   };
 
-  const recaptchaSiteKey = process.env.RECAPTCHA_SITE_KEY;
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   if (!recaptchaSiteKey) {
     console.error('reCAPTCHA site key not configured');
