@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle, Star, Zap, Shield, Users } from "lucide-react";
+import { Carousel } from "@/components/ui/carousel";
 
 export default function HomePage() {
   return (
@@ -72,6 +73,76 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
         <CheckCircle className="h-4 w-4 text-green-500" />
         <span className="text-sm">Setup in 2 minutes</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Product Demo Section */}
+      <section className="py-20 px-6 bg-gradient-to-br from-background to-muted/10">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-6">
+              ✨ Product Preview
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+              Your Work, Beautifully Organized
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              See how Nesternity transforms chaotic workflows into seamless experiences. 
+              Every feature designed with your productivity in mind.
+            </p>
+          </div>
+          
+          <div className="relative max-w-4xl mx-auto">
+            {/* Product Screenshots Carousel */}
+            <div className="bg-gradient-to-r from-background/50 to-muted/30 rounded-3xl p-8 pb-12 backdrop-blur-sm border border-border/50 shadow-2xl">
+              <Carousel 
+                slides={[
+                  {
+                    title: "Dashboard Overview",
+                    button: "Explore Features",
+                    src: "/nesternity.svg"
+                  },
+                  {
+                    title: "Project Management",
+                    button: "See Boards",
+                    src: "/nesternity.svg"
+                  },
+                  {
+                    title: "Team Collaboration",
+                    button: "Join Teams",
+                    src: "/nesternity.svg"
+                  },
+                  {
+                    title: "Invoice Generation",
+                    button: "Create Invoices",
+                    src: "/nesternity.svg"
+                  },
+                  {
+                    title: "Client Management",
+                    button: "Manage Clients",
+                    src: "/nesternity.svg"
+                  }
+                ]}
+              />
+              {/* Add spacing to prevent overlap with navigation controls */}
+              <div className="h-16 md:h-20"></div>
+              <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm border border-border/30 mx-4">
+                <p className="text-center text-sm text-muted-foreground font-medium">
+                  Use navigation controls above to explore different features of Nesternity
+                </p>
+              </div>
+            </div>
+
+            
+            <div className="text-center mt-12">
+              <Link href="/dashboard">
+                <Button size="lg" className="gap-2 text-lg px-8 py-4">
+                  Experience It Yourself
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
