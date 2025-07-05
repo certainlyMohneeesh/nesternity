@@ -153,59 +153,73 @@ function SortableTask({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
     <Card
       ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: isDragging ? 'transform 0ms' : transition, // Remove transition during drag for responsiveness
-        opacity: isDragging ? 0.6 : 1,
-      }}
+      style={style}
       className={cn(
-        "p-4 border-0 shadow-sm hover:shadow-md transition-all duration-200 bg-white rounded-xl group",
-        isDragging && "shadow-2xl rotate-1 scale-105 z-50"
+        "p-4 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 group border-l-4",
+        task.priority === "HIGH" && "border-l-red-500",
+        task.priority === "MEDIUM" && "border-l-yellow-500", 
+        task.priority === "LOW" && "border-l-green-500",
+        !task.priority && "border-l-gray-300",
+        isDragging && "opacity-50 shadow-2xl rotate-2 scale-105"
       )}
+      {...attributes}
+      {...listeners}
     >
-      <div 
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing flex flex-col gap-3"
-      >
-        <div className="font-semibold text-gray-900 leading-tight">{task.title}</div>
-        
-        {task.description && (
-          <div className="text-sm text-gray-600 line-clamp-2">{task.description}</div>
-        )}
-        
-        <div className="flex flex-wrap items-center gap-2">
-          {task.assignee?.displayName && (
-            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-              {task.assignee.displayName}
-            </div>
-          )}
-          
+      <div className="flex items-start justify-between mb-3">
+        <div className="font-medium text-sm text-foreground leading-snug flex-1">
+          {task.title}
+        </div>
+        <div className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4m-4 0l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </div>
+      </div>
+      
+      {task.description && (
+        <div className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</div>
+      )}
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           {task.priority && (
             <div className={cn(
-              "px-2.5 py-1 rounded-full text-xs font-medium",
-              task.priority === "HIGH" && "bg-red-50 text-red-700",
-              task.priority === "MEDIUM" && "bg-amber-50 text-amber-700",
-              task.priority === "LOW" && "bg-emerald-50 text-emerald-700"
+              "text-xs font-medium px-2 py-1 rounded border",
+              task.priority === "HIGH" && "border-red-200 text-red-700 bg-red-50",
+              task.priority === "MEDIUM" && "border-yellow-200 text-yellow-700 bg-yellow-50",
+              task.priority === "LOW" && "border-green-200 text-green-700 bg-green-50"
             )}>
-              {task.priority.toLowerCase()}
+              {task.priority}
             </div>
           )}
         </div>
         
         {task.dueDate && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             {new Date(task.dueDate).toLocaleDateString()}
           </div>
         )}
       </div>
+      
+      {task.assignee?.displayName && (
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
+            {task.assignee.displayName.split(' ').map(n => n[0]).join('')}
+          </div>
+          <span className="text-xs text-muted-foreground">{task.assignee.displayName}</span>
+        </div>
+      )}
 
       {/* Action buttons - only visible on hover */}
       <div className="flex items-center justify-end gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
