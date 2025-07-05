@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle, Star, Zap, Shield, Users } from "lucide-react";
 import InteractiveDemo from "@/components/demo/InteractiveDemo";
+import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 
 export default function HomePage() {
   return (
@@ -306,29 +307,7 @@ export default function HomePage() {
       </section> */}
 
       {/* Newsletter / Waitlist */}
-      <section className="py-20 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">We're building Nesternity in public</h2>
-          <p className="text-xl text-muted-foreground mb-8">Join our community and be the first to know about new features, updates, and launch announcements.</p>
-          <Card className="p-8 shadow-lg border-0 bg-gradient-to-r from-primary/10 to-secondary/10">
-            <form className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Input 
-                  type="email" 
-                  placeholder="Enter your email address" 
-                  className="flex-1 h-12 text-lg"
-                />
-                <Button size="lg" className="px-8">
-                  Join Waitlist
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                🔒 We respect your privacy. Unsubscribe at any time.
-              </p>
-            </form>
-          </Card>
-        </div>
-      </section>
+      <NewsletterSignup />
 
       {/* Footer */}
       <footer className="py-16 px-6 bg-muted/20">
