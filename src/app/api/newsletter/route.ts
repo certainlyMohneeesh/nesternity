@@ -3,16 +3,22 @@ import { google } from 'googleapis';
 import path from 'path';
 
 // Google Sheets configuration
-const SHEET_ID = process.env.GOOGLE_SHEET_ID; // You'll need to add this to your .env file
+const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const RANGE = 'Sheet1!A:B'; // Assuming columns A (Email) and B (Subscribed At)
 
 // reCAPTCHA configuration
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY; // You'll need to add this to your .env file
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
-async function verifyRecaptcha(token: string): Promise<boolean> {
+async function verifyRecaptcha(token: string, action: string = 'newsletter_signup'): Promise<boolean> {
   if (!RECAPTCHA_SECRET_KEY) {
     console.error('RECAPTCHA_SECRET_KEY not configured');
     return false;
+  }
+
+  // Skip reCAPTCHA verification in development if using invalid keys
+  if (process.env.NODE_ENV === 'development' && RECAPTCHA_SECRET_KEY.includes('INVALID')) {
+    console.log('Development mode: skipping reCAPTCHA verification');
+    return true;
   }
 
   try {
@@ -25,7 +31,17 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
     });
 
     const data = await response.json();
-    return data.success && data.score > 0.5; // For reCAPTCHA v3, check score
+    console.log('reCAPTCHA v3 verification result:', {
+      success: data.success,
+      score: data.score,
+      action: data.action,
+      hostname: data.hostname
+    });
+
+    // For reCAPTCHA v3: check success, score, and action
+    return data.success && 
+           data.score >= 0.5 && 
+           data.action === action;
   } catch (error) {
     console.error('reCAPTCHA verification failed:', error);
     return false;
@@ -68,6 +84,11 @@ async function addToGoogleSheets(email: string, subscribedAt: string) {
       },
     });
 
+    console.log('Successfully added email to Google Sheets:', {
+      email: email.replace(/(.{3}).*(@.*)/, '$1***$2'), // Partially mask email for privacy
+      timestamp: subscribedAt
+    });
+
     return response.data;
   } catch (error) {
     console.error('Google Sheets API error:', error);
@@ -96,11 +117,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify reCAPTCHA
-    const isValidRecaptcha = await verifyRecaptcha(recaptchaToken);
+    // Verify reCAPTCHA v3
+    const isValidRecaptcha = await verifyRecaptcha(recaptchaToken, 'newsletter_signup');
     if (!isValidRecaptcha) {
       return NextResponse.json(
-        { error: 'reCAPTCHA verification failed' },
+        { error: 'Security verification failed. Please try again.' },
         { status: 400 }
       );
     }
@@ -118,7 +139,7 @@ export async function POST(request: NextRequest) {
     await addToGoogleSheets(email, subscribedAt);
 
     return NextResponse.json(
-      { message: 'Successfully subscribed to newsletter!' },
+      { message: 'Successfully subscribed to newsletter! 🎉' },
       { status: 200 }
     );
 

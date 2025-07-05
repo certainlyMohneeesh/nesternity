@@ -1,10 +1,15 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import ReCAPTCHA from "react-google-recaptcha";
+
+declare global {
+  interface Window {
+    grecaptcha: any;
+  }
+}
 
 interface NewsletterSignupProps {
   className?: string;
@@ -13,11 +18,53 @@ interface NewsletterSignupProps {
 export default function NewsletterSignup({ className }: NewsletterSignupProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
 
-  const handleRecaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+  useEffect(() => {
+    if (!recaptchaSiteKey) {
+      console.error('reCAPTCHA site key not configured');
+      return;
+    }
+
+    // Load reCAPTCHA v3 script
+    const loadRecaptcha = () => {
+      if (window.grecaptcha) {
+        setRecaptchaLoaded(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
+      script.onload = () => {
+        setRecaptchaLoaded(true);
+        console.log('reCAPTCHA v3 loaded successfully');
+      };
+      script.onerror = () => {
+        console.error('Failed to load reCAPTCHA script');
+      };
+      document.head.appendChild(script);
+    };
+
+    loadRecaptcha();
+  }, [recaptchaSiteKey]);
+
+  const executeRecaptcha = async (): Promise<string | null> => {
+    if (!window.grecaptcha || !recaptchaLoaded) {
+      console.error('reCAPTCHA not loaded');
+      return null;
+    }
+
+    try {
+      const token = await window.grecaptcha.execute(recaptchaSiteKey, { 
+        action: 'newsletter_signup' 
+      });
+      return token;
+    } catch (error) {
+      console.error('reCAPTCHA execution failed:', error);
+      return null;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,14 +75,23 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
       return;
     }
 
-    if (!recaptchaToken) {
-      toast.error('Please complete the reCAPTCHA verification');
+    if (!recaptchaLoaded) {
+      toast.error('Security verification is loading. Please wait and try again.');
       return;
     }
 
     setIsLoading(true);
 
     try {
+      // Execute reCAPTCHA v3
+      const recaptchaToken = await executeRecaptcha();
+      
+      if (!recaptchaToken) {
+        toast.error('Security verification failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/newsletter', {
         method: 'POST',
         headers: {
@@ -52,9 +108,6 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
       if (response.ok) {
         toast.success(data.message || 'Successfully subscribed to newsletter!');
         setEmail('');
-        setRecaptchaToken(null);
-        // Reset reCAPTCHA
-        recaptchaRef.current?.reset();
       } else {
         toast.error(data.error || 'Failed to subscribe. Please try again.');
       }
@@ -66,10 +119,16 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
     }
   };
 
-  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-
   if (!recaptchaSiteKey) {
-    console.error('reCAPTCHA site key not configured');
+    return (
+      <section className={`py-20 px-6 ${className}`}>
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="text-sm text-muted-foreground bg-yellow-50 border border-yellow-200 rounded p-4">
+            ⚠️ Newsletter signup temporarily unavailable. reCAPTCHA configuration pending.
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -95,26 +154,23 @@ export default function NewsletterSignup({ className }: NewsletterSignupProps) {
                 type="submit" 
                 size="lg" 
                 className="px-8"
-                disabled={isLoading || !recaptchaToken}
+                disabled={isLoading || !recaptchaLoaded}
               >
-                {isLoading ? 'Joining...' : 'Join Waitlist'}
+                {isLoading ? 'Joining...' : !recaptchaLoaded ? 'Loading...' : 'Join Waitlist'}
               </Button>
             </div>
             
-            {/* reCAPTCHA */}
-            <div className="flex justify-center mt-4">
-              {recaptchaSiteKey ? (
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={recaptchaSiteKey}
-                  onChange={handleRecaptchaChange}
-                  theme="light"
-                  size="normal"
-                />
+            <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
+              {recaptchaLoaded ? (
+                <>
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span>🔒 Protected by reCAPTCHA</span>
+                </>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  reCAPTCHA configuration pending...
-                </div>
+                <>
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                  <span>Loading security verification...</span>
+                </>
               )}
             </div>
             
