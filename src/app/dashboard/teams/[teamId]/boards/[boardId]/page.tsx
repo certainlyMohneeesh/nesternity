@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/components/auth/session-context";
 import { api, APIError } from "@/lib/api-client";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 
 // dnd-kit imports
 import {
@@ -163,62 +165,62 @@ function SortableTask({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-4 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 group border-l-4",
-        task.priority === "HIGH" && "border-l-red-500",
-        task.priority === "MEDIUM" && "border-l-yellow-500", 
-        task.priority === "LOW" && "border-l-green-500",
-        !task.priority && "border-l-gray-300",
-        isDragging && "opacity-50 shadow-2xl rotate-2 scale-105"
+      "p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 group border-l-4 bg-white",
+      task.priority === "HIGH" && "border-l-red-500",
+      task.priority === "MEDIUM" && "border-l-yellow-500", 
+      task.priority === "LOW" && "border-l-green-500",
+      !task.priority && "border-l-gray-300",
+      isDragging && "opacity-50 shadow-2xl rotate-2 scale-105"
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="font-medium text-sm text-foreground leading-snug flex-1">
-          {task.title}
-        </div>
-        <div className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4m-4 0l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-        </div>
+      <div className="flex items-start justify-between mb-2">
+      <div className="font-semibold text-sm text-foreground leading-tight flex-1">
+        {task.title}
+      </div>
+      <div className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4m-4 0l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+      </div>
       </div>
       
       {task.description && (
-        <div className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</div>
+      <div className="text-xs text-muted-foreground mb-2 line-clamp-2 leading-relaxed">{task.description}</div>
       )}
       
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {task.priority && (
-            <div className={cn(
-              "text-xs font-medium px-2 py-1 rounded border",
-              task.priority === "HIGH" && "border-red-200 text-red-700 bg-red-50",
-              task.priority === "MEDIUM" && "border-yellow-200 text-yellow-700 bg-yellow-50",
-              task.priority === "LOW" && "border-green-200 text-green-700 bg-green-50"
-            )}>
-              {task.priority}
-            </div>
-          )}
+      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
+        {task.priority && (
+        <div className={cn(
+          "text-xs font-medium px-2 py-0.5 rounded-full text-center min-w-[50px]",
+          task.priority === "HIGH" && "border border-red-200 text-red-700 bg-red-50",
+          task.priority === "MEDIUM" && "border border-yellow-200 text-yellow-700 bg-yellow-50",
+          task.priority === "LOW" && "border border-green-200 text-green-700 bg-green-50"
+        )}>
+          {task.priority}
         </div>
-        
-        {task.dueDate && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {new Date(task.dueDate).toLocaleDateString()}
-          </div>
         )}
       </div>
       
-      {task.assignee?.displayName && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
-            {task.assignee.displayName.split(' ').map(n => n[0]).join('')}
-          </div>
-          <span className="text-xs text-muted-foreground">{task.assignee.displayName}</span>
+      {task.dueDate && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="font-medium">{new Date(task.dueDate).toLocaleDateString()}</span>
         </div>
+      )}
+      </div>
+      
+      {task.assignee?.displayName && (
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium shadow-sm">
+        {task.assignee.displayName.split(' ').map(n => n[0]).join('')}
+        </div>
+        <span className="text-xs text-muted-foreground font-medium">{task.assignee.displayName}</span>
+      </div>
       )}
 
       {/* Action buttons - only visible on hover */}
@@ -333,6 +335,15 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
       toast.error("Please log in to view board data");
     }
   }, [resolvedParams.boardId, session, sessionLoading]);
+
+  // Memoize sorted tasks per list
+  const sortedTasksByList = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    lists.forEach(list => {
+      map[list.id] = tasks.filter(t => t.listId === list.id).sort((a, b) => a.position - b.position);
+    });
+    return map;
+  }, [lists, tasks]);
 
   if (sessionLoading) {
     return (
@@ -622,13 +633,20 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
       >
         <div className="flex gap-4 overflow-x-auto">
           {loading ? (
-            <div className="text-muted-foreground">Loading lists...</div>
+            // Skeleton loader for lists and tasks
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="min-w-[300px] w-80 bg-muted/30 rounded-lg p-4 flex flex-col gap-4 animate-pulse">
+                <div className="h-6 w-1/2 bg-muted rounded mb-2" />
+                {[...Array(4)].map((_, j) => (
+                  <div key={j} className="h-16 bg-muted rounded mb-2" />
+                ))}
+              </div>
+            ))
           ) : lists.length === 0 ? (
             <div className="text-muted-foreground">No lists yet.</div>
           ) : (
             lists.map(list => {
-              // Get tasks for this list, sorted by position
-              const listTasks = tasks.filter(t => t.listId === list.id).sort((a, b) => a.position - b.position);
+              const listTasks = sortedTasksByList[list.id] || [];
               return (
                 <div key={list.id} className="min-w-[300px] w-80 bg-muted/30 rounded-lg p-4 flex flex-col gap-4">
                   <div className="flex items-center justify-between mb-2">
@@ -718,22 +736,24 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                         </div>
                         <div>
                           <Label>Priority</Label>
-                          <select 
-                            value={newTask.priority} 
-                            onChange={e => setNewTask(t => ({ ...t, priority: e.target.value }))}
-                            className="w-full p-2 border rounded"
-                          >
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM">Medium</option>
-                            <option value="HIGH">High</option>
-                          </select>
+                          <Select value={newTask.priority} onValueChange={value => setNewTask(t => ({ ...t, priority: value }))}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="LOW">Low</SelectItem>
+                              <SelectItem value="MEDIUM">Medium</SelectItem>
+                              <SelectItem value="HIGH">High</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label>Due Date</Label>
-                          <Input 
-                            type="date" 
-                            value={newTask.dueDate} 
-                            onChange={e => setNewTask(t => ({ ...t, dueDate: e.target.value }))} 
+                          <Calendar
+                            selected={newTask.dueDate ? new Date(newTask.dueDate) : undefined}
+                            onSelect={date => setNewTask(t => ({ ...t, dueDate: date ? date.toISOString().slice(0, 10) : "" }))}
+                            mode="single"
+                            className="w-full border rounded-md p-2"
                           />
                         </div>
                         <Button type="submit" className="w-full">Add</Button>

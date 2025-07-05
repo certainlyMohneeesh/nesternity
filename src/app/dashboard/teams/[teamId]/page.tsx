@@ -6,10 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Mail, UserPlus, Trash2, Copy, Users, Crown, Shield } from "lucide-react";
+import { toast } from "sonner";
 
 interface Team {
   id: string;
@@ -134,7 +134,7 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
 
     try {
       if (!session?.access_token) {
-        alert('Not authenticated');
+        toast.error('Not authenticated');
         return;
       }
 
@@ -155,19 +155,19 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
 
       if (response.ok) {
         if (data.emailSent) {
-          alert(`✅ Invitation sent to ${inviteEmail}!`);
+          toast.success(`Invitation sent to ${inviteEmail}!`);
         } else {
-          alert(`✅ Invitation created for ${inviteEmail}! You can share the invite link manually.`);
+          toast.success(`Invitation created for ${inviteEmail}! You can share the invite link manually.`);
         }
         setInviteEmail("");
         setOpen(false);
         await fetchInvites();
       } else {
-        alert(`Error: ${data.error}`);
+        toast.error(`Error: ${data.error}`);
       }
     } catch (error) {
       console.error('Invite error:', error);
-      alert('Failed to send invitation');
+      toast.error('Failed to send invitation');
     }
   }
 
@@ -192,7 +192,7 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
       }
     } catch (error) {
       console.error('Cancel invite error:', error);
-      alert('Failed to cancel invite');
+      toast.error('Failed to cancel invite');
     }
   }
 
@@ -372,33 +372,33 @@ export default function TeamOverviewPage({ params }: { params: Promise<{ teamId:
             <div>
               <h4 className="font-semibold mb-4">Pending Invitations ({pendingInvites.length})</h4>
               <div className="space-y-2">
-                {pendingInvites.map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div>
-                      <div className="font-medium">{invite.email}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Expires {new Date(invite.expiresAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{invite.role}</Badge>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => copyInviteLink(invite.token)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        onClick={() => handleCancelInvite(invite.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+              {pendingInvites.map((invite) => (
+                <div key={invite.id} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div>
+                  <div className="font-medium text-foreground">{invite.email}</div>
+                  <div className="text-sm text-muted-foreground">
+                  Expires {new Date(invite.expiresAt).toLocaleDateString()}
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{invite.role}</Badge>
+                  <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => copyInviteLink(invite.token)}
+                  >
+                  <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => handleCancelInvite(invite.id)}
+                  >
+                  <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                </div>
+              ))}
               </div>
             </div>
           )}

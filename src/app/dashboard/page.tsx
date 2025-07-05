@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { FixedSizeList as List } from "react-window";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,135 +89,48 @@ export default function DashboardOverview() {
   async function fetchDashboardData() {
     try {
       setLoading(true);
-      
-      // Fetch teams first
-      const teamsResponse = await api.getTeams();
-      const teams = teamsResponse.teams || [];
-      
-      // If no teams, show empty state
-      if (teams.length === 0) {
-        setData({
-          teams: [],
-          recentTasks: [],
-          recentCompletedTasks: [],
-          stats: {
-            totalTeams: 0,
-            totalBoards: 0,
-            totalTasks: 0,
-            activeTasks: 0,
-            completedTasks: 0
-          }
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Fetch data for each team
-      let allBoards: any[] = [];
-      let allActiveTasks: any[] = [];
-      let allCompletedTasks: any[] = [];
-      
-      for (const team of teams) {
-        try {
-          const boardsResponse = await api.getBoards(team.id);
-          const teamBoards = boardsResponse.boards || [];
-          allBoards = [...allBoards, ...teamBoards];
-          
-          // Get both active and completed tasks from each board
-          for (const board of teamBoards) {
-            try {
-              // Fetch active tasks (archived: false)
-              const activeTasksResponse = await api.getTasks(team.id, board.id);
-              const activeBoardTasks = (activeTasksResponse.tasks || []).map((task: any) => ({
-                ...task,
-                list: {
-                  ...task.list,
-                  board: {
-                    ...board,
-                    team
-                  }
-                }
-              }));
-              allActiveTasks = [...allActiveTasks, ...activeBoardTasks];
-
-              // Fetch completed tasks (archived: true, status: DONE) - we need a special API call for this
-              // For now, we'll make a custom request to get completed tasks
-              try {
-                const response = await fetch(`/api/teams/${team.id}/boards/${board.id}/tasks?archived=true&status=DONE`, {
-                  headers: {
-                    'Authorization': `Bearer ${session?.access_token}`
-                  }
-                });
-                
-                if (response.ok) {
-                  const completedTasksResponse = await response.json();
-                  const completedBoardTasks = (completedTasksResponse.tasks || []).map((task: any) => ({
-                    ...task,
-                    list: {
-                      ...task.list,
-                      board: {
-                        ...board,
-                        team
-                      }
-                    }
-                  }));
-                  allCompletedTasks = [...allCompletedTasks, ...completedBoardTasks];
-                }
-              } catch (error) {
-                console.warn(`Couldn't fetch completed tasks for board ${board.id}:`, error);
-              }
-            } catch (error) {
-              // Skip boards we can't access
-              console.warn(`Couldn't fetch tasks for board ${board.id}:`, error);
-            }
-          }
-        } catch (error) {
-          // Skip teams we can't access
-          console.warn(`Couldn't fetch boards for team ${team.id}:`, error);
-        }
-      }
-
-      // Get recent active tasks (last 5, sorted by creation date)
-      const recentTasks = allActiveTasks
-        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-        .slice(0, 5);
-
-      // Get recent completed tasks (last 5, sorted by completion/update date)
-      const recentCompletedTasks = allCompletedTasks
-        .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
-        .slice(0, 5)
-        .map(task => ({
-          ...task,
-          completedAt: task.updatedAt
-        }));
-
-      // Calculate stats
-      const totalTasks = allActiveTasks.length + allCompletedTasks.length;
-
-      setData({
-        teams,
-        recentTasks,
-        recentCompletedTasks,
-        stats: {
-          totalTeams: teams.length,
-          totalBoards: allBoards.length,
-          totalTasks,
-          activeTasks: allActiveTasks.length,
-          completedTasks: allCompletedTasks.length
-        }
+      // Use new API endpoint for all dashboard data
+      const res = await fetch("/api/dashboard", {
+        headers: { "x-user-id": session?.user?.id || "" },
       });
+      if (!res.ok) throw new Error("Failed to fetch dashboard data");
+      const dashboardData = await res.json();
+      setData(dashboardData);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   }
 
+  // Memoize derived data
+  const recentTasks = useMemo(() => data?.recentTasks || [], [data]);
+  const recentCompletedTasks = useMemo(() => data?.recentCompletedTasks || [], [data]);
+  const stats = useMemo(() => data?.stats || {}, [data]);
+
   if (sessionLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading dashboard...</div>
+      <div className="flex items-center justify-center min-h-[80vh] w-full">
+        <div className="w-full max-w-7xl px-4 space-y-8">
+          {/* Header skeleton */}
+          <div className="animate-pulse h-10 bg-muted rounded mb-6 w-1/3" />
+          {/* Stats skeleton */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 bg-muted rounded animate-pulse" />
+            ))}
+          </div>
+          {/* Teams and Recent Activity skeleton */}
+          <div className="grid gap-8 md:grid-cols-2 mb-8">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-56 bg-muted rounded animate-pulse" />
+            ))}
+          </div>
+          {/* Recent Completed Tasks skeleton */}
+          <div className="h-40 bg-muted rounded animate-pulse mb-8" />
+          {/* Quick Actions skeleton */}
+          <div className="h-32 bg-muted rounded animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -386,40 +300,51 @@ export default function DashboardOverview() {
             <CardDescription>Your latest active tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {data.recentTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center">
-                    {task.priority === 'HIGH' && (
-                      <div className="w-2 h-2 bg-red-500 rounded-full mr-2" />
-                    )}
-                    {task.priority === 'MEDIUM' && (
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2" />
-                    )}
-                    {task.priority === 'LOW' && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium truncate max-w-[200px]">
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {task.list.board.team.name} • {task.list.board.name} • {task.list.name}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {task.dueDate && (
-                    <Badge variant="outline" className="text-xs">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {new Date(task.dueDate).toLocaleDateString()}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-            {data.recentTasks.length === 0 && (
+            {recentTasks.length > 0 ? (
+              <List
+                height={200}
+                itemCount={recentTasks.length}
+                itemSize={56}
+                width={"100%"}
+              >
+                {({ index, style }) => {
+                  const task = recentTasks[index];
+                  return (
+                    <div key={task.id} style={style} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
+                          {task.priority === 'HIGH' && (
+                            <div className="w-2 h-2 bg-red-500 rounded-full mr-2" />
+                          )}
+                          {task.priority === 'MEDIUM' && (
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2" />
+                          )}
+                          {task.priority === 'LOW' && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium truncate max-w-[200px]">
+                            {task.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {task.list.board.team.name} • {task.list.board.name} • {task.list.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {task.dueDate && (
+                          <Badge variant="outline" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {new Date(task.dueDate).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }}
+              </List>
+            ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <p>No recent tasks</p>
               </div>
