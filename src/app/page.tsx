@@ -40,7 +40,7 @@ export default function HomePage() {
         </div>
         
         <Badge variant="secondary" className="mb-6 relative z-10">
-          🚀 Now in Beta - Join the waitlist
+          🚀 Now in Beta 
         </Badge>
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
           The Freelancer's Nest for Clients, Teams & Clarity. 
