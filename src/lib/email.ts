@@ -126,6 +126,8 @@ function generateInviteEmailHTML(data: EmailInviteData, inviteUrl: string): stri
             <li>Start collaborating with your team!</li>
           </ol>
         </div>
+
+        <p><strong>Note:</strong> To accept this invitation, you must be signed in to your Nesternity CRM account. If you don't have an account yet, you'll need to sign up first.</p>
         
         <p><strong>Important:</strong> This invitation expires on ${new Date(data.expiresAt).toLocaleDateString()} at ${new Date(data.expiresAt).toLocaleTimeString()}.</p>
         
