@@ -594,7 +594,12 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Board</h2>
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-2xl font-bold">Board</h2>
+        <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">
+          💡 Drag and drop tasks across lists to manage them
+        </div>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
