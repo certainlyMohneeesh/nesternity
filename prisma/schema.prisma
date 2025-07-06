@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
@@ -33,6 +33,8 @@ model User {
   teamMembers      TeamMember[]
   ownedTeams       Team[]           @relation("TeamOwner")
 
+  @@index([createdAt(sort: Desc)], map: "idx_users_created_at_desc")
+  @@index([email], map: "idx_users_email")
   @@map("users")
 }
 
@@ -63,37 +65,46 @@ model Client {
   invoices      Invoice[]
   projects      Project[] @relation("ClientProjects")
 
+  @@index([createdAt(sort: Desc)], map: "idx_clients_created_at_desc")
+  @@index([createdBy], map: "idx_clients_created_by")
   @@map("clients")
 }
 
 model Invoice {
-  id               String             @id @default(cuid())
-  invoiceNumber    String             @unique
-  clientId         String             @map("client_id")
-  issuedById       String             @map("issued_by_id")
-  dueDate          DateTime           @map("due_date")
-  issuedDate       DateTime           @default(now()) @map("issued_date")
-  status           InvoiceStatus      @default(PENDING)
-  paymentMethod    PaymentMethod?
-  notes            String?
-  taxRate          Float?             @map("tax_rate")
-  discount         Float?             @default(0)
-  currency         String             @default("INR")
-  pdfUrl           String?            @map("pdf_url")
-  isRecurring      Boolean            @default(false) @map("is_recurring")
-  recurrence       InvoiceRecurrence?
-  nextIssueDate    DateTime?          @map("next_issue_date")
-  lastSentDate     DateTime?          @map("last_sent_date")
-  reminderSent     Boolean            @default(false) @map("reminder_sent")
-  enablePaymentLink Boolean           @default(false) @map("enable_payment_link")
-  watermarkText    String?            @map("watermark_text")
-  eSignatureUrl    String?            @map("e_signature_url")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
-  items            InvoiceItem[]
-  client           Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  issuedBy         User               @relation("IssuedBy", fields: [issuedById], references: [id])
+  id                String             @id @default(cuid())
+  invoiceNumber     String             @unique
+  clientId          String             @map("client_id")
+  issuedById        String             @map("issued_by_id")
+  dueDate           DateTime           @map("due_date")
+  issuedDate        DateTime           @default(now()) @map("issued_date")
+  status            InvoiceStatus      @default(PENDING)
+  paymentMethod     PaymentMethod?
+  notes             String?
+  taxRate           Float?             @map("tax_rate")
+  discount          Float?             @default(0)
+  currency          String             @default("INR")
+  pdfUrl            String?            @map("pdf_url")
+  isRecurring       Boolean            @default(false) @map("is_recurring")
+  recurrence        InvoiceRecurrence?
+  nextIssueDate     DateTime?          @map("next_issue_date")
+  lastSentDate      DateTime?          @map("last_sent_date")
+  reminderSent      Boolean            @default(false) @map("reminder_sent")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  enablePaymentLink Boolean            @default(false) @map("enable_payment_link")
+  eSignatureUrl     String?            @map("e_signature_url")
+  watermarkText     String?            @map("watermark_text")
+  items             InvoiceItem[]
+  client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  issuedBy          User               @relation("IssuedBy", fields: [issuedById], references: [id])
 
+  @@index([clientId], map: "idx_invoices_client_id")
+  @@index([clientId, status, dueDate], map: "idx_invoices_client_status")
+  @@index([dueDate], map: "idx_invoices_due_date")
+  @@index([issuedById], map: "idx_invoices_issued_by_id")
+  @@index([issuedDate], map: "idx_invoices_issued_date")
+  @@index([status], map: "idx_invoices_status")
+  @@index([issuedById, status, issuedDate(sort: Desc)], map: "idx_invoices_user_status")
   @@map("invoices")
 }
 
@@ -107,6 +118,7 @@ model InvoiceItem {
   createdAt   DateTime @default(now()) @map("created_at")
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@index([invoiceId], map: "idx_invoice_items_invoice_id")
   @@map("invoice_items")
 }
 
@@ -124,6 +136,8 @@ model Team {
   members     TeamMember[]
   owner       User         @relation("TeamOwner", fields: [createdBy], references: [id], onDelete: Cascade)
 
+  @@index([createdAt(sort: Desc)], map: "idx_teams_created_at_desc")
+  @@index([createdBy], map: "idx_teams_created_by")
   @@map("teams")
 }
 
@@ -139,6 +153,9 @@ model TeamMember {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
+  @@index([teamId, role], map: "idx_team_members_role")
+  @@index([teamId], map: "idx_team_members_team_id")
+  @@index([userId], map: "idx_team_members_user_id")
   @@map("team_members")
 }
 
@@ -156,6 +173,9 @@ model TeamInvite {
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, email])
+  @@index([email], map: "idx_team_invites_email")
+  @@index([teamId], map: "idx_team_invites_team_id")
+  @@index([token], map: "idx_team_invites_token")
   @@map("team_invites")
 }
 
@@ -170,6 +190,9 @@ model Activity {
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([createdAt(sort: Desc)], map: "idx_activities_created_at")
+  @@index([userId], map: "idx_activities_user_id")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_activities_user_recent")
   @@map("activities")
 }
 
@@ -193,6 +216,9 @@ model Board {
   issues      Issue[]         @relation("BoardIssues")
   tasks       Task[]
 
+  @@index([projectId], map: "idx_boards_project_id")
+  @@index([teamId], map: "idx_boards_team_id")
+  @@index([teamId, position], map: "idx_boards_team_position")
   @@map("boards")
 }
 
@@ -208,13 +234,14 @@ model BoardList {
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks     Task[]
 
+  @@index([boardId], map: "idx_board_lists_board_id")
+  @@index([boardId, position], map: "idx_board_lists_position")
   @@map("board_lists")
 }
 
 model Task {
   id             String           @id @default(cuid())
   title          String
-  description    String
   boardId        String           @map("board_id")
   listId         String           @map("list_id")
   assignedTo     String?          @map("assigned_to")
@@ -230,6 +257,7 @@ model Task {
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   archived       Boolean          @default(false)
+  description    String
   issues         Issue[]          @relation("TaskIssues")
   activities     TaskActivity[]
   attachments    TaskAttachment[]
@@ -239,6 +267,13 @@ model Task {
   creator        User             @relation("TaskCreator", fields: [createdBy], references: [id])
   list           BoardList        @relation(fields: [listId], references: [id], onDelete: Cascade)
 
+  @@index([assignedTo], map: "idx_tasks_assigned_to")
+  @@index([assignedTo, status, dueDate], map: "idx_tasks_assignee_status")
+  @@index([boardId], map: "idx_tasks_board_id")
+  @@index([boardId, listId, position], map: "idx_tasks_board_list_position")
+  @@index([listId], map: "idx_tasks_list_id")
+  @@index([priority], map: "idx_tasks_priority")
+  @@index([status], map: "idx_tasks_status")
   @@map("tasks")
 }
 
@@ -312,6 +347,10 @@ model Project {
   client      Client?       @relation("ClientProjects", fields: [clientId], references: [id])
   team        Team          @relation("TeamProjects", fields: [teamId], references: [id])
 
+  @@index([clientId], map: "idx_projects_client_id")
+  @@index([status], map: "idx_projects_status")
+  @@index([teamId], map: "idx_projects_team_id")
+  @@index([teamId, status, createdAt(sort: Desc)], map: "idx_projects_team_status")
   @@map("projects")
 }
 
@@ -335,6 +374,13 @@ model Issue {
   project     Project?       @relation(fields: [projectId], references: [id])
   task        Task?          @relation("TaskIssues", fields: [taskId], references: [id])
 
+  @@index([assignedTo], map: "idx_issues_assigned_to")
+  @@index([assignedTo, status, priority], map: "idx_issues_assignee_status")
+  @@index([boardId], map: "idx_issues_board_id")
+  @@index([createdBy], map: "idx_issues_created_by")
+  @@index([priority], map: "idx_issues_priority")
+  @@index([projectId], map: "idx_issues_project_id")
+  @@index([status], map: "idx_issues_status")
   @@map("issues")
 }
 
