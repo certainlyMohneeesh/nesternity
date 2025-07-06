@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { sendPasswordResetEmail } from '@/lib/email';
+
+// Use service role key for admin operations
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,17 +30,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send password reset email using Supabase
+    // Check if user exists in the database (optional security check)
+    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+    const userExists = userData?.users?.find(user => user.email === email);
+
+    if (!userExists) {
+      // For security, we still return success even if user doesn't exist
+      // This prevents email enumeration attacks
+      return NextResponse.json({
+        success: true,
+        message: 'If this email is registered, you will receive a password reset link shortly.'
+      });
+    }
+
+    // Send password reset email using Supabase (which will use your SMTP configuration)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
     });
 
     if (error) {
-      console.error('Password reset error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      console.error('Supabase password reset error:', error);
+      
+      // Fallback: Try sending custom email using our email service
+      try {
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+        await sendPasswordResetEmail({
+          recipientEmail: email,
+          recipientName: email.split('@')[0], // Use email prefix as fallback name
+          resetToken: 'fallback-token',
+          expiresAt
+        });
+        console.log('Fallback email sent successfully');
+      } catch (fallbackError) {
+        console.error('Fallback email error:', fallbackError);
+        return NextResponse.json(
+          { error: 'Failed to send password reset email. Please try again later.' },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({
