@@ -89,14 +89,43 @@ export default function DashboardOverview() {
   async function fetchDashboardData() {
     try {
       setLoading(true);
+      
+      // Debug: Check what we have in session
+      console.log('=== SESSION DEBUG ===');
+      console.log('Full session object:', session);
+      console.log('Session user:', session?.user);
+      console.log('Session user ID:', session?.user?.id);
+      console.log('===================');
+      
+      // Get user ID from session (no fallback for now to debug)
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        console.error('No user ID found in session');
+        toast.error("Please log in to view dashboard");
+        return;
+      }
+      
+      console.log('Making API call with user ID:', userId);
+      
       // Use new API endpoint for all dashboard data
       const res = await fetch("/api/dashboard", {
-        headers: { "x-user-id": session?.user?.id || "" },
+        headers: { "x-user-id": userId },
       });
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
+      
+      console.log('API response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('API error response:', errorText);
+        throw new Error("Failed to fetch dashboard data");
+      }
+      
       const dashboardData = await res.json();
+      console.log('Dashboard data received:', dashboardData);
       setData(dashboardData);
     } catch (error) {
+      console.error('Dashboard fetch error:', error);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
