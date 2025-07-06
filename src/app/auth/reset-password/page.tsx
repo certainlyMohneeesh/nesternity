@@ -66,28 +66,56 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
+    // Enhanced password validation
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      // Get current session tokens for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || searchParams.get('access_token');
+      const refreshToken = session?.refresh_token || searchParams.get('refresh_token');
+
+      // Use API route for better error handling
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` })
+        },
+        body: JSON.stringify({
+          password,
+          access_token: accessToken,
+          refresh_token: refreshToken
+        }),
       });
 
-      if (error) {
-        setError(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update password');
       } else {
-        setSuccess("Password updated successfully! Redirecting to dashboard...");
+        setSuccess(data.message || "Password updated successfully! Redirecting to dashboard...");
         setTimeout(() => {
           router.push('/dashboard');
         }, 2000);
       }
     } catch (error: any) {
-      setError(error.message || 'An error occurred');
+      console.error('Reset password error:', error);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
