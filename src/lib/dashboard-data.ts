@@ -2,12 +2,20 @@ import prisma from "@/lib/prisma";
 
 // Aggregates all dashboard data for a user
 export async function getDashboardData(userId: string) {
-  // Fetch teams for the user
+  console.log('=== getDashboardData DEBUG ===');
+  console.log('Looking for user ID:', userId);
+  
+  // Fetch teams for the user (same logic as teams API)
   const teams = await prisma.team.findMany({
     where: {
-      members: {
-        some: { userId },
-      },
+      OR: [
+        { createdBy: userId },           // Teams user created (owner)
+        { 
+          members: { 
+            some: { userId } 
+          } 
+        }                                // Teams user is member of
+      ]
     },
     select: {
       id: true,
@@ -21,12 +29,25 @@ export async function getDashboardData(userId: string) {
       },
     },
   });
+  
+  console.log('Teams found:', teams.length);
+  if (teams.length > 0) {
+    console.log('Team names:', teams.map((t: any) => t.name));
+  }
+  console.log('===========================');
 
   // Fetch recent tasks and completed tasks in parallel
   const [recentTasks, recentCompletedTasks] = await Promise.all([
     prisma.task.findMany({
       where: {
-        board: { team: { members: { some: { userId } } } },
+        board: { 
+          team: { 
+            OR: [
+              { createdBy: userId },           // Teams user created (owner)
+              { members: { some: { userId } } } // Teams user is member of
+            ]
+          } 
+        },
         archived: false,
       },
       orderBy: { createdAt: "desc" },
@@ -53,17 +74,23 @@ export async function getDashboardData(userId: string) {
     }),
     prisma.task.findMany({
       where: {
-        board: { team: { members: { some: { userId } } } },
-        archived: true,
+        board: { 
+          team: { 
+            OR: [
+              { createdBy: userId },           // Teams user created (owner)
+              { members: { some: { userId } } } // Teams user is member of
+            ]
+          } 
+        },
         status: "DONE",
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { completedAt: "desc" },
       take: 5,
       select: {
         id: true,
         title: true,
         priority: true,
-        updatedAt: true,
+        completedAt: true,
         list: {
           select: {
             name: true,
@@ -81,15 +108,47 @@ export async function getDashboardData(userId: string) {
 
   // Stats
   const [totalBoards, totalTasks, completedTasks] = await Promise.all([
-    prisma.board.count({ where: { team: { members: { some: { userId } } } } }),
-    prisma.task.count({ where: { board: { team: { members: { some: { userId } } } } } }),
-    prisma.task.count({ where: { board: { team: { members: { some: { userId } } } }, status: "DONE" } }),
+    prisma.board.count({ 
+      where: { 
+        team: { 
+          OR: [
+            { createdBy: userId },           // Teams user created (owner)
+            { members: { some: { userId } } } // Teams user is member of
+          ]
+        } 
+      } 
+    }),
+    prisma.task.count({ 
+      where: { 
+        board: { 
+          team: { 
+            OR: [
+              { createdBy: userId },           // Teams user created (owner)
+              { members: { some: { userId } } } // Teams user is member of
+            ]
+          } 
+        } 
+      } 
+    }),
+    prisma.task.count({ 
+      where: { 
+        board: { 
+          team: { 
+            OR: [
+              { createdBy: userId },           // Teams user created (owner)
+              { members: { some: { userId } } } // Teams user is member of
+            ]
+          } 
+        }, 
+        status: "DONE" 
+      } 
+    }),
   ]);
 
   return {
     teams,
     recentTasks,
-    recentCompletedTasks: recentCompletedTasks.map(t => ({ ...t, completedAt: t.updatedAt })),
+    recentCompletedTasks,
     stats: {
       totalTeams: teams.length,
       totalBoards,

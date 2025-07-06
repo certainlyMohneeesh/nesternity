@@ -25,6 +25,17 @@ async function seed() {
   })
   console.log('Created team:', testTeam.name)
   
+  // Add the user as a member of the team
+  const teamMember = await db.teamMember.create({
+    data: {
+      teamId: testTeam.id,
+      userId: testUser.id,
+      role: 'owner',
+      addedBy: testUser.id,
+    }
+  })
+  console.log('Added team member:', teamMember.role)
+  
   // Create a test board
   const testBoard = await db.board.create({
     data: {
