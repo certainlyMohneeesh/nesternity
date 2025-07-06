@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import path from 'path';
 
 // Google Sheets configuration
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
@@ -50,12 +49,29 @@ async function verifyRecaptcha(token: string, action: string = 'newsletter_signu
 
 async function addToGoogleSheets(email: string, subscribedAt: string) {
   try {
-    // Path to credentials file
-    const credentialsPath = path.join(process.cwd(), 'src/app/api/admin/download-logs/credentials.json');
+    // Get credentials from environment variables
+    const credentials = {
+      type: "service_account",
+      project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
+      private_key_id: process.env.GOOGLE_CLOUD_PRIVATE_KEY_ID,
+      private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+      client_id: process.env.GOOGLE_CLOUD_CLIENT_ID,
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: process.env.GOOGLE_CLOUD_CLIENT_CERT_URL,
+      universe_domain: "googleapis.com"
+    };
+
+    // Validate required credentials
+    if (!credentials.project_id || !credentials.private_key || !credentials.client_email) {
+      throw new Error('Missing required Google Cloud credentials in environment variables');
+    }
     
-    // Initialize Google Sheets API
+    // Initialize Google Sheets API with credentials object
     const auth = new google.auth.GoogleAuth({
-      keyFile: credentialsPath,
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
@@ -150,6 +166,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'This email is already subscribed to our newsletter' },
         { status: 409 }
+      );
+    }
+
+    if (error.message?.includes('Missing required Google Cloud credentials')) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable. Please try again later.' },
+        { status: 503 }
       );
     }
 
