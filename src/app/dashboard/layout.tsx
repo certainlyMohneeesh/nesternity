@@ -16,10 +16,10 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard", iconName: "Home" },
   { href: "/dashboard/clients", label: "Clients", iconName: "Users" },
   { href: "/dashboard/projects", label: "Projects", iconName: "FolderOpen" },
-  { href: "/dashboard/contracts", label: "Contracts", iconName: "FileText" },
+  { href: "/dashboard/teams", label: "Teams", iconName: "Users2" },
   { href: "/dashboard/invoices", label: "Invoices", iconName: "FileCheck" },
   { href: "/dashboard/issues", label: "Issues", iconName: "AlertCircle" },
-  { href: "/dashboard/teams", label: "Teams", iconName: "Users2" },
+  { href: "/dashboard/contracts", label: "Contracts", iconName: "FileText" },
   { href: "/dashboard/settings", label: "Settings", iconName: "Settings" },
 ];
 

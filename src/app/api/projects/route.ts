@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, clientId, teamId, startDate, endDate, status } = body;
+    const { name, description, clientId, teamId, startDate, endDate, status, goal } = body;
 
     if (!name || !teamId) {
       return NextResponse.json({ error: 'Name and team are required' }, { status: 400 });
@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         status: status || 'PLANNING',
+        goal: goal ? Number(goal) : null,
       },
       include: {
         client: true,
