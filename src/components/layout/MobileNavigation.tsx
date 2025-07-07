@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/co
 import { Button } from '@/components/ui/button'
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from '@/components/ui/navigation-menu'
 import { cn } from '@/lib/utils'
-import { Menu, X, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from 'lucide-react'
+import { Menu, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from 'lucide-react'
 
 interface NavLink {
   href: string
@@ -47,19 +47,9 @@ export function MobileNavigation({ navLinks }: MobileNavigationProps) {
         <div className="flex flex-col h-full">
           {/* Accessible Header with Title */}
           <SheetHeader className="p-0 border-b">
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
-                <img src="/nesternity.svg" alt="Nesternity" className="w-8 h-8" />
-                <SheetTitle className="font-bold text-lg">Nesternity</SheetTitle>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-2 p-4">
+              <img src="/nesternity.svg" alt="Nesternity" className="w-8 h-8" />
+              <SheetTitle className="font-bold text-lg">Nesternity</SheetTitle>
             </div>
           </SheetHeader>
           
