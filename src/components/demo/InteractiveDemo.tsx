@@ -4,12 +4,26 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, CheckCircle2, Users, ClipboardList, AlertTriangle, Plus } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  CheckCircle2, 
+  Users, 
+  ClipboardList, 
+  AlertTriangle, 
+  Plus,
+  Building2,
+  FolderKanban,
+  FileText,
+  Receipt
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Dynamic imports to avoid SSR issues
 import dynamic from 'next/dynamic';
-import { DemoProjectList } from '@/components/ui/DemoProjectList';
+import { ClientList } from '@/components/demo/DemoClientCard';
+import { ProjectList } from '@/components/demo/DemoProjectCard';
+import { InvoiceList } from '@/components/demo/DemoInvoiceCard';
 import DemoTeamMembers from '@/components/ui/DemoTeamMembers';
 import { IssueCard } from '@/components/issues/IssueCard';
 
@@ -35,14 +49,22 @@ interface DemoStep {
 const demoSteps: DemoStep[] = [
   {
     id: 1,
-    title: 'Create Project',
-    subtitle: 'Start from your project dashboard',
-    description: 'Begin by creating a new project. Define your goals, timeline, and scope to establish a solid foundation for your work.',
-    icon: <Plus className="w-5 h-5" />,
-    buttonText: 'Create Project'
+    title: 'Create Clients',
+    subtitle: 'Start by adding your clients',
+    description: 'Build your client base by adding companies and contacts. This forms the foundation of your project management workflow.',
+    icon: <Building2 className="w-5 h-5" />,
+    buttonText: 'Add Client'
   },
   {
     id: 2,
+    title: 'Setup Projects',
+    subtitle: 'Organize work into projects',
+    description: 'Create projects for your clients with clear timelines, budgets, and deliverables to keep everything organized.',
+    icon: <FolderKanban className="w-5 h-5" />,
+    buttonText: 'Create Project'
+  },
+  {
+    id: 3,
     title: 'Add Team Members',
     subtitle: 'Build your dream team',
     description: 'Invite team members with different roles and permissions. Collaborate effectively by bringing the right people together.',
@@ -50,39 +72,98 @@ const demoSteps: DemoStep[] = [
     buttonText: 'Add Team Members'
   },
   {
-    id: 3,
-    title: 'Assign Tasks',
+    id: 4,
+    title: 'Create Boards',
     subtitle: 'Organize work with boards',
     description: 'Use our interactive Kanban boards to create, assign, and track tasks. Drag and drop to update status and keep everyone aligned.',
     icon: <ClipboardList className="w-5 h-5" />,
-    buttonText: 'Create Tasks'
+    buttonText: 'Create Board'
   },
   {
-    id: 4,
+    id: 5,
     title: 'Track Issues',
     subtitle: 'Identify and resolve problems',
     description: 'Log issues, assign priorities, and track resolution. Keep your project running smoothly with proactive issue management.',
     icon: <AlertTriangle className="w-5 h-5" />,
     buttonText: 'Report Issue'
+  },
+  {
+    id: 6,
+    title: 'Generate Invoices',
+    subtitle: 'Get paid for your work',
+    description: 'Create professional invoices, track payments, and manage your revenue. Download PDFs and send them directly to clients.',
+    icon: <Receipt className="w-5 h-5" />,
+    buttonText: 'Create Invoice'
   }
 ];
 
 // Demo data
-const demoProject = {
-  id: "demo1",
-  name: "Website Redesign",
-  description: "A full redesign for Acme Corp's marketing site.",
-  status: "ACTIVE",
-  startDate: "2025-07-01",
-  endDate: "2025-08-01",
-  clientId: "client1",
-  teamId: "team1",
-  client: { id: "client1", name: "Acme Corp", company: "Acme" },
-  team: { id: "team1", name: "Design Team" },
-  boards: [],
-  _count: { boards: 1, issues: 3 },
-  createdAt: "2025-07-01"
-};
+const demoClients = [
+  {
+    id: "client1",
+    name: "John Smith",
+    company: "Acme Corp",
+    email: "john@acme.com",
+    phone: "+1 (555) 123-4567",
+    address: "123 Business Ave, Tech City, TC 12345",
+    industry: "Technology",
+    status: "ACTIVE" as const,
+    totalProjects: 3,
+    totalRevenue: 125000,
+    lastContact: "2025-07-05",
+    createdAt: "2025-06-01"
+  },
+  {
+    id: "client2", 
+    name: "Sarah Johnson",
+    company: "Design Studio Pro",
+    email: "sarah@designstudio.com",
+    phone: "+1 (555) 987-6543",
+    industry: "Design",
+    status: "ACTIVE" as const,
+    totalProjects: 2,
+    totalRevenue: 85000,
+    lastContact: "2025-07-04",
+    createdAt: "2025-05-15"
+  }
+];
+
+const demoProjects = [
+  {
+    id: "project1",
+    name: "Website Redesign",
+    description: "Complete redesign of the company website with modern UI/UX and mobile responsiveness.",
+    status: "ACTIVE" as const,
+    priority: "HIGH" as const,
+    startDate: "2025-07-01",
+    endDate: "2025-08-15",
+    clientName: "John Smith",
+    clientCompany: "Acme Corp",
+    teamMembers: 4,
+    totalTasks: 24,
+    completedTasks: 8,
+    budget: 50000,
+    spent: 18000,
+    progress: 33
+  },
+  {
+    id: "project2",
+    name: "Mobile App Development",
+    description: "Native mobile app for iOS and Android with user authentication and real-time features.",
+    status: "PLANNING" as const,
+    priority: "MEDIUM" as const,
+    startDate: "2025-08-01",
+    endDate: "2025-12-31",
+    clientName: "Sarah Johnson",
+    clientCompany: "Design Studio Pro",
+    teamMembers: 6,
+    totalTasks: 45,
+    completedTasks: 2,
+    budget: 120000,
+    spent: 5000,
+    progress: 4
+  }
+];
 
 const demoMembers = [
   {
@@ -118,10 +199,91 @@ const demoIssue = {
   updatedAt: new Date().toISOString(),
   assignee: { id: "user1", email: "dev@acme.com", displayName: "Jane Dev", avatarUrl: "" },
   creator: { id: "user2", email: "pm@acme.com", displayName: "John PM" },
-  project: { id: "demo1", name: "Website Redesign" },
+  project: { id: "project1", name: "Website Redesign" },
   board: { id: "board1", name: "Sprint 1" },
   _count: { comments: 3 }
 };
+
+const demoInvoices = [
+  {
+    id: "inv1",
+    invoiceNumber: "INV-2025-001",
+    clientName: "John Smith",
+    clientCompany: "Acme Corp",
+    clientEmail: "john@acme.com",
+    status: "PAID" as const,
+    issueDate: "2025-06-01",
+    dueDate: "2025-06-30",
+    paidDate: "2025-06-28",
+    subtotal: 18000,
+    tax: 1440,
+    total: 19440,
+    currency: "USD",
+    projectName: "Website Redesign - Phase 1",
+    items: [
+      {
+        id: "item1",
+        description: "UI/UX Design Services",
+        quantity: 40,
+        rate: 150,
+        amount: 6000
+      },
+      {
+        id: "item2", 
+        description: "Frontend Development",
+        quantity: 60,
+        rate: 120,
+        amount: 7200
+      },
+      {
+        id: "item3",
+        description: "Backend Integration",
+        quantity: 32,
+        rate: 150,
+        amount: 4800
+      }
+    ],
+    notes: "Thank you for your business! Payment received on time."
+  },
+  {
+    id: "inv2",
+    invoiceNumber: "INV-2025-002", 
+    clientName: "Sarah Johnson",
+    clientCompany: "Design Studio Pro",
+    clientEmail: "sarah@designstudio.com",
+    status: "SENT" as const,
+    issueDate: "2025-07-01",
+    dueDate: "2025-07-31",
+    subtotal: 12000,
+    tax: 960,
+    total: 12960,
+    currency: "USD",
+    projectName: "Brand Identity Package",
+    items: [
+      {
+        id: "item4",
+        description: "Logo Design & Branding",
+        quantity: 20,
+        rate: 200,
+        amount: 4000
+      },
+      {
+        id: "item5",
+        description: "Marketing Materials",
+        quantity: 40,
+        rate: 100,
+        amount: 4000
+      },
+      {
+        id: "item6",
+        description: "Style Guide Creation",
+        quantity: 20,
+        rate: 200,
+        amount: 4000
+      }
+    ]
+  }
+];
 
 export default function InteractiveDemo() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -166,14 +328,19 @@ export default function InteractiveDemo() {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h3 className="text-xl font-semibold mb-2">Your Project Dashboard</h3>
-              <p className="text-muted-foreground">Start by creating a new project to organize your work</p>
+              <h3 className="text-xl font-semibold mb-2">Client Management</h3>
+              <p className="text-muted-foreground">Start by adding your clients and building strong relationships</p>
             </div>
-            <DemoProjectList projects={[demoProject]} />
+            <ClientList 
+              clients={demoClients}
+              onAddClient={() => {}}
+              onEditClient={() => {}}
+              onViewProjects={() => {}}
+            />
             <div className="text-center">
               <Button onClick={handleStepAction} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create New Project
+                <Building2 className="w-4 h-4" />
+                Add New Client
               </Button>
             </div>
           </div>
@@ -183,8 +350,31 @@ export default function InteractiveDemo() {
         return (
           <div className="space-y-6">
             <div className="text-center">
+              <h3 className="text-xl font-semibold mb-2">Project Portfolio</h3>
+              <p className="text-muted-foreground">Create projects for your clients with clear timelines and deliverables</p>
+            </div>
+            <ProjectList 
+              projects={demoProjects}
+              onAddProject={() => {}}
+              onViewProject={() => {}}
+              onEditProject={() => {}}
+              onAddTask={() => {}}
+            />
+            <div className="text-center">
+              <Button onClick={handleStepAction} className="gap-2">
+                <FolderKanban className="w-4 h-4" />
+                Create New Project
+              </Button>
+            </div>
+          </div>
+        );
+      
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
               <h3 className="text-xl font-semibold mb-2">Team Collaboration</h3>
-              <p className="text-muted-foreground">Invite team members to collaborate on your project</p>
+              <p className="text-muted-foreground">Invite team members to collaborate on your projects</p>
             </div>
             <DemoTeamMembers 
               members={demoMembers}
@@ -199,24 +389,24 @@ export default function InteractiveDemo() {
           </div>
         );
       
-      case 3:
+      case 4:
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold mb-2">Task Management</h3>
-              <p className="text-muted-foreground">Create and assign tasks using our interactive board</p>
+              <p className="text-muted-foreground">Create boards and assign tasks using our interactive Kanban interface</p>
             </div>
             <BoardComponent />
             <div className="text-center">
               <Button onClick={handleStepAction} className="gap-2">
                 <ClipboardList className="w-4 h-4" />
-                Create Tasks
+                Create Board
               </Button>
             </div>
           </div>
         );
       
-      case 4:
+      case 5:
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -233,8 +423,32 @@ export default function InteractiveDemo() {
             </div>
             <div className="text-center">
               <Button onClick={handleStepAction} className="gap-2">
-                <AlertTriangle className="w-4 h-4" />
+                <AlertTriangle className="w-4 w-4" />
                 Report Issue
+              </Button>
+            </div>
+          </div>
+        );
+      
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold mb-2">Invoice Management</h3>
+              <p className="text-muted-foreground">Create professional invoices and track payments</p>
+            </div>
+            <InvoiceList 
+              invoices={demoInvoices}
+              onAddInvoice={() => {}}
+              onViewInvoice={() => {}}
+              onDownloadInvoice={() => {}}
+              onSendInvoice={() => {}}
+              onEditInvoice={() => {}}
+            />
+            <div className="text-center">
+              <Button onClick={handleStepAction} className="gap-2">
+                <Receipt className="w-4 h-4" />
+                Create Invoice
               </Button>
             </div>
           </div>
@@ -299,7 +513,9 @@ export default function InteractiveDemo() {
               currentStep === 1 && "bg-blue-100 text-blue-600",
               currentStep === 2 && "bg-green-100 text-green-600", 
               currentStep === 3 && "bg-purple-100 text-purple-600",
-              currentStep === 4 && "bg-orange-100 text-orange-600"
+              currentStep === 4 && "bg-orange-100 text-orange-600",
+              currentStep === 5 && "bg-red-100 text-red-600",
+              currentStep === 6 && "bg-indigo-100 text-indigo-600"
             )}>
               {currentStepData?.icon}
             </div>
@@ -362,7 +578,7 @@ export default function InteractiveDemo() {
         <div className="text-center mt-8">
           <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
             <CheckCircle2 className="w-4 h-4" />
-            Demo completed! Ready to start your project?
+            Complete workflow mastered! Ready to manage your projects like a pro?
           </div>
         </div>
       )}

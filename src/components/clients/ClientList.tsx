@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ClientForm } from './ClientForm'
+import { ClientCard } from './ClientCard'
 import { toast } from 'sonner'
 import { Plus, Edit, Trash2, Building, Mail, Phone } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +19,8 @@ interface Client {
   company?: string
   address?: string
   notes?: string
+  budget?: number
+  status: 'ACTIVE' | 'INACTIVE' | 'PROSPECT'
   createdAt: string
   _count: {
     invoices: number
@@ -140,80 +143,35 @@ export function ClientList() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {clients.map((client) => (
-            <Card key={client.id}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{client.name}</CardTitle>
-                    {client.company && (
-                      <p className="text-sm text-gray-600 mt-1">{client.company}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingClient(client)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Edit Client</DialogTitle>
-                        </DialogHeader>
-                        <ClientForm
-                          client={editingClient!}
-                          onSuccess={handleFormSuccess}
-                          onCancel={() => setEditingClient(null)}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(client.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <span>{client.email}</span>
-                  </div>
-                  {client.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-gray-500" />
-                      <span>{client.phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Badge variant="secondary">
-                    {client._count.invoices} invoice{client._count.invoices !== 1 ? 's' : ''}
-                  </Badge>
-                  <Badge variant="secondary">
-                    {client._count.projects} project{client._count.projects !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
-
-                {client.notes && (
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                    {client.notes}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <ClientCard
+              key={client.id}
+              client={client}
+              onEdit={setEditingClient}
+              onDelete={handleDelete}
+              onViewProjects={(client) => {
+                // TODO: Navigate to projects view filtered by client
+                console.log('View projects for client:', client.id);
+              }}
+            />
           ))}
         </div>
       )}
+
+      {/* Edit Client Dialog */}
+      <Dialog open={!!editingClient} onOpenChange={(open) => !open && setEditingClient(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+          </DialogHeader>
+          {editingClient && (
+            <ClientForm
+              client={editingClient}
+              onSuccess={handleFormSuccess}
+              onCancel={() => setEditingClient(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

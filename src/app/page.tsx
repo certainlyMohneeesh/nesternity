@@ -84,9 +84,10 @@ export default function HomePage() {
         <Badge variant="secondary" className="mb-4">
           ✨ Product Preview
         </Badge>
-        <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent pb-2">
           Your Work, Beautifully Organized
         </h2>
+        <div className="h-2" />
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
           See how Nesternity transforms chaotic workflows into seamless experiences. 
           Every feature designed with your productivity in mind.

@@ -77,7 +77,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, email, phone, company, address, notes } = body;
+    const { name, email, phone, company, address, notes, budget, status } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -95,6 +95,8 @@ export async function PUT(
         company,
         address,
         notes,
+        budget,
+        status,
       },
     });
 
