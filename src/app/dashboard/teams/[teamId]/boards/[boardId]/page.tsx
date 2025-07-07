@@ -322,13 +322,60 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  // Optimized: fetch lists and tasks in parallel, render UI as soon as they're ready, fetch team members in background
   useEffect(() => {
+    let ignore = false;
+    async function fetchListsAndTasks() {
+      setLoading(true);
+      try {
+        // Remove any artificial delay
+        const [listsResponse, tasksResponse] = await Promise.all([
+          api.getLists(resolvedParams.teamId, resolvedParams.boardId),
+          api.getTasks(resolvedParams.teamId, resolvedParams.boardId)
+        ]);
+        if (!ignore) {
+          setLists(listsResponse.lists || []);
+          setTasks(tasksResponse.tasks || []);
+          setLoading(false);
+        }
+        // Fetch team members in background, do not block UI
+        api.getTeam(resolvedParams.teamId)
+          .then(teamResponse => {
+            if (!ignore) {
+              setTeamMembers(teamResponse.team.members || []);
+            }
+          })
+          .catch(teamError => {
+            if (!ignore) {
+              setTeamMembers([]);
+              toast.error("Could not load team members for task assignment");
+            }
+          });
+      } catch (error) {
+        if (!ignore) {
+          setLoading(false);
+          console.error("Error fetching board data:", error);
+          if (error instanceof APIError) {
+            if (error.status === 401) {
+              toast.error("Please log in again");
+            } else if (error.status === 403) {
+              toast.error("You don't have access to this board");
+            } else {
+              toast.error(error.message);
+            }
+          } else {
+            toast.error("Failed to load board data");
+          }
+        }
+      }
+    }
     if (!sessionLoading && session) {
-      fetchBoardData();
+      fetchListsAndTasks();
     } else if (!sessionLoading && !session) {
       setLoading(false);
       toast.error("Please log in to view board data");
     }
+    return () => { ignore = true; };
   }, [resolvedParams.boardId, session, sessionLoading]);
 
   // Memoize sorted tasks per list
@@ -455,7 +502,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
         t.id === optimisticTask.id ? response.task : t
       ));
       
-      toast.success("Task created successfully");
+
     } catch (error) {
       console.error("Error creating task:", error);
       // Remove optimistic task on error
@@ -470,6 +517,46 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     setActiveTaskId(null);
 
     if (!over || active.id === over.id) return;
+
+    // Prevent API calls for optimistic (temp) tasks
+    if (String(active.id).startsWith('temp-')) {
+      // Only update UI state, skip server sync
+      const draggedTask = tasks.find(t => t.id === active.id);
+      if (!draggedTask) return;
+      let targetListId: string;
+      let targetPosition: number;
+      const overList = lists.find(l => l.id === over.id);
+      if (overList) {
+        targetListId = overList.id;
+        const listTasks = tasks.filter(t => t.listId === overList.id && t.id !== active.id);
+        targetPosition = listTasks.length;
+      } else {
+        const overTask = tasks.find(t => t.id === over.id);
+        if (!overTask) return;
+        targetListId = overTask.listId;
+        const listTasks = tasks.filter(t => t.listId === targetListId && t.id !== active.id);
+        const overIndex = listTasks.findIndex(t => t.id === over.id);
+        targetPosition = overIndex >= 0 ? overIndex : listTasks.length;
+      }
+      const updatedTasks = tasks.map(task => {
+        if (task.id === active.id) {
+          return { ...task, listId: targetListId, position: targetPosition };
+        }
+        if (task.listId === targetListId && task.id !== active.id) {
+          if (task.position >= targetPosition) {
+            return { ...task, position: task.position + 1 };
+          }
+        }
+        if (task.listId === draggedTask.listId && targetListId !== draggedTask.listId) {
+          if (task.position > draggedTask.position) {
+            return { ...task, position: task.position - 1 };
+          }
+        }
+        return task;
+      });
+      setTasks(updatedTasks);
+      return;
+    }
 
     // Find the task being dragged
     const draggedTask = tasks.find(t => t.id === active.id);
@@ -746,7 +833,12 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                           <Label>Due Date</Label>
                           <Calendar
                             selected={newTask.dueDate ? new Date(newTask.dueDate) : undefined}
-                            onSelect={date => setNewTask(t => ({ ...t, dueDate: date ? date.toISOString().slice(0, 10) : "" }))}
+                            onSelect={date => setNewTask(t => ({
+                              ...t,
+                              dueDate: date
+                                ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+                                : ""
+                            }))}
                             mode="single"
                             className="w-full border rounded-md p-2"
                           />

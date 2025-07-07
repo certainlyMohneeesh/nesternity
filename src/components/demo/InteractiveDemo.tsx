@@ -27,7 +27,7 @@ import { InvoiceList } from '@/components/demo/DemoInvoiceCard';
 import DemoTeamMembers from '@/components/ui/DemoTeamMembers';
 import { IssueCard } from '@/components/issues/IssueCard';
 
-const BoardComponent = dynamic(() => import('@/components/boards/BoardComponent'), {
+const BoardComponent = dynamic(() => import('@/components/boards/DemoBoardComponent'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-96 bg-muted/30 rounded-xl animate-pulse flex items-center justify-center">
