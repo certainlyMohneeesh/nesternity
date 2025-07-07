@@ -89,6 +89,7 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [optimisticBoards, setOptimisticBoards] = useState<Board[]>([]);
 
   useEffect(() => {
     if (!sessionLoading && session?.user) {
@@ -153,17 +154,31 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
   async function handleCreateBoard(e: React.FormEvent) {
     e.preventDefault();
     if (!boardName.trim()) return;
-
+    let tempId: string | null = null;
     try {
       setCreating(true);
       setError(null);
-
+      // Optimistic UI: add temp board
+      tempId = `temp-${Date.now()}`;
+      const tempBoard: Board = {
+        id: tempId,
+        name: boardName.trim(),
+        description: boardDescription.trim() || '',
+        type: boardType as 'KANBAN' | 'SCRUM',
+        createdAt: new Date().toISOString(),
+        projectId: selectedProject || undefined,
+        project: selectedProject ? projects.find(p => p.id === selectedProject) : undefined,
+        _count: { tasks: 0, issues: 0 },
+        lists: [],
+      };
+      setOptimisticBoards(prev => [tempBoard, ...prev]);
+      
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (!authSession?.access_token) {
         setError('Not authenticated');
+        if (tempId) setOptimisticBoards(prev => prev.filter(b => b.id !== tempId));
         return;
       }
-
       const response = await fetch(`/api/teams/${teamId}/boards`, {
         method: 'POST',
         headers: {
@@ -177,19 +192,20 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
           projectId: selectedProject && selectedProject !== '' ? selectedProject : null
         })
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        setBoards(prev => [data.board, ...prev]);
+        setBoards(prev => [data.board, ...prev.filter(b => b.id !== tempId)]);
+        setOptimisticBoards(prev => prev.filter(b => b.id !== tempId));
         setBoardName("");
         setBoardDescription("");
         setSelectedProject("");
         setOpen(false);
       } else {
+        setOptimisticBoards(prev => prev.filter(b => b.id !== tempId));
         setError(data.error || 'Failed to create board');
       }
     } catch (error) {
+      if (tempId) setOptimisticBoards(prev => prev.filter(b => b.id !== tempId));
       console.error('Create board error:', error);
       setError('Failed to create board');
     } finally {
@@ -228,6 +244,11 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
 
   const unassignedBoards = boardsByProject.unassigned || [];
   const projectBoards = Object.entries(boardsByProject).filter(([key]) => key !== 'unassigned');
+
+  const allBoards = [
+    ...optimisticBoards,
+    ...boards.filter(b => !optimisticBoards.some(opt => opt.id === b.id)),
+  ];
 
   return (
     <div className="space-y-6">
@@ -373,7 +394,7 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
                   </CardContent>
                 </Card>
               ))
-            ) : boards.length === 0 ? (
+            ) : allBoards.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-12 space-y-4">
                 <Kanban className="h-12 w-12 text-muted-foreground" />
                 <div className="text-center">
@@ -386,14 +407,20 @@ export default function BoardsPage({ params }: { params: Promise<{ teamId: strin
                 </Button>
               </div>
             ) : (
-              boards.map(board => (
-                <BoardCard 
-                  key={board.id} 
-                  board={board} 
-                  teamId={teamId}
-                  projects={projects}
-                  onLinkProject={linkBoardToProject}
-                />
+              allBoards.map(board => (
+                <div key={board.id} className="relative">
+                  {board.id.startsWith('temp-') && (
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  )}
+                  <BoardCard 
+                    board={board} 
+                    teamId={teamId}
+                    projects={projects}
+                    onLinkProject={linkBoardToProject}
+                  />
+                </div>
               ))
             )}
           </div>

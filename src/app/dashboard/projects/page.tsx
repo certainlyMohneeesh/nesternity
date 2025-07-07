@@ -49,6 +49,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [optimisticProjects, setOptimisticProjects] = useState<Project[]>([]);
 
   const handleCreate = () => {
     setEditingProject(null);
@@ -73,18 +74,37 @@ export default function ProjectsPage() {
     startDate?: string;
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+    goal?: number;
   }) => {
+    let tempId: string | null = null;
     try {
       setIsLoading(true);
-      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('You must be logged in');
       }
-
+      // Optimistic UI: add temp project
+      if (!editingProject) {
+        tempId = `temp-${Date.now()}`;
+        const tempProject: Project = {
+          id: tempId,
+          name: projectData.name,
+          description: projectData.description,
+          status: projectData.status,
+          startDate: projectData.startDate,
+          endDate: projectData.endDate,
+          clientId: projectData.clientId,
+          teamId: projectData.teamId,
+          client: undefined,
+          team: { id: projectData.teamId, name: '...' },
+          boards: [],
+          _count: { boards: 0, issues: 0 },
+          createdAt: new Date().toISOString(),
+        };
+        setOptimisticProjects(prev => [tempProject, ...prev]);
+      }
       const url = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects';
       const method = editingProject ? 'PUT' : 'POST';
-
       const response = await fetch(url, {
         method,
         headers: {
@@ -93,17 +113,18 @@ export default function ProjectsPage() {
         },
         body: JSON.stringify(projectData),
       });
-
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to save project');
       }
-
+      // On success, remove temp and trigger refresh
       setShowCreateDialog(false);
       setShowEditDialog(false);
       setEditingProject(null);
       setRefreshTrigger(prev => prev + 1);
+      if (tempId) setOptimisticProjects(prev => prev.filter(p => p.id !== tempId));
     } catch (error) {
+      if (tempId) setOptimisticProjects(prev => prev.filter(p => p.id !== tempId));
       console.error('Error saving project:', error);
       alert(error instanceof Error ? error.message : 'Failed to save project');
     } finally {
@@ -152,6 +173,7 @@ export default function ProjectsPage() {
         onDelete={handleDelete}
         onCreate={handleCreate}
         refreshTrigger={refreshTrigger}
+        optimisticProjects={optimisticProjects}
       />
 
       {/* Create Project Dialog */}
