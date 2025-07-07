@@ -54,19 +54,21 @@ function LoginForm() {
       title="Sign in to your account"
       subtitle="Welcome back! Please enter your details."
     >
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-          <div className="flex items-center gap-2">
+        <div className="bg-transparent py-3 px-2 sm:py-4 sm:px-3 shadow-xl rounded-lg pb-4 mb-6">
+          <div className="flex items-center gap-1.5">
             <Shield className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-800">
+            <span className="text-xs font-medium text-blue-800">
               Notice
             </span>
           </div>
-          <p className="text-sm text-blue-700 mt-1">
-            If you are new to Nesternity, please register/sign-up first. If you have an account, use your email and password to sign in.
+          <p className="text-xs text-blue-700 mt-0.5">
+            If you are new to Nesternity, please sign up first. If you have an account, use your registered email and password to log in.
           </p>
         </div>
 
-      <form onSubmit={handleLogin} className="space-y-6">
+            <div className="pb-0.5" />
+
+            <form onSubmit={handleLogin} className="space-y-6">
         <div>
           <Label htmlFor="email">Email address</Label>
           <Input

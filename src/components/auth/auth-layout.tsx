@@ -10,14 +10,37 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <Link href="/" className="text-2xl font-bold text-indigo-600 hover:text-indigo-500">
-            Nesternity
-          </Link>
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col justify-center py-6 sm:px-4 lg:px-8 overflow-hidden">
+      {/* Responsive Background Overlay Image */}
+      <img
+        src="/nesternity.svg"
+        alt="Nesternity background"
+        className="
+          absolute
+          left-1/2 top-1/2
+          -translate-x-1/2 -translate-y-1/2
+          w-[200vw] h-[200vw] max-w-none
+          sm:w-[300vw] sm:h-[300vw]
+          md:w-[150vw] md:h-[150vw]
+          lg:w-[80vw] lg:h-[80vw]
+          opacity-10 pointer-events-none select-none
+          transition-all duration-500
+        "
+        aria-hidden="true"
+      />
+      <div className="relative z-10 sm:mx-auto w-full max-w-md px-2 sm:px-0">
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex items-center justify-center space-x-3">
+            <Link
+              href="/"
+              className="text-2xl font-bold text-[#a300cc] hover:text-indigo-500 transition-colors"
+              style={{ letterSpacing: "1px" }}
+            >
+              Nesternity
+            </Link>
+          </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h2 className="mt-6 text-center text-2xl sm:text-3xl font-extrabold text-gray-900">
           {title}
         </h2>
         {subtitle && (
@@ -27,8 +50,8 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         )}
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl rounded-lg sm:px-10">
+      <div className="relative z-10 mt-8 sm:mx-auto w-full max-w-md px-2 sm:px-0">
+        <div className="bg-white/1 backdrop-blur-lg py-6 px-2 sm:py-8 sm:px-4 shadow-xl rounded-lg">
           {children}
         </div>
       </div>

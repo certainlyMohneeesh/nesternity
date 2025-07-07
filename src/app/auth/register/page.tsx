@@ -25,6 +25,14 @@ function RegisterForm() {
     setError("");
     setSuccess("");
     setLoading(true);
+        // Password policy: at least one uppercase, one lowercase, and one number
+    const passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+    if (!passwordPolicy.test(password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number.");
+      setLoading(false);
+      return;
+    }
+
     
     try {
       // Use our API endpoint to handle registration
@@ -61,6 +69,7 @@ function RegisterForm() {
       title="Create your account"
       subtitle="Start your journey with Nesternity"
     >
+
       <form onSubmit={handleRegister} className="space-y-6">
         <div>
           <Label htmlFor="name">Full name</Label>
@@ -113,8 +122,9 @@ function RegisterForm() {
               )}
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Password must be at least 6 characters long
+          {/* Password policy notice */}
+          <p className="text-xs text-gray-500 mt-1">
+            Password must contain at least one uppercase letter, one lowercase letter, and one number.
           </p>
         </div>
 

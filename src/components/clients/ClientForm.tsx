@@ -24,7 +24,7 @@ const clientSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   budget: z.number().min(0, 'Budget must be positive').optional(),
-  currency: z.string().min(1, 'Currency is required').optional(), 
+  currency: z.string().min(1, 'Currency is required').optional(), // Add currency
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROSPECT']).optional(),
   projectIds: z.array(z.string()).optional(),
 })
