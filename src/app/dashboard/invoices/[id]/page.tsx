@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase'
 import React from 'react'
 import dynamic from 'next/dynamic'
 
-// Dynamic import for InvoicePDFClient to ensure it only loads on client-side
+// Dynamic import for InvoicePDFClient to ensure it only loads on client-side, bhai yeh dhunda maine EZ snippet ki video main (Dynamic Imports in Next.js)
 const InvoicePDFClient = dynamic(
   () => import('@/components/pdf/InvoicePDFClient').then(mod => ({ default: mod.InvoicePDFClient })),
   { 

@@ -60,6 +60,7 @@ model Client {
   address       String?
   notes         String?
   budget        Float?       // Added budget field for client budget management
+  currency      String?      // Added currency field for client budget
   status        ClientStatus @default(PROSPECT)
   createdBy     String       @map("created_by")
   createdAt     DateTime     @default(now()) @map("created_at")

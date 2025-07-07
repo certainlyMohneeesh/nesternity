@@ -24,6 +24,7 @@ const clientSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   budget: z.number().min(0, 'Budget must be positive').optional(),
+  currency: z.string().min(1, 'Currency is required').optional(), 
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROSPECT']).optional(),
   projectIds: z.array(z.string()).optional(),
 })
@@ -225,19 +226,41 @@ export function ClientForm({ client, teamId, onSuccess, onCancel, onOptimisticCr
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="budget">Budget (Optional)</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="budget">Budget</Label>
               <Input
                 id="budget"
                 type="number"
-                min="0"
                 step="0.01"
+                placeholder="Enter budget"
                 {...register('budget', { valueAsNumber: true })}
-                placeholder="10000.00"
               />
+              {errors.budget && <span className="text-xs text-red-500">{errors.budget.message}</span>}
             </div>
-            
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Select
+                value={watch('currency') || ''}
+                onValueChange={value => setValue('currency', value)}
+              >
+                <SelectTrigger id="currency">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="INR">INR (₹)</SelectItem>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="JPY">JPY (¥)</SelectItem>
+                  {/* Add more currencies as needed */}
+                </SelectContent>
+              </Select>
+              {errors.currency && <span className="text-xs text-red-500">{errors.currency.message}</span>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select 
