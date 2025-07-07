@@ -56,6 +56,7 @@ interface ProjectListProps {
   onDelete: (project: Project) => void;
   onCreate: () => void;
   refreshTrigger?: number;
+  optimisticProjects?: Project[];
 }
 
 const statusColors = {
@@ -74,7 +75,7 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 };
 
-export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: ProjectListProps) {
+export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger, optimisticProjects = [] }: ProjectListProps) {
   const [projects, setProjects] = useState<ProjectWithTasks[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +166,12 @@ export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: Proj
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Merge optimistic projects (at the top) with fetched projects (filter out any temp by id)
+  const allProjects = [
+    ...optimisticProjects,
+    ...projects.filter(p => !optimisticProjects.some(opt => opt.id === p.id)),
+  ];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -187,7 +194,7 @@ export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: Proj
     );
   }
 
-  if (projects.length === 0) {
+  if (allProjects.length === 0) {
     return (
       <div className="text-center py-8">
         <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -202,25 +209,30 @@ export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: Proj
       </div>
     );
   }
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Projects ({projects.length})</h2>
+        <h2 className="text-xl font-semibold">Projects ({allProjects.length})</h2>
         <Button onClick={onCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Create Project
         </Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            issuesCount={project._count.issues}
-            onEdit={() => onEdit(project)}
-            onDelete={() => handleDelete(project)}
-          />
+        {allProjects.map((project) => (
+          <div key={project.id} className="relative">
+            {project.id.startsWith('temp-') && (
+              <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            )}
+            <ProjectCard
+              project={project as any}
+              issuesCount={project._count.issues}
+              onEdit={() => onEdit(project)}
+              onDelete={() => handleDelete(project)}
+            />
+          </div>
         ))}
       </div>
     </div>

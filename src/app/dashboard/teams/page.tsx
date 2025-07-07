@@ -38,10 +38,16 @@ interface Team {
   };
 }
 
+// Extend Team type for optimistic UI
+interface TempTeam extends Team {
+  isTemp: true;
+}
+type TeamOrTemp = Team | TempTeam;
+
 export default function TeamsPage() {
   const { session, loading: sessionLoading } = useSession();
   const [user, setUser] = useState<any>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamOrTemp[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -105,17 +111,41 @@ export default function TeamsPage() {
 
   async function handleCreateTeam(e: React.FormEvent) {
     e.preventDefault();
-    if (!teamName.trim()) return;
-
-    setCreating(true);
     setError(null);
+    setCreating(true);
+    if (!session) {
+      setError('Not authenticated');
+      setCreating(false);
+      return;
+    }
+    // Create a temporary team object for optimistic UI
+    const tempId = `temp-${Date.now()}`;
+    const optimisticTeam: TempTeam = {
+      id: tempId,
+      name: teamName.trim(),
+      description: teamDescription.trim() || '',
+      createdBy: user?.id || '',
+      createdAt: new Date().toISOString(),
+      owner: {
+        id: user?.id || '',
+        email: user?.email || '',
+        displayName: user?.name || 'You',
+      },
+      members: [{
+        id: `temp-member-${Date.now()}`,
+        role: 'owner',
+        user: {
+          id: user?.id || '',
+          email: user?.email || '',
+          displayName: user?.name || 'You',
+        },
+      }],
+      _count: { members: 1 },
+      isTemp: true,
+    };
+    setTeams(prev => [optimisticTeam, ...prev]);
 
     try {
-      if (!session?.access_token) {
-        setError('Not authenticated');
-        return;
-      }
-
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: {
@@ -131,15 +161,18 @@ export default function TeamsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setTeams(prev => [data.team, ...prev]);
+        // Replace temp team with real team
+        setTeams(prev => [data.team, ...prev.filter(t => t.id !== tempId)]);
         setTeamName("");
         setTeamDescription("");
         setOpen(false);
       } else {
+        // Remove temp team and show error
+        setTeams(prev => prev.filter(t => t.id !== tempId));
         setError(data.error || 'Failed to create team');
       }
     } catch (error) {
-      console.error('Create team error:', error);
+      setTeams(prev => prev.filter(t => t.id !== tempId));
       setError('Failed to create team');
     } finally {
       setCreating(false);
@@ -244,7 +277,12 @@ export default function TeamsPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {teams.map((team) => (
-          <Card key={team.id} className="p-6 hover:shadow-lg transition-shadow">
+          <Card key={team.id} className="p-6 hover:shadow-lg transition-shadow opacity-100 relative">
+            {'isTemp' in team && team.isTemp && (
+              <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            )}
             <div className="space-y-4">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -255,7 +293,6 @@ export default function TeamsPage() {
                 </div>
                 {getRoleIcon(team)}
               </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />

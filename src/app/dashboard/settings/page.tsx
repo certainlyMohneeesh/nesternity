@@ -25,6 +25,9 @@ import {
   Download,
   Upload
 } from "lucide-react";
+import { ProfileForm } from '@/components/settings/ProfileForm';
+import { PreferencesForm } from '@/components/settings/PreferencesForm';
+import { BillingSection } from '@/components/settings/BillingSection';
 
 interface UserSettings {
   id: string;
@@ -239,47 +242,8 @@ export default function SettingsPage() {
                 Update your account profile information and email address.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
-                  <Input
-                    id="displayName"
-                    value={settings.displayName || ''}
-                    onChange={(e) => setSettings({ ...settings, displayName: e.target.value })}
-                    placeholder="Your display name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="avatarUrl">Avatar URL</Label>
-                <Input
-                  id="avatarUrl"
-                  type="url"
-                  value={settings.avatarUrl || ''}
-                  onChange={(e) => setSettings({ ...settings, avatarUrl: e.target.value })}
-                  placeholder="https://example.com/avatar.jpg"
-                />
-              </div>
-              <Button 
-                onClick={() => saveProfile({
-                  displayName: settings.displayName,
-                  email: settings.email,
-                  avatarUrl: settings.avatarUrl
-                })}
-                disabled={saving}
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
+            <CardContent>
+              <ProfileForm settings={settings} onSave={saveProfile} saving={saving} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -335,51 +299,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Subscription & Billing
-              </CardTitle>
-              <CardDescription>
-                Manage your subscription and billing information.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {subscription ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">Current Plan</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Status: <Badge variant={subscription.status === 'active' ? 'default' : 'secondary'}>
-                          {subscription.status}
-                        </Badge>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        Next billing: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline">Manage Subscription</Button>
-                    <Button variant="outline">View Invoices</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h4 className="font-medium mb-2">No Active Subscription</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Subscribe to unlock premium features
-                  </p>
-                  <Button>View Plans</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <BillingSection />
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
@@ -393,74 +313,8 @@ export default function SettingsPage() {
                 Customize your experience with theme and regional settings.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <Select
-                    value={settings.theme}
-                    onValueChange={(value: 'light' | 'dark' | 'system') => 
-                      setSettings({ ...settings, theme: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">
-                        <div className="flex items-center gap-2">
-                          <Sun className="h-4 w-4" />
-                          Light
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="dark">
-                        <div className="flex items-center gap-2">
-                          <Moon className="h-4 w-4" />
-                          Dark
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="system">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4" />
-                          System
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Week starts on</Label>
-                  <Select
-                    value={settings.weekStart}
-                    onValueChange={(value: 'monday' | 'sunday') => 
-                      setSettings({ ...settings, weekStart: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monday">Monday</SelectItem>
-                      <SelectItem value="sunday">Sunday</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Input
-                  value={settings.timezone}
-                  onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                  placeholder="America/New_York"
-                />
-              </div>
-              <Button onClick={() => saveProfile({
-                theme: settings.theme,
-                weekStart: settings.weekStart,
-                timezone: settings.timezone
-              })}>
-                Save Preferences
-              </Button>
+            <CardContent>
+              <PreferencesForm settings={settings} onSave={saveProfile} saving={saving} />
             </CardContent>
           </Card>
         </TabsContent>

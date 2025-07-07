@@ -95,14 +95,33 @@ export function ClientList() {
     }
   }
 
-  const handleFormSuccess = () => {
+  // Optimistic client creation
+  const handleOptimisticClientCreate = (newClient: Client & { _rollback?: boolean }) => {
+    if (newClient._rollback) {
+      setClients(prev => prev.filter(c => c.id !== newClient.id))
+    } else {
+      setClients(prev => [newClient, ...prev])
+    }
+  };
+
+  const handleFormSuccess = (optimisticClient?: Client) => {
     setShowForm(false)
     setEditingClient(null)
+    if (optimisticClient) {
+      handleOptimisticClientCreate(optimisticClient)
+    }
     fetchClients()
   }
 
   if (loading) {
-    return <div>Loading clients...</div>
+      return (
+      <div className="flex-1 flex items-center justify-center min-h-[200px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading clients...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -123,6 +142,7 @@ export function ClientList() {
             <ClientForm
               onSuccess={handleFormSuccess}
               onCancel={() => setShowForm(false)}
+              onOptimisticCreate={handleOptimisticClientCreate}
             />
           </DialogContent>
         </Dialog>

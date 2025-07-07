@@ -40,11 +40,12 @@ interface Project {
 interface ClientFormProps {
   client?: ClientFormData & { id: string; projects?: Project[] }
   teamId?: string  // Make teamId optional
-  onSuccess?: () => void
+  onSuccess?: (optimisticClient?: any) => void
   onCancel?: () => void
+  onOptimisticCreate?: (client: any) => void
 }
 
-export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormProps) {
+export function ClientForm({ client, teamId, onSuccess, onCancel, onOptimisticCreate }: ClientFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(
@@ -107,6 +108,16 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
 
   const onSubmit = async (data: ClientFormData) => {
     setIsLoading(true)
+    const optimisticClient = {
+      ...data,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: data.status || 'PROSPECT',
+      _count: { invoices: 0, projects: 0 },
+    };
+    if (!client && onOptimisticCreate) {
+      onOptimisticCreate(optimisticClient)
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session || !session.access_token) {
@@ -142,8 +153,7 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save client')
+        throw new Error((await response.json()).error || 'Failed to save client')
       }
 
       toast.success(client ? 'Client updated successfully' : 'Client created successfully')
@@ -151,6 +161,9 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
       setSelectedProjectIds([])
       onSuccess?.()
     } catch (error) {
+      if (!client && onOptimisticCreate) {
+        onOptimisticCreate({ ...optimisticClient, _rollback: true })
+      }
       console.error('Error saving client:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to save client')
     } finally {
