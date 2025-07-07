@@ -52,18 +52,20 @@ model Subscription {
 }
 
 model Client {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String
   email         String
   phone         String?
   company       String?
   address       String?
   notes         String?
-  createdBy     String    @map("created_by")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  createdByUser User      @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
+  budget        Float?       // Added budget field for client budget management
+  status        ClientStatus @default(PROSPECT)
+  createdBy     String       @map("created_by")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  createdByUser User         @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
   invoices      Invoice[]
-  projects      Project[] @relation("ClientProjects")
+  projects      Project[]    @relation("ClientProjects")
 
   @@index([createdAt(sort: Desc)], map: "idx_clients_created_at_desc")
   @@index([createdBy], map: "idx_clients_created_by")
@@ -457,4 +459,10 @@ enum ProjectStatus {
   ON_HOLD
   COMPLETED
   CANCELLED
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
 }

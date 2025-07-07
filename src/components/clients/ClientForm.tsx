@@ -23,6 +23,8 @@ const clientSchema = z.object({
   company: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
+  budget: z.number().min(0, 'Budget must be positive').optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PROSPECT']).optional(),
   projectIds: z.array(z.string()).optional(),
 })
 
@@ -65,6 +67,8 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
       company: '',
       address: '',
       notes: '',
+      budget: undefined,
+      status: 'PROSPECT',
       projectIds: [],
     },
   })
@@ -205,6 +209,37 @@ export function ClientForm({ client, teamId, onSuccess, onCancel }: ClientFormPr
                 {...register('company')}
                 placeholder="Company name"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget (Optional)</Label>
+              <Input
+                id="budget"
+                type="number"
+                min="0"
+                step="0.01"
+                {...register('budget', { valueAsNumber: true })}
+                placeholder="10000.00"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                defaultValue={client?.status || 'PROSPECT'}
+                onValueChange={(value) => setValue('status', value as 'ACTIVE' | 'INACTIVE' | 'PROSPECT')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PROSPECT">Prospect</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

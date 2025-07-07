@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, phone, company, address, notes } = body;
+    const { name, email, phone, company, address, notes, budget, status } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
         company,
         address,
         notes,
+        budget,
+        status: status || 'PROSPECT',
         createdBy: user.id,
       },
     });
