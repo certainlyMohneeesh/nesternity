@@ -62,6 +62,7 @@ export default function IssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [boards, setBoards] = useState<Board[]>([])
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -74,7 +75,8 @@ export default function IssuesPage() {
     description: '',
     priority: 'MEDIUM' as const,
     projectId: '',
-    boardId: ''
+    boardId: '',
+    assignedTo: ''
   })
 
   // Helper function to get auth headers
@@ -149,53 +151,94 @@ export default function IssuesPage() {
     }
   }
 
-  const handleCreateIssue = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Fetch team members for assignment
+  const fetchTeamMembers = async () => {
     try {
-      const headers = await getAuthHeaders()
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/teams', { headers });
+      if (response.ok) {
+        const data = await response.json();
+        // Flatten all members from all teams, deduplicate by user id
+        const members = (data.teams || []).flatMap((team: any) => team.members.map((m: any) => m.user));
+        const uniqueMembers = Array.from(new Map(members.map((m: any) => [m.id, m])).values());
+        setTeamMembers(uniqueMembers);
+      }
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  // Optimistic update for status change
+  const handleStatusChange = async (issueId: string, newStatus: string) => {
+    setIssues((prev) => prev.map(issue => issue.id === issueId ? { ...issue, status: newStatus as Issue['status'] } : issue));
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/issues/${issueId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!response.ok) {
+        // Rollback if failed
+        fetchIssues();
+        const error = await response.json().catch(() => ({}));
+        toast.error(error.error || 'Failed to update issue status');
+      }
+    } catch (error) {
+      fetchIssues();
+      console.error('Error updating issue:', error);
+      toast.error('Failed to update issue status');
+    }
+  };
+
+  // Optimistic update for issue creation
+  const handleCreateIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const tempId = `temp-${Date.now()}`;
+    const optimisticIssue: Issue = {
+      id: tempId,
+      title: formData.title,
+      description: formData.description,
+      status: 'OPEN',
+      priority: formData.priority as Issue['priority'],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      assignee: teamMembers.find(m => m.id === formData.assignedTo) || undefined,
+      creator: { id: '', email: '' },
+      project: projects.find(p => p.id === formData.projectId) || undefined,
+      board: boards.find(b => b.id === formData.boardId) || undefined,
+    };
+    setIssues(prev => [optimisticIssue, ...prev]);
+    try {
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/issues', {
         method: 'POST',
         headers,
         body: JSON.stringify({
           ...formData,
           projectId: formData.projectId === 'none' ? null : formData.projectId || null,
-          boardId: formData.boardId === 'none' ? null : formData.boardId || null
+          boardId: formData.boardId === 'none' ? null : formData.boardId || null,
+          assignedTo: formData.assignedTo || null
         })
-      })
-
+      });
       if (response.ok) {
-        toast.success('Issue created successfully')
-        setShowForm(false)
-        setFormData({ title: '', description: '', priority: 'MEDIUM', projectId: '', boardId: '' })
-        fetchIssues()
+        toast.success('Issue created successfully');
+        setShowForm(false);
+        setFormData({ title: '', description: '', priority: 'MEDIUM', projectId: '', boardId: '', assignedTo: '' });
+        fetchIssues();
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to create issue')
+        setIssues(prev => prev.filter(issue => issue.id !== tempId));
+        const error = await response.json();
+        toast.error(error.error || 'Failed to create issue');
       }
     } catch (error) {
-      console.error('Error creating issue:', error)
-      toast.error('Failed to create issue')
-    }
-  }
-
-  const handleStatusChange = async (issueId: string, newStatus: string) => {
-    try {
-      const headers = await getAuthHeaders()
-      const response = await fetch(`/api/issues/${issueId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: newStatus })
-      })
-
-      if (response.ok) {
-        toast.success('Issue status updated')
-        fetchIssues()
-      } else {
-        toast.error('Failed to update issue status')
-      }
-    } catch (error) {
-      console.error('Error updating issue:', error)
-      toast.error('Failed to update issue status')
+      setIssues(prev => prev.filter(issue => issue.id !== tempId));
+      console.error('Error creating issue:', error);
+      toast.error('Failed to create issue');
     }
   }
 
@@ -218,7 +261,14 @@ export default function IssuesPage() {
   }, [statusFilter, priorityFilter, searchQuery])
 
   if (loading) {
-    return <div className="p-6">Loading issues...</div>
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[200px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading issues...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -240,32 +290,23 @@ export default function IssuesPage() {
             <DialogHeader>
               <DialogTitle>Create New Issue</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateIssue} className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleCreateIssue} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    className="mt-1"
+                  />
+                </div>
                 <div>
                   <Label htmlFor="priority">Priority</Label>
                   <Select value={formData.priority} onValueChange={(value: any) => setFormData({ ...formData, priority: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="LOW">Low</SelectItem>
@@ -275,10 +316,41 @@ export default function IssuesPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="assignee">Assignee (Optional)</Label>
+                  <Select value={formData.assignedTo || 'none'} onValueChange={(value) => setFormData({ ...formData, assignedTo: value === 'none' ? '' : value })}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Select team member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.displayName || member.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={4}
+                  required
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="project">Project (Optional)</Label>
                   <Select value={formData.projectId || 'none'} onValueChange={(value) => setFormData({ ...formData, projectId: value === 'none' ? '' : value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1 w-full">
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,7 +366,7 @@ export default function IssuesPage() {
                 <div>
                   <Label htmlFor="board">Board (Optional)</Label>
                   <Select value={formData.boardId || 'none'} onValueChange={(value) => setFormData({ ...formData, boardId: value === 'none' ? '' : value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1 w-full">
                       <SelectValue placeholder="Select board" />
                     </SelectTrigger>
                     <SelectContent>
@@ -313,7 +385,7 @@ export default function IssuesPage() {
                   </Select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
                 </Button>

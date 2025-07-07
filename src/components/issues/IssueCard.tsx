@@ -1,5 +1,6 @@
 'use client'
 
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 interface Issue {
   id: string
@@ -51,6 +53,12 @@ interface Issue {
   _count?: {
     comments: number
   }
+  teamMembers?: {
+    id: string
+    email: string
+    displayName?: string
+    avatarUrl?: string
+  }[]
 }
 
 interface IssueCardProps {
@@ -58,6 +66,7 @@ interface IssueCardProps {
   onStatusChange: (issueId: string, status: string) => void
   onEdit?: (issue: Issue) => void
   onDelete?: (issueId: string) => void
+  onAssign?: (issueId: string, userId: string) => void
 }
 
 const STATUS_CONFIG = {
@@ -98,7 +107,7 @@ const PRIORITY_CONFIG = {
   CRITICAL: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300', label: 'Critical' }
 }
 
-export function IssueCard({ issue, onStatusChange, onEdit, onDelete }: IssueCardProps) {
+export function IssueCard({ issue, onStatusChange, onEdit, onDelete, onAssign }: IssueCardProps & { onAssign?: (issueId: string, userId: string) => void }) {
   const statusConfig = STATUS_CONFIG[issue.status]
   const priorityConfig = PRIORITY_CONFIG[issue.priority]
   const StatusIcon = statusConfig.icon
@@ -108,8 +117,13 @@ export function IssueCard({ issue, onStatusChange, onEdit, onDelete }: IssueCard
     return email?.split('@')[0].slice(0, 2).toUpperCase() || 'U'
   }
 
+  const [showAssignSheet, setShowAssignSheet] = useState(false);
+
   return (
-    <Card className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${statusConfig.bgColor} ${statusConfig.borderColor} border-l-4`}>
+    <Card
+      className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-l-4 ${statusConfig.bgColor} ${statusConfig.borderColor}`}
+      style={{ borderLeftWidth: 6 }}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 flex-1">
@@ -122,28 +136,58 @@ export function IssueCard({ issue, onStatusChange, onEdit, onDelete }: IssueCard
             <Badge variant="secondary" className={`${priorityConfig.color} text-xs font-medium`}>
               {priorityConfig.label}
             </Badge>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {onEdit && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0" 
-                  onClick={() => onEdit(issue)}
-                >
-                  <Edit className="w-3 h-3" />
+            <Sheet open={showAssignSheet} onOpenChange={setShowAssignSheet}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Edit Assignment">
+                  <User className="w-3 h-3" />
                 </Button>
-              )}
-              {onDelete && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700" 
-                  onClick={() => onDelete(issue.id)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              )}
-            </div>
+              </SheetTrigger>
+              <SheetContent side="right" className="max-w-xs">
+                <SheetHeader>
+                  <SheetTitle>Assign to Team Member</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-2">
+                  {onAssign && issue.teamMembers && issue.teamMembers.length > 0 ? (
+                    issue.teamMembers.map((member: any) => (
+                      <Button
+                        key={member.id}
+                        variant={issue.assignee?.id === member.id ? 'default' : 'outline'}
+                        className="w-full justify-start mb-2"
+                        onClick={() => { onAssign(issue.id, member.id); setShowAssignSheet(false); }}
+                      >
+                        <Avatar className="w-5 h-5 mr-2">
+                          <AvatarImage src={member.avatarUrl} />
+                          <AvatarFallback>{member.displayName?.[0] || member.email?.[0]}</AvatarFallback>
+                        </Avatar>
+                        {member.displayName || member.email}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No team members found.</div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            {onEdit && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0" 
+                onClick={() => onEdit(issue)}
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 text-red-600 hover:text-red-700" 
+                onClick={() => onDelete(issue.id)}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
