@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronLeft, 
@@ -15,7 +15,9 @@ import {
   Building2,
   FolderKanban,
   FileText,
-  Receipt
+  Receipt,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +28,7 @@ import { ProjectList } from '@/components/demo/DemoProjectCard';
 import { InvoiceList } from '@/components/demo/DemoInvoiceCard';
 import DemoTeamMembers from '@/components/ui/DemoTeamMembers';
 import { IssueCard } from '@/components/issues/IssueCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const BoardComponent = dynamic(() => import('@/components/boards/DemoBoardComponent'), {
   ssr: false,
@@ -35,6 +38,37 @@ const BoardComponent = dynamic(() => import('@/components/boards/DemoBoardCompon
     </div>
   )
 });
+
+const DEMO_STATUS_CONFIG = {
+  OPEN: {
+    icon: AlertTriangle,
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-50 dark:bg-blue-950',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+    label: 'Open'
+  },
+  IN_PROGRESS: {
+    icon: Clock,
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-950',
+    borderColor: 'border-yellow-200 dark:border-yellow-800',
+    label: 'In Progress'
+  },
+  RESOLVED: {
+    icon: CheckCircle2,
+    color: 'text-green-500',
+    bgColor: 'bg-green-50 dark:bg-green-950',
+    borderColor: 'border-green-200 dark:border-green-800',
+    label: 'Resolved'
+  },
+  CLOSED: {
+    icon: XCircle,
+    color: 'text-gray-500',
+    bgColor: 'bg-gray-50 dark:bg-gray-950',
+    borderColor: 'border-gray-200 dark:border-gray-800',
+    label: 'Closed'
+  }
+};
 
 interface DemoStep {
   id: number;
@@ -288,6 +322,8 @@ const demoInvoices = [
 export default function InteractiveDemo() {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [demoIssueStatus, setDemoIssueStatus] = useState(demoIssue.status);
+  const demoIssueWithStatus = { ...demoIssue, status: demoIssueStatus };
 
   const handleNext = () => {
     if (currentStep < demoSteps.length) {
@@ -319,6 +355,8 @@ export default function InteractiveDemo() {
       }
     }, 500);
   };
+
+  const handleDemoStatusChange = (id: string, status: string) => setDemoIssueStatus(status as any);
 
   const currentStepData = demoSteps.find(step => step.id === currentStep);
 
@@ -414,11 +452,10 @@ export default function InteractiveDemo() {
               <p className="text-muted-foreground">Track and resolve issues to keep your project on track</p>
             </div>
             <div className="max-w-2xl mx-auto">
-              <IssueCard 
-                issue={demoIssue} 
-                onStatusChange={() => {}} 
-                onEdit={() => {}} 
-                onDelete={() => {}} 
+              <IssueCard
+                issue={demoIssueWithStatus}
+                onStatusChange={handleDemoStatusChange}
+                onDelete={() => {}}
               />
             </div>
             <div className="text-center">
