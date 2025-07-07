@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <StripeProvider>
-        {/* <ThemeProvider attribute="class" defaultTheme="light" enableSystem> */}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="flex min-h-screen bg-background">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:flex-col w-64 border-r bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </main>
             </div>
           </div>
-        {/* </ThemeProvider> */}
+        </ThemeProvider>
       </StripeProvider>
     </SessionProvider>
   );
