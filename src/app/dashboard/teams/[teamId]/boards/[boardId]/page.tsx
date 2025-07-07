@@ -165,64 +165,59 @@ function SortableTask({
       ref={setNodeRef}
       style={style}
       className={cn(
-      "p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 group border-l-4 bg-white",
-      task.priority === "HIGH" && "border-l-red-500",
-      task.priority === "MEDIUM" && "border-l-yellow-500", 
-      task.priority === "LOW" && "border-l-green-500",
-      !task.priority && "border-l-gray-300",
-      isDragging && "opacity-50 shadow-2xl rotate-2 scale-105"
+        "p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all duration-200 group border-l-4 bg-card border-border",
+        task.priority === "HIGH" && "border-l-red-500",
+        task.priority === "MEDIUM" && "border-l-yellow-500", 
+        task.priority === "LOW" && "border-l-green-500",
+        !task.priority && "border-l-gray-300",
+        isDragging && "opacity-50 shadow-2xl rotate-2 scale-105"
       )}
       {...attributes}
       {...listeners}
     >
       <div className="flex items-start justify-between mb-2">
-      <div className="font-semibold text-sm text-foreground leading-tight flex-1">
-        {task.title}
-      </div>
-      <div className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4m-4 0l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-        </svg>
-      </div>
-      </div>
-      
-      {task.description && (
-      <div className="text-xs text-muted-foreground mb-2 line-clamp-2 leading-relaxed">{task.description}</div>
-      )}
-      
-      <div className="flex items-center justify-between mb-2">
-      <div className="flex items-center gap-2">
-        {task.priority && (
-        <div className={cn(
-          "text-xs font-medium px-2 py-0.5 rounded-full text-center min-w-[50px]",
-          task.priority === "HIGH" && "border border-red-200 text-red-700 bg-red-50",
-          task.priority === "MEDIUM" && "border border-yellow-200 text-yellow-700 bg-yellow-50",
-          task.priority === "LOW" && "border border-green-200 text-green-700 bg-green-50"
-        )}>
-          {task.priority}
+        <div className="font-semibold text-sm text-foreground leading-tight flex-1">
+          {task.title}
         </div>
+        <div className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4m-4 0l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </div>
+      </div>
+      {task.description && (
+        <div className="text-xs text-muted-foreground mb-2 line-clamp-2 leading-relaxed">{task.description}</div>
+      )}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          {task.priority && (
+            <div className={cn(
+              "text-xs font-medium px-2 py-0.5 rounded-full text-center min-w-[50px] border",
+              task.priority === "HIGH" && "border-red-200 text-red-700 bg-red-50 dark:border-red-700 dark:text-red-200 dark:bg-red-900/60",
+              task.priority === "MEDIUM" && "border-yellow-200 text-yellow-700 bg-yellow-50 dark:border-yellow-700 dark:text-yellow-200 dark:bg-yellow-900/60",
+              task.priority === "LOW" && "border-green-200 text-green-700 bg-green-50 dark:border-green-700 dark:text-green-200 dark:bg-green-900/60"
+            )}>
+              {task.priority}
+            </div>
+          )}
+        </div>
+        {task.dueDate && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium">{new Date(task.dueDate).toLocaleDateString()}</span>
+          </div>
         )}
       </div>
-      
-      {task.dueDate && (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span className="font-medium">{new Date(task.dueDate).toLocaleDateString()}</span>
-        </div>
-      )}
-      </div>
-      
       {task.assignee?.displayName && (
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium shadow-sm">
-        {task.assignee.displayName.split(' ').map(n => n[0]).join('')}
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium shadow-sm">
+            {task.assignee.displayName.split(' ').map(n => n[0]).join('')}
+          </div>
+          <span className="text-xs text-muted-foreground font-medium">{task.assignee.displayName}</span>
         </div>
-        <span className="text-xs text-muted-foreground font-medium">{task.assignee.displayName}</span>
-      </div>
       )}
-
       {/* Action buttons - only visible on hover */}
       <div className="flex items-center justify-end gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <AlertDialog>
@@ -230,7 +225,7 @@ function SortableTask({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/40"
               onClick={(e) => e.stopPropagation()}
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +257,7 @@ function SortableTask({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/40"
               onClick={(e) => e.stopPropagation()}
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

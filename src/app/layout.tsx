@@ -43,7 +43,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" dir="ltr" className={inter.variable}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={inter.variable}
+      suppressHydrationWarning
+    >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#18181b" />
@@ -59,8 +64,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               logo: "https://nesternity.cyth.me/nesternity_l.png",
               sameAs: [
                 "https://twitter.com/nesternity",
-                "https://www.linkedin.com/company/nesternity"
-              ]
+                "https://www.linkedin.com/company/nesternity",
+              ],
             }),
           }}
         />
