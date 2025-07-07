@@ -242,6 +242,56 @@ export default function IssuesPage() {
     }
   }
 
+  // Edit Issue
+  const handleEditIssue = async (updatedIssue: Issue) => {
+    setIssues((prev) => prev.map(issue => issue.id === updatedIssue.id ? { ...issue, ...updatedIssue } : issue));
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/issues/${updatedIssue.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          title: updatedIssue.title,
+          description: updatedIssue.description,
+          priority: updatedIssue.priority,
+          status: updatedIssue.status,
+          assignedTo: updatedIssue.assignee?.id,
+        })
+      });
+      if (!response.ok) {
+        fetchIssues();
+        const error = await response.json().catch(() => ({}));
+        toast.error(error.error || 'Failed to update issue');
+      }
+    } catch (error) {
+      fetchIssues();
+      console.error('Error updating issue:', error);
+      toast.error('Failed to update issue');
+    }
+  };
+
+  // Delete Issue
+  const handleDeleteIssue = async (issueId: string) => {
+    const prevIssues = issues;
+    setIssues((prev) => prev.filter(issue => issue.id !== issueId));
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/issues/${issueId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!response.ok) {
+        setIssues(prevIssues); // Rollback
+        const error = await response.json().catch(() => ({}));
+        toast.error(error.error || 'Failed to delete issue');
+      }
+    } catch (error) {
+      setIssues(prevIssues);
+      console.error('Error deleting issue:', error);
+      toast.error('Failed to delete issue');
+    }
+  };
+
   const filteredIssues = issues.filter(issue => {
     const matchesStatus = statusFilter === 'all' || issue.status === statusFilter
     const matchesPriority = priorityFilter === 'all' || issue.priority === priorityFilter
@@ -459,6 +509,8 @@ export default function IssuesPage() {
               key={issue.id}
               issue={issue}
               onStatusChange={handleStatusChange}
+              onEdit={handleEditIssue}
+              onDelete={handleDeleteIssue}
             />
           ))}
         </div>

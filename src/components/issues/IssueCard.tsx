@@ -168,16 +168,6 @@ export function IssueCard({ issue, onStatusChange, onEdit, onDelete, onAssign }:
                 </div>
               </SheetContent>
             </Sheet>
-            {onEdit && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={() => onEdit(issue)}
-              >
-                <Edit className="w-3 h-3" />
-              </Button>
-            )}
             {onDelete && (
               <Button 
                 variant="ghost" 
