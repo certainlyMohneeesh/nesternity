@@ -33,7 +33,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, email, phone, company, address, notes, projectIds } = body;
+    const { name, email, phone, company, address, notes, budget, currency, projectIds } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -62,6 +62,8 @@ export async function PUT(
         company,
         address,
         notes,
+        budget,
+        currency, // Save currency
         projects: projectIds ? {
           set: projectIds.map((id: string) => ({ id }))
         } : {
