@@ -128,7 +128,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, clientId, startDate, endDate, status } = body;
+    const { name, description, clientId, startDate, endDate, status, goal } = body;
 
     // If clientId is provided, verify the client exists and user has access
     if (clientId) {
@@ -151,10 +151,11 @@ export async function PUT(
       data: {
         name,
         description,
-        clientId: clientId || null,
+        ...(clientId ? { client: { connect: { id: clientId } } } : {}),
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         status,
+        ...(goal !== undefined ? { goal: Number(goal) } : {}),
       },
       include: {
         client: true,

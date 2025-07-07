@@ -155,15 +155,21 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <a
+            href="/dashboard/projects"
             className="flex-1"
-            onClick={() => onViewProjects?.(client)}
+            tabIndex={-1}
           >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            View Projects
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => onViewProjects?.(client)}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              View Projects
+            </Button>
+          </a>
           <Button 
             variant="ghost" 
             size="sm"

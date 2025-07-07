@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { ProjectCard } from './ProjectCard';
+
 import { Trash2, Edit, Plus, Users, Calendar, Building2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,6 +11,16 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+interface BoardWithTasks {
+  id: string;
+  name: string;
+  tasks: { id: string; title: string; status: string }[];
+}
+
+interface ProjectWithTasks extends Project {
+  boards: BoardWithTasks[];
+}
 
 interface Project {
   id: string;
@@ -65,7 +75,7 @@ const statusLabels = {
 };
 
 export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: ProjectListProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithTasks[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,29 +83,48 @@ export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: Proj
     fetchProjects();
   }, [refreshTrigger]);
 
+  const fetchBoardsWithTasks = async (projectId: string, token: string) => {
+    const boardsRes = await fetch(`/api/projects/${projectId}/boards`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!boardsRes.ok) return [];
+    const boards = await boardsRes.json();
+    const boardsWithTasks = await Promise.all(
+      boards.map(async (board: any) => {
+        const tasksRes = await fetch(`/api/boards/${board.id}/tasks`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const tasks = tasksRes.ok ? await tasksRes.json() : [];
+        return { ...board, tasks };
+      })
+    );
+    return boardsWithTasks;
+  };
+
   const fetchProjects = async () => {
     try {
       setLoading(true);
       setError(null);
-      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         setError('You must be logged in to view projects');
         return;
       }
-
       const response = await fetch('/api/projects', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch projects');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch projects');
       const projectsData = await response.json();
-      setProjects(projectsData);
+      // Fetch boards and tasks for each project
+      const projectsWithTasks = await Promise.all(
+        projectsData.map(async (project: Project) => {
+          const boards = await fetchBoardsWithTasks(project.id, session.access_token);
+          return { ...project, boards };
+        })
+      );
+      setProjects(projectsWithTasks);
     } catch (err) {
       console.error('Error fetching projects:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch projects');
@@ -183,75 +212,15 @@ export function ProjectList({ onEdit, onDelete, onCreate, refreshTrigger }: Proj
           Create Project
         </Button>
       </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
-          <Card key={project.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{project.name}</CardTitle>
-                  <CardDescription className="mt-1">
-                    {project.description || 'No description'}
-                  </CardDescription>
-                </div>
-                <Badge className={statusColors[project.status]}>
-                  {statusLabels[project.status]}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                {project.client && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Building2 className="h-4 w-4" />
-                    <span>{project.client.name}</span>
-                    {project.client.company && (
-                      <span className="text-gray-400">({project.client.company})</span>
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Users className="h-4 w-4" />
-                  <span>{project.team.name}</span>
-                </div>
-
-                {(project.startDate || project.endDate) && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {formatDate(project.startDate)} - {formatDate(project.endDate) || 'Ongoing'}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex gap-4 text-sm text-gray-600 pt-2">
-                  <span>{project._count.boards} boards</span>
-                  <span>{project._count.issues} issues</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(project)}
-                  className="flex-1"
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(project)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ProjectCard
+            key={project.id}
+            project={project}
+            issuesCount={project._count.issues}
+            onEdit={() => onEdit(project)}
+            onDelete={() => handleDelete(project)}
+          />
         ))}
       </div>
     </div>

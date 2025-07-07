@@ -39,6 +39,7 @@ interface Project {
   startDate?: string;
   endDate?: string;
   status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+  goal?: number;
 }
 
 interface ProjectFormProps {
@@ -50,6 +51,7 @@ interface ProjectFormProps {
     startDate?: string;
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+    goal?: number;
   };
   onSubmit: (project: {
     name: string;
@@ -59,6 +61,7 @@ interface ProjectFormProps {
     startDate?: string;
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+    goal?: number;
   }) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -73,6 +76,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
     startDate?: string;
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+    goal?: number;
   }>({
     name: project?.name || '',
     description: project?.description || '',
@@ -81,6 +85,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
     startDate: project?.startDate || '',
     endDate: project?.endDate || '',
     status: project?.status || 'PLANNING',
+    goal: project?.goal || undefined,
   });
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -145,7 +150,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
     onSubmit(formData);
   };
 
-  const handleChange = (field: keyof typeof formData, value: string) => {
+  const handleChange = (field: keyof typeof formData, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -256,6 +261,18 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
             onChange={(e) => handleChange('endDate', e.target.value)}
           />
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="goal">Goal (Number of Tasks)</Label>
+        <Input
+          id="goal"
+          type="number"
+          min={1}
+          value={formData.goal ?? ''}
+          onChange={e => handleChange('goal', e.target.value ? Number(e.target.value) : undefined)}
+          placeholder="Enter the number of tasks for this project"
+        />
       </div>
 
       <div className="flex gap-2 pt-4">
