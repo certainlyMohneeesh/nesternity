@@ -181,10 +181,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Fetch the board with the new lists
+    // Fetch the board with the new lists and project relation
     const createdBoard = await (db as any).board.findUnique({
       where: { id: board.id },
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            client: {
+              select: {
+                id: true,
+                name: true,
+                company: true,
+              },
+            },
+          },
+        },
         lists: {
           orderBy: { position: 'asc' },
           include: {
