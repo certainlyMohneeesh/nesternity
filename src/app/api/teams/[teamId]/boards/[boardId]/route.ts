@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, settings } = await request.json();
+    const { name, description, settings, projectId } = await request.json();
 
     // Check team admin access
     const hasAdminAccess = await checkTeamAdminAccess(teamId, user.id);
@@ -114,9 +114,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       data: {
         name,
         description,
-        settings
+        settings,
+        ...(projectId !== undefined ? { projectId } : {})
       },
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            client: {
+              select: {
+                id: true,
+                name: true,
+                company: true,
+              },
+            },
+          },
+        },
         lists: {
           where: { archived: false },
           orderBy: { position: 'asc' },

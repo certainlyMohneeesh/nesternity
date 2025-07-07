@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         address,
         notes,
         budget,
-        currency, // Save currency
+        currency, 
         status: status || 'PROSPECT',
         createdBy: user.id,
       },
