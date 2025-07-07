@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { GripVertical, Clock, User } from "lucide-react";
+import { snapCenterToCursor } from '@dnd-kit/modifiers';
 
 interface Task {
   id: string;
@@ -198,6 +199,16 @@ function DroppableList({ list, tasks }: DroppableListProps) {
   );
 }
 
+// Custom modifier to offset overlay horizontally by half width, but not vertically
+function offsetOverlayHalfWidth({ transform, draggingNodeRect }: { transform: any; draggingNodeRect: any }) {
+  if (!draggingNodeRect) return transform;
+  return {
+    ...transform,
+    x: transform.x - draggingNodeRect.width / 2,
+    // y: transform.y // keep vertical as default
+  };
+}
+
 export default function BoardComponent() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -328,7 +339,7 @@ export default function BoardComponent() {
             })}
           </div>
           
-          <DragOverlay>
+          <DragOverlay modifiers={[offsetOverlayHalfWidth]}>
             {activeTask ? (
               <div className="rotate-2 opacity-95 scale-105">
                 <SortableTask task={activeTask} />

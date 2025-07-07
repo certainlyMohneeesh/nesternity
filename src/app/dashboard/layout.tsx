@@ -10,6 +10,7 @@ import NotificationCenter from "@/components/notifications/notification-center";
 import { ThemeProvider } from "@/components/theme-provider/theme-provider";
 import { StripeProvider } from "@/components/providers/StripeProvider";
 import { Menu, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from "lucide-react";
+import ThemePreferenceAlert from "@/components/ThemePreferenceAlert";
 
 // Define nav links without icon components to avoid serialization issues
 const navLinks = [
@@ -39,7 +40,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <StripeProvider>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        {/* Force light mode as default and only allowed theme */}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} themes={["light"]}>
           <div className="flex min-h-screen bg-background">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex lg:flex-col w-64 border-r bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -107,6 +109,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {/* Main Content */}
               <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
                 <div className="max-w-7xl mx-auto">
+                  <ThemePreferenceAlert />
                   {children}
                 </div>
               </main>

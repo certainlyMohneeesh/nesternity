@@ -1,0 +1,2 @@
+// This file is a stub to ensure the @dnd-kit/modifiers package is installed.
+// Please run: pnpm add @dnd-kit/modifiers
