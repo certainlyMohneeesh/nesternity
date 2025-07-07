@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Shield } from "lucide-react";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -54,6 +54,18 @@ function LoginForm() {
       title="Sign in to your account"
       subtitle="Welcome back! Please enter your details."
     >
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              Notice
+            </span>
+          </div>
+          <p className="text-sm text-blue-700 mt-1">
+            If you are new to Nesternity, please register/sign-up first. If you have an account, use your email and password to sign in.
+          </p>
+        </div>
+
       <form onSubmit={handleLogin} className="space-y-6">
         <div>
           <Label htmlFor="email">Email address</Label>
