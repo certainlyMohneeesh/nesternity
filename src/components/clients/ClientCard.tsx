@@ -27,6 +27,7 @@ interface Client {
   address?: string;
   notes?: string;
   budget?: number;
+  currency?: string; // Add currency
   status: 'ACTIVE' | 'INACTIVE' | 'PROSPECT';
   createdAt: string;
   _count: {
@@ -52,11 +53,12 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
     }
   };
 
-  const formatCurrency = (amount?: number) => {
+  const formatCurrency = (amount?: number, currency?: string) => {
     if (amount === undefined || amount === null) return 'Not set';
-    return new Intl.NumberFormat('en-US', {
+    // Use the selected currency or fallback to USD
+    return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: 'USD',
+      currency: currency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -126,9 +128,9 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-green-600">
-              {formatCurrency(client.budget)}
+              {formatCurrency(client.budget, client.currency)}
             </div>
-            <div className="text-xs text-muted-foreground">Budget</div>
+            <div className="text-xs text-muted-foreground">Budget ({client.currency || 'USD'})</div>
           </div>
         </div>
 
