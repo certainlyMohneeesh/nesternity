@@ -219,6 +219,12 @@ function generatePasswordResetEmailHTML(data: PasswordResetEmailData, resetUrl: 
                     </a>
                 </div>
 
+              <!-- Expiry Badge -->
+                <div style="margin-top: 12px; display: inline-block; background-color: #fef3c7; color: #92400e; padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 9999px;">
+                   The link expires in 5 mins.
+                </div>
+            </div>
+
                 <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin-top: 30px;">
                     If the button doesn't work, copy and paste this link into your browser:<br>
                     <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
