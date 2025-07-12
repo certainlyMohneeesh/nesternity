@@ -7,17 +7,17 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata = {
-  title: "Nesternity CRM",
+  title: "Nesternity",
   description: "Modern SaaS CRM Dashboard for teams and projects.",
   keywords: "CRM, SaaS, Dashboard, Teams, Projects, Invoices, Tasks, Boards",
   openGraph: {
-    title: "Nesternity CRM",
+    title: "Nesternity",
     description: "Modern SaaS CRM Dashboard for teams and projects.",
     url: "https://nesternity.cyth.me",
-    siteName: "Nesternity CRM",
+    siteName: "Nesternity",
     images: [
       {
-        url: "/nesternity_l.png",
+        url: "/nesternity_W.png",
         width: 1200,
         height: 630,
         alt: "Nesternity CRM Dashboard",
@@ -29,14 +29,14 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@nesternity",
-    title: "Nesternity CRM",
+    title: "Nesternity",
     description: "Modern SaaS CRM Dashboard for teams and projects.",
-    image: "/nesternity_l.png",
+    image: "/nesternity_W.png",
   },
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
-    apple: "/nesternity_l.png",
+    apple: "/nesternity_W.png",
   },
   alternates: {
     canonical: "https://nesternity.cyth.me",
