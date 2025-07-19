@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body className="font-sans semi-bold bg-background text-foreground min-h-screen">
+      <body className="font-mono semi-bold bg-background text-foreground min-h-screen">
         {children}
         <CookieConsent />
         <Toaster position="bottom-center" richColors closeButton />
