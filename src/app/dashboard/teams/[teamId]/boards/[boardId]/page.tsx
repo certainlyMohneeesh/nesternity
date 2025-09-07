@@ -25,6 +25,7 @@ import { Calendar } from "@/components/ui/calendar";
 
 // React Query hooks
 import {
+  useBoardDetails,
   useBoardLists,
   useBoardTasks,
   useTeamMembers,
@@ -270,6 +271,12 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
   
   // React Query hooks for data fetching with intelligent caching
   const {
+    data: board,
+    isLoading: boardLoading,
+    error: boardError
+  } = useBoardDetails(stableParams.teamId, stableParams.boardId, !!session && !sessionLoading);
+  
+  const {
     data: lists = [],
     isLoading: listsLoading,
     error: listsError
@@ -312,7 +319,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
   );
 
   // Loading state
-  const isLoading = sessionLoading || listsLoading || tasksLoading;
+  const isLoading = sessionLoading || boardLoading || listsLoading || tasksLoading;
 
   // Memoize sorted tasks per list
   const sortedTasksByList = useMemo(() => {
@@ -324,8 +331,8 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
   }, [lists, tasks]);
 
   // Error handling
-  if (listsError || tasksError) {
-    const error = listsError || tasksError;
+  if (boardError || listsError || tasksError) {
+    const error = boardError || listsError || tasksError;
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -507,6 +514,12 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
 
   return (
     <div className="p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-2xl font-bold">{board?.name || 'Board'} Board</h2>
+        <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium border border-blue-200">
+          💡 Drag and drop tasks across lists to manage them
+        </div>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
