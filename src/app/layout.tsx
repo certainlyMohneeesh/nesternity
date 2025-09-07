@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ReactNode } from "react";
 import CookieConsent from "@/components/CookieConsent";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/providers/query-provider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -73,7 +74,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="font-sans semi-bold bg-background text-foreground min-h-screen">
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
         <CookieConsent />
         <Toaster position="bottom-center" richColors closeButton />
       </body>
