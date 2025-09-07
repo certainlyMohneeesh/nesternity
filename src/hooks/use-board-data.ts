@@ -48,12 +48,26 @@ interface TeamMember {
 // Query Keys
 export const boardQueryKeys = {
   all: ['board'] as const,
+  board: (teamId: string, boardId: string) => [...boardQueryKeys.all, 'details', teamId, boardId] as const,
   lists: (teamId: string, boardId: string) => [...boardQueryKeys.all, 'lists', teamId, boardId] as const,
   tasks: (teamId: string, boardId: string) => [...boardQueryKeys.all, 'tasks', teamId, boardId] as const,
   teamMembers: (teamId: string) => [...boardQueryKeys.all, 'team-members', teamId] as const,
 } as const;
 
 // Custom Hooks
+export function useBoardDetails(teamId: string, boardId: string, enabled = true) {
+  return useQuery({
+    queryKey: boardQueryKeys.board(teamId, boardId),
+    queryFn: async () => {
+      const response = await api.getBoard(teamId, boardId);
+      return response.board;
+    },
+    enabled,
+    staleTime: 10 * 60 * 1000, // 10 minutes (board details change less frequently)
+    gcTime: 20 * 60 * 1000, // 20 minutes
+  });
+}
+
 export function useBoardLists(teamId: string, boardId: string, enabled = true) {
   return useQuery({
     queryKey: boardQueryKeys.lists(teamId, boardId),
