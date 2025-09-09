@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { FixedSizeList as List } from "react-window";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useSession } from "@/components/auth/session-context";
-import { api, APIError } from "@/lib/api-client";
 import { toast } from "sonner";
 import { 
   Users, 
@@ -22,114 +21,24 @@ import {
   Target
 } from "lucide-react";
 
-interface DashboardData {
-  teams: Array<{
-    id: string;
-    name: string;
-    description?: string;
-    _count: {
-      members: number;
-      boards: number;
-    };
-  }>;
-  recentTasks: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    dueDate: string | null;
-    status: string;
-    archived: boolean;
-    list: {
-      name: string;
-      board: {
-        name: string;
-        team: {
-          name: string;
-        };
-      };
-    };
-  }>;
-  recentCompletedTasks: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    completedAt: string;
-    list: {
-      name: string;
-      board: {
-        name: string;
-        team: {
-          name: string;
-        };
-      };
-    };
-  }>;
-  stats: {
-    totalTeams: number;
-    totalBoards: number;
-    totalTasks: number;
-    activeTasks: number;
-    completedTasks: number;
-  };
-}
+// React Query hook
+import { useDashboardData } from "@/hooks/use-dashboard-data";
 
 export default function DashboardOverview() {
   const { session, loading: sessionLoading } = useSession();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  // React Query hook for dashboard data with intelligent caching
+  const {
+    data,
+    isLoading,
+    error,
+    refetch: fetchDashboardData
+  } = useDashboardData(session?.user?.id, !!session && !sessionLoading);
 
-  useEffect(() => {
-    if (!sessionLoading && session) {
-      fetchDashboardData();
-    } else if (!sessionLoading && !session) {
-      setLoading(false);
-    }
-  }, [session, sessionLoading]);
-
-  async function fetchDashboardData() {
-    try {
-      setLoading(true);
-      
-      // Debug: Check what we have in session
-      console.log('=== SESSION DEBUG ===');
-      console.log('Full session object:', session);
-      console.log('Session user:', session?.user);
-      console.log('Session user ID:', session?.user?.id);
-      console.log('===================');
-      
-      // Get user ID from session (no fallback for now to debug)
-      const userId = session?.user?.id;
-      
-      if (!userId) {
-        console.error('No user ID found in session');
-        toast.error("Please log in to view dashboard");
-        return;
-      }
-      
-      console.log('Making API call with user ID:', userId);
-      
-      // Use new API endpoint for all dashboard data
-      const res = await fetch("/api/dashboard", {
-        headers: { "x-user-id": userId },
-      });
-      
-      console.log('API response status:', res.status);
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('API error response:', errorText);
-        throw new Error("Failed to fetch dashboard data");
-      }
-      
-      const dashboardData = await res.json();
-      console.log('Dashboard data received:', dashboardData);
-      setData(dashboardData);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-    }
+  // Handle errors
+  if (error) {
+    console.error('Dashboard fetch error:', error);
+    toast.error("Failed to load dashboard data");
   }
 
   // Memoize derived data
@@ -137,7 +46,7 @@ export default function DashboardOverview() {
   const recentCompletedTasks = useMemo(() => data?.recentCompletedTasks || [], [data]);
   const stats = useMemo(() => data?.stats || {}, [data]);
 
-  if (sessionLoading || loading) {
+  if (sessionLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] w-full">
         <div className="w-full max-w-7xl px-4 space-y-8">
@@ -215,15 +124,56 @@ export default function DashboardOverview() {
         </p>
       </div>
 
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Common tasks to get you started</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/dashboard/teams">
+              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                <Users className="h-4 w-4" />
+                <div className="text-left">
+                  <div className="font-medium">Manage Teams</div>
+                  <div className="text-xs text-muted-foreground">Create or join teams</div>
+                </div>
+              </Button>
+            </Link>
+            
+            {data.teams.length > 0 && (
+              <Link href={`/dashboard/teams/${data.teams[0].id}/boards`}>
+                <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                  <FolderKanban className="h-4 w-4" />
+                  <div className="text-left">
+                    <div className="font-medium">View Boards</div>
+                    <div className="text-xs text-muted-foreground">Manage your projects</div>
+                  </div>
+                </Button>
+              </Link>
+            )}
+
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={() => fetchDashboardData()}>
+              <TrendingUp className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Refresh Data</div>
+                <div className="text-xs text-muted-foreground">Update dashboard</div>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-600">Total Teams</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalTeams}</div>
+            <div className="text-2xl font-bold text-blue-600">{data.stats.totalTeams}</div>
             <p className="text-xs text-muted-foreground">
               Active teams
             </p>
@@ -231,12 +181,12 @@ export default function DashboardOverview() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Boards</CardTitle>
-            <FolderKanban className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-600">Active Boards</CardTitle>
+            <FolderKanban className="h-4 w-4 text-green-600" />
+            </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalBoards}</div>
+            <div className="text-2xl font-bold text-green-600">{data.stats.totalBoards}</div>
             <p className="text-xs text-muted-foreground">
               Project boards
             </p>
@@ -245,11 +195,11 @@ export default function DashboardOverview() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-purple-600">Active Tasks</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.activeTasks}</div>
+            <div className="text-2xl font-bold text-purple-600">{data.stats.activeTasks}</div>
             <p className="text-xs text-muted-foreground">
               {data.stats.completedTasks} completed
             </p>
@@ -258,11 +208,11 @@ export default function DashboardOverview() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-orange-600">Completion Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completionRate}%</div>
+            <div className="text-2xl font-bold text-orange-600">{completionRate}%</div>
             <p className="text-xs text-muted-foreground">
               Task completion
             </p>
@@ -418,46 +368,6 @@ export default function DashboardOverview() {
         </Card>
       )}
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks to get you started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link href="/dashboard/teams">
-              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
-                <Users className="h-4 w-4" />
-                <div className="text-left">
-                  <div className="font-medium">Manage Teams</div>
-                  <div className="text-xs text-muted-foreground">Create or join teams</div>
-                </div>
-              </Button>
-            </Link>
-            
-            {data.teams.length > 0 && (
-              <Link href={`/dashboard/teams/${data.teams[0].id}/boards`}>
-                <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
-                  <FolderKanban className="h-4 w-4" />
-                  <div className="text-left">
-                    <div className="font-medium">View Boards</div>
-                    <div className="text-xs text-muted-foreground">Manage your projects</div>
-                  </div>
-                </Button>
-              </Link>
-            )}
-
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={fetchDashboardData}>
-              <TrendingUp className="h-4 w-4" />
-              <div className="text-left">
-                <div className="font-medium">Refresh Data</div>
-                <div className="text-xs text-muted-foreground">Update dashboard</div>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
