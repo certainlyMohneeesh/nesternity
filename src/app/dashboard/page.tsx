@@ -124,47 +124,6 @@ export default function DashboardOverview() {
         </p>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks to get you started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link href="/dashboard/teams">
-              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
-                <Users className="h-4 w-4" />
-                <div className="text-left">
-                  <div className="font-medium">Manage Teams</div>
-                  <div className="text-xs text-muted-foreground">Create or join teams</div>
-                </div>
-              </Button>
-            </Link>
-            
-            {data.teams.length > 0 && (
-              <Link href={`/dashboard/teams/${data.teams[0].id}/boards`}>
-                <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
-                  <FolderKanban className="h-4 w-4" />
-                  <div className="text-left">
-                    <div className="font-medium">View Boards</div>
-                    <div className="text-xs text-muted-foreground">Manage your projects</div>
-                  </div>
-                </Button>
-              </Link>
-            )}
-
-            <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={() => fetchDashboardData()}>
-              <TrendingUp className="h-4 w-4" />
-              <div className="text-left">
-                <div className="font-medium">Refresh Data</div>
-                <div className="text-xs text-muted-foreground">Update dashboard</div>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -368,6 +327,46 @@ export default function DashboardOverview() {
         </Card>
       )}
 
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Common tasks to get you started</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/dashboard/teams">
+              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                <Users className="h-4 w-4" />
+                <div className="text-left">
+                  <div className="font-medium">Manage Teams</div>
+                  <div className="text-xs text-muted-foreground">Create or join teams</div>
+                </div>
+              </Button>
+            </Link>
+            
+            {data.teams.length > 0 && (
+              <Link href={`/dashboard/teams/${data.teams[0].id}/boards`}>
+                <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4">
+                  <FolderKanban className="h-4 w-4" />
+                  <div className="text-left">
+                    <div className="font-medium">View Boards</div>
+                    <div className="text-xs text-muted-foreground">Manage your projects</div>
+                  </div>
+                </Button>
+              </Link>
+            )}
+
+            <Button variant="outline" className="w-full justify-start gap-2 h-auto p-4" onClick={() => fetchDashboardData()}>
+              <TrendingUp className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Refresh Data</div>
+                <div className="text-xs text-muted-foreground">Update dashboard</div>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
