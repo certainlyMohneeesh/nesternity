@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { MobileNavigation } from "@/components/layout/MobileNavigation";
+import { LogoutConfirmation } from "@/components/auth/logout-confirmation";
 import { cn } from "@/lib/utils";
 import { SessionProvider } from "@/components/auth/session-context";
 import NotificationCenter from "@/components/notifications/notification-center";
@@ -98,11 +98,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <div className="flex items-center gap-3">
                   <NotificationCenter />
                   <UserAvatar />
-                  <Link href="/auth/logout">
-                    <Button size="sm" variant="outline" className="hidden sm:inline-flex">
-                      Logout
-                    </Button>
-                  </Link>
+                  <LogoutConfirmation />
                 </div>
               </header>
 
