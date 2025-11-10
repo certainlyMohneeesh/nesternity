@@ -91,6 +91,7 @@ export default async function EditProposalPage({ params }: Props) {
       id: true,
       name: true,
       description: true,
+      clientId: true,
     },
   });
 

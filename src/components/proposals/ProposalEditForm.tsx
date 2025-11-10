@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,7 @@ type Project = {
   id: string;
   name: string;
   description: string | null;
+  clientId: string | null;
 };
 
 type Proposal = {
@@ -126,6 +127,17 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
       return acc;
     }, {} as Record<number, string>)
   );
+
+  // Clear project selection if it doesn't belong to the selected client
+  useEffect(() => {
+    if (projectId) {
+      const selectedProject = projects.find(p => p.id === projectId);
+      // If project doesn't belong to the current client, clear it
+      if (selectedProject && selectedProject.clientId !== clientId) {
+        setProjectId("");
+      }
+    }
+  }, [clientId, projectId, projects]);
 
   // Add deliverable
   const addDeliverable = () => {
@@ -326,11 +338,13 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No Project</SelectItem>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  {projects
+                    .filter(project => !project.clientId || project.clientId === clientId)
+                    .map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
