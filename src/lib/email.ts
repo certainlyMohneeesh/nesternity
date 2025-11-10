@@ -319,3 +319,227 @@ export async function sendPasswordResetEmail(data: PasswordResetEmailData): Prom
     return { success: false, error: 'Failed to send password reset email' };
   }
 }
+
+// Proposal Email Interfaces and Functions
+export interface ProposalEmailData {
+  recipientEmail: string;
+  recipientName: string;
+  recipientCompany?: string;
+  proposalTitle: string;
+  proposalId: string;
+  accessToken: string;
+  pdfUrl?: string;
+  pricing: number;
+  currency: string;
+  senderName: string;
+  expiresAt?: string;
+}
+
+function generateProposalEmailHTML(data: ProposalEmailData, signUrl: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${data.proposalTitle} - Proposal from Nesternity</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
+        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 45px 35px; text-align: center;">
+                <div style="display: inline-flex; align-items: center; gap: 12px;">
+                    <h1 style="color: #ffffff; font-size: 32px; font-weight: bold; margin: 0; letter-spacing: 1.5px;">NESTERNITY</h1>
+                </div>
+                <p style="color: #e0e7ff; margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">Professional Project Proposal</p>
+            </div>
+
+            <!-- Content -->
+            <div style="padding: 45px 35px;">
+                <h2 style="color: #1e293b; font-size: 28px; font-weight: 700; margin-bottom: 20px;">New Proposal Awaiting Your Review 📋</h2>
+                
+                <p style="color: #475569; font-size: 17px; line-height: 1.7; margin-bottom: 20px;">
+                    Hi <strong>${data.recipientName}</strong>${data.recipientCompany ? ` from <strong>${data.recipientCompany}</strong>` : ''},
+                </p>
+
+                <p style="color: #475569; font-size: 17px; line-height: 1.7; margin-bottom: 25px;">
+                    We're excited to present a new proposal for your project. This proposal has been carefully crafted to meet your requirements and deliver exceptional value.
+                </p>
+
+                <!-- Proposal Summary Card -->
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #0ea5e9; padding: 25px; border-radius: 10px; margin: 30px 0;">
+                    <h3 style="color: #0c4a6e; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">📊 Proposal Overview</h3>
+                    <div style="margin: 10px 0;">
+                        <span style="color: #64748b; font-size: 14px;">Project:</span><br>
+                        <strong style="color: #1e293b; font-size: 18px;">${data.proposalTitle}</strong>
+                    </div>
+                    <div style="margin: 15px 0 0 0;">
+                        <span style="color: #64748b; font-size: 14px;">Investment:</span><br>
+                        <strong style="color: #0ea5e9; font-size: 24px; font-weight: bold;">
+                            ${data.currency === 'INR' ? '₹' : '$'}${data.pricing.toLocaleString()}
+                        </strong>
+                    </div>
+                </div>
+
+                <!-- CTA Buttons -->
+                <div style="text-align: center; margin: 40px 0 35px 0;">
+                    <a href="${signUrl}" 
+                       style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 10px; font-weight: 600; font-size: 17px; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); margin-bottom: 15px;">
+                        ✍️ Review & Sign Proposal
+                    </a>
+                    ${data.pdfUrl ? `
+                    <br><br>
+                    <a href="${data.pdfUrl}" 
+                       style="display: inline-block; background-color: #ffffff; color: #6366f1; text-decoration: none; padding: 16px 36px; border-radius: 10px; font-weight: 600; font-size: 16px; border: 2px solid #6366f1;">
+                        📄 Download PDF
+                    </a>
+                    ` : ''}
+                </div>
+
+                <!-- What's Next Section -->
+                <div style="background-color: #f8fafc; padding: 25px; border-radius: 10px; margin-top: 30px;">
+                    <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">🚀 What Happens Next?</h3>
+                    <ol style="color: #475569; line-height: 1.8; margin: 0; padding-left: 20px; font-size: 15px;">
+                        <li><strong>Review the proposal</strong> – Take your time to read through all details</li>
+                        <li><strong>Ask questions</strong> – Contact us if you need clarification</li>
+                        <li><strong>Sign electronically</strong> – Use the secure link above to accept</li>
+                        <li><strong>Start the project</strong> – We'll begin work immediately after approval</li>
+                    </ol>
+                </div>
+
+                ${data.expiresAt ? `
+                <div style="background-color: #fffbeb; padding: 20px; border-radius: 8px; margin-top: 25px; border-left: 4px solid #f59e0b;">
+                    <p style="color: #92400e; font-size: 14px; margin: 0; line-height: 1.6;">
+                        <strong>⏰ Time-Sensitive:</strong><br>
+                        This proposal is valid until <strong>${new Date(data.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong> at <strong>${new Date(data.expiresAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong>.
+                    </p>
+                </div>
+                ` : ''}
+
+                <!-- Security Notice -->
+                <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin-top: 25px; border-left: 4px solid #22c55e;">
+                    <p style="color: #15803d; font-size: 14px; margin: 0; line-height: 1.6;">
+                        <strong>🔒 Secure & Private:</strong><br>
+                        • This link is unique to you and expires after use<br>
+                        • All communications are encrypted<br>
+                        • Your signature is legally binding and tracked<br>
+                        • IP address and timestamp are recorded for security
+                    </p>
+                </div>
+
+                <!-- Help Section -->
+                <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid #e2e8f0;">
+                    <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin: 0;">
+                        <strong style="color: #1e293b;">Need assistance?</strong><br>
+                        We're here to help! Reply to this email or contact <strong>${data.senderName}</strong> directly.
+                    </p>
+                </div>
+
+                <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                    Looking forward to working together! 🤝
+                </p>
+
+                <p style="color: #475569; font-size: 16px; margin-top: 20px;">
+                    Best regards,<br>
+                    <strong>${data.senderName}</strong>
+                </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="background-color: #f8fafc; padding: 35px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 13px; margin: 0 0 8px 0;">
+                    Powered by <strong style="color: #6366f1;">Nesternity</strong> – Professional Project Management
+                </p>
+                <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                    If you can't click the button, copy this link:<br>
+                    <a href="${signUrl}" style="color: #6366f1; word-break: break-all;">${signUrl}</a>
+                </p>
+                <p style="color: #cbd5e1; font-size: 11px; margin: 15px 0 0 0;">
+                    © ${new Date().getFullYear()} Nesternity. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateProposalEmailText(data: ProposalEmailData, signUrl: string): string {
+  return `
+NESTERNITY - Professional Project Proposal
+
+New Proposal Awaiting Your Review
+
+Hi ${data.recipientName}${data.recipientCompany ? ` from ${data.recipientCompany}` : ''},
+
+We're excited to present a new proposal for your project.
+
+PROPOSAL OVERVIEW
+================
+Project: ${data.proposalTitle}
+Investment: ${data.currency === 'INR' ? '₹' : '$'}${data.pricing.toLocaleString()}
+
+REVIEW & SIGN
+${signUrl}
+
+${data.pdfUrl ? `DOWNLOAD PDF\n${data.pdfUrl}\n` : ''}
+
+WHAT HAPPENS NEXT?
+==================
+1. Review the proposal – Take your time to read through all details
+2. Ask questions – Contact us if you need clarification
+3. Sign electronically – Use the secure link above to accept
+4. Start the project – We'll begin work immediately after approval
+
+${data.expiresAt ? `⏰ TIME-SENSITIVE: This proposal is valid until ${new Date(data.expiresAt).toLocaleString()}\n` : ''}
+
+🔒 SECURITY NOTICE:
+• This link is unique to you and expires after use
+• All communications are encrypted
+• Your signature is legally binding and tracked
+• IP address and timestamp are recorded for security
+
+Need assistance? Reply to this email or contact ${data.senderName} directly.
+
+Looking forward to working together!
+
+Best regards,
+${data.senderName}
+
+---
+Powered by Nesternity – Professional Project Management
+© ${new Date().getFullYear()} Nesternity. All rights reserved.
+  `;
+}
+
+export async function sendProposalEmail(data: ProposalEmailData): Promise<{ success: boolean; error?: string; emailId?: string }> {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY not configured');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    const signUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/proposals/${data.proposalId}/sign?token=${data.accessToken}`;
+
+    console.log('📧 Sending proposal email to:', data.recipientEmail);
+
+    const { data: emailResult, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+      to: [data.recipientEmail],
+      subject: `${data.proposalTitle} - Review & Sign Your Proposal`,
+      html: generateProposalEmailHTML(data, signUrl),
+      text: generateProposalEmailText(data, signUrl),
+    });
+
+    if (error) {
+      console.error('❌ Proposal email failed:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Proposal email sent successfully:', emailResult?.id);
+    return { success: true, emailId: emailResult?.id };
+  } catch (error) {
+    console.error('❌ Proposal email service error:', error);
+    return { success: false, error: 'Failed to send proposal email' };
+  }
+}

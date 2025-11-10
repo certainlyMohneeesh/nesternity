@@ -36,6 +36,8 @@ import {
   Phone,
   Edit,
   Link2,
+  Eye,
+  Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -56,6 +58,11 @@ type Proposal = {
   sentTo: string | null;
   acceptedAt: Date | null;
   rejectedAt: Date | null;
+  expiresAt: Date | null;
+  accessToken: string | null;
+  tokenExpiresAt: Date | null;
+  viewCount: number;
+  lastViewedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   client: {
@@ -111,10 +118,17 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
   const [showSendDialog, setShowSendDialog] = useState(false);
 
   const copySignLink = async () => {
-    const signLink = `${window.location.origin}/proposals/${proposal.id}/sign`;
+    // Generate secure link with token
+    const token = proposal.accessToken;
+    if (!token) {
+      toast.error("Proposal must be sent first to generate a secure link");
+      return;
+    }
+    
+    const signLink = `${window.location.origin}/proposals/${proposal.id}/sign?token=${token}`;
     try {
       await navigator.clipboard.writeText(signLink);
-      toast.success("Sign link copied to clipboard!");
+      toast.success("Secure sign link copied to clipboard!");
     } catch (error) {
       toast.error("Failed to copy link");
     }
@@ -257,7 +271,7 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
             {proposal.status === "DRAFT" && (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <a href={`/dashboard/proposals/new?edit=${proposal.id}`}>
+                  <a href={`/dashboard/proposals/${proposal.id}/edit`}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </a>
@@ -396,9 +410,69 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
                   <span>Sent to: {proposal.sentTo}</span>
                 </div>
               )}
+              {proposal.viewCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-blue-500" />
+                  <span>Viewed {proposal.viewCount} {proposal.viewCount === 1 ? 'time' : 'times'}</span>
+                  {proposal.lastViewedAt && (
+                    <span className="text-xs text-muted-foreground">
+                      (last: {formatDistanceToNow(new Date(proposal.lastViewedAt))} ago)
+                    </span>
+                  )}
+                </div>
+              )}
+              {proposal.expiresAt && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  <span className="text-amber-600">
+                    Expires: {format(new Date(proposal.expiresAt), "PPP")}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Email Status Banner (if sent) */}
+        {proposal.status === "SENT" && proposal.accessToken && (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start gap-3">
+                <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-blue-900">Email Sent Successfully</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Secure signature link sent to <strong>{proposal.sentTo}</strong>
+                    {proposal.sentAt && ` on ${format(new Date(proposal.sentAt), "PPP")}`}
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={copySignLink}
+                      className="bg-white hover:bg-blue-50 border-blue-300"
+                    >
+                      <Link2 className="mr-2 h-3 w-3" />
+                      Copy Secure Link
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const link = `${window.location.origin}/proposals/${proposal.id}/sign?token=${proposal.accessToken}`;
+                        window.open(link, '_blank');
+                      }}
+                      className="bg-white hover:bg-blue-50 border-blue-300"
+                    >
+                      <Eye className="mr-2 h-3 w-3" />
+                      Preview Link
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Brief */}
         <Card>

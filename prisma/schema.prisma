@@ -589,6 +589,12 @@ model Proposal {
   sentAt          DateTime?      @map("sent_at")
   sentTo          String?        @map("sent_to")
   
+  // Security & Access Control
+  accessToken     String?        @unique @map("access_token") // Secure token for public access
+  tokenExpiresAt  DateTime?      @map("token_expires_at") // Token expiration
+  viewCount       Int            @default(0) @map("view_count") // Track page views
+  lastViewedAt    DateTime?      @map("last_viewed_at") // Last time viewed
+  
   // Acceptance Tracking
   acceptedAt      DateTime?      @map("accepted_at")
   rejectedAt      DateTime?      @map("rejected_at")

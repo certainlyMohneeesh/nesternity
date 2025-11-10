@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, Type, Eraser, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   proposalId: string;
@@ -22,6 +23,9 @@ type Props = {
 };
 
 export function SignatureComponent({ proposalId, onSignatureComplete }: Props) {
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
+  
   const signaturePadRef = useRef<SignatureCanvas>(null);
   const [signatureMode, setSignatureMode] = useState<"draw" | "type">("draw");
   const [typedName, setTypedName] = useState("");
@@ -66,6 +70,12 @@ export function SignatureComponent({ proposalId, onSignatureComplete }: Props) {
   };
 
   const handleSaveSignature = async () => {
+    // Validate token
+    if (!token) {
+      toast.error("Security token missing. Please use the link from your email.");
+      return;
+    }
+
     // Validate signer info
     if (!signerInfo.name || !signerInfo.email) {
       toast.error("Please fill in your name and email");
@@ -108,18 +118,42 @@ export function SignatureComponent({ proposalId, onSignatureComplete }: Props) {
           signerTitle: signerInfo.title || null,
           signatureBlob,
           signatureType: signatureMode,
+          token, // Include security token
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to save signature");
+        // Handle specific error cases
+        if (response.status === 429) {
+          toast.error(`Too many attempts. ${data.message || 'Please try again later'}`);
+        } else if (response.status === 403) {
+          toast.error(data.error || "Invalid or expired security token");
+        } else if (response.status === 409) {
+          toast.error("This proposal has already been signed");
+        } else if (response.status === 410) {
+          toast.error("This proposal has expired");
+        } else {
+          toast.error(data.error || "Failed to save signature");
+        }
+        return;
       }
 
-      toast.success("Signature saved successfully");
-      onSignatureComplete?.();
+      toast.success(data.message || "Signature saved successfully! 🎉");
+      
+      // Call callback if provided, otherwise refresh the page
+      if (onSignatureComplete) {
+        onSignatureComplete();
+      } else {
+        // Wait a moment for the toast to be visible, then refresh
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
     } catch (error) {
       console.error("Save signature error:", error);
-      toast.error("Failed to save signature");
+      toast.error("Failed to save signature. Please try again.");
     } finally {
       setIsSaving(false);
     }
