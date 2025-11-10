@@ -1,0 +1,53 @@
+name: Process Recurring Invoices
+
+on:
+  schedule:
+    # Run daily at 9:00 AM UTC (2:30 PM IST)
+    - cron: '0 9 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  process-invoices:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Call recurring invoice cron endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          echo "🔄 Processing recurring invoices..."
+          response=$(curl -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_CODE:%{http_code}" \
+            "$APP_URL/api/cron/process-recurring-invoices")
+          
+          http_code=$(echo "$response" | grep "HTTP_CODE:" | sed 's/HTTP_CODE://')
+          body=$(echo "$response" | sed '/HTTP_CODE:/d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Failed to process recurring invoices"
+            exit 1
+          fi
+          
+          echo "✅ Recurring invoices processed successfully"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Recurring invoice processing failed!"
+          echo "Check the logs and application status"

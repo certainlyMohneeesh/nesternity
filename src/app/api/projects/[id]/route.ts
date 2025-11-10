@@ -12,8 +12,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('[ProjectAPI] GET - Fetching project:', params.id);
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[ProjectAPI] No valid authorization header');
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
     }
 
@@ -21,8 +24,11 @@ export async function GET(
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('[ProjectAPI] Unauthorized:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[ProjectAPI] User authenticated:', user.id);
 
     const project = await db.project.findFirst({
       where: {
@@ -52,8 +58,11 @@ export async function GET(
     });
 
     if (!project) {
+      console.error('[ProjectAPI] Project not found:', params.id);
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
+
+    console.log('[ProjectAPI] Project found, checking access');
 
     // Verify user has access to the team
     const teamAccess = await db.teamMember.findFirst({
@@ -71,12 +80,18 @@ export async function GET(
     });
 
     if (!teamAccess && !isOwner) {
+      console.error('[ProjectAPI] Access denied for user:', user.id);
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    console.log('[ProjectAPI] Access granted');
     return NextResponse.json(project);
   } catch (error) {
-    console.error('Error fetching project:', error);
+    console.error('[ProjectAPI] Error fetching project:', {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

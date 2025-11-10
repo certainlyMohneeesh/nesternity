@@ -145,10 +145,61 @@ export async function getDashboardData(userId: string) {
     }),
   ]);
 
+  // Fetch recurring invoices and clients
+  const [recurringInvoices, clients] = await Promise.all([
+    prisma.invoice.findMany({
+      where: {
+        issuedById: userId,
+        isRecurring: true,
+      },
+      include: {
+        items: {
+          select: {
+            total: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            company: true,
+          },
+        },
+      },
+      orderBy: {
+        nextIssueDate: "asc",
+      },
+      take: 10,
+    }),
+    prisma.client.findMany({
+      where: {
+        createdBy: userId,
+      },
+      include: {
+        projects: {
+          select: {
+            id: true,
+            name: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1, // Get the most recent project for each client
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+    }),
+  ]);
+
   return {
     teams,
     recentTasks,
     recentCompletedTasks,
+    recurringInvoices,
+    clients,
     stats: {
       totalTeams: teams.length,
       totalBoards,

@@ -79,10 +79,12 @@ export default async function EditProposalPage({ params }: Props) {
     },
   });
 
-  // Fetch all projects for the dropdown
+  // Fetch all projects for the dropdown (from user's clients)
   const projects = await prisma.project.findMany({
     where: {
-      teamId: user.id,
+      client: {
+        createdBy: user.id,
+      },
     },
     orderBy: {
       name: "asc",

@@ -43,6 +43,38 @@ interface DashboardData {
       };
     };
   }>;
+  recurringInvoices: Array<{
+    id: string;
+    invoiceNumber: string;
+    recurrence: string;
+    nextIssueDate: Date;
+    autoGenerateEnabled: boolean;
+    autoSendEnabled: boolean;
+    occurrenceCount: number;
+    maxOccurrences: number | null;
+    currency: string;
+    taxRate: number;
+    discount: number;
+    client: {
+      id: string;
+      name: string;
+      company: string | null;
+    };
+    items: Array<{
+      total: number;
+    }>;
+  }>;
+  clients: Array<{
+    id: string;
+    name: string;
+    email: string;
+    company: string | null;
+    budget: number | null;
+    projects: Array<{
+      id: string;
+      name: string;
+    }>;
+  }>;
   stats: {
     totalTeams: number;
     totalBoards: number;

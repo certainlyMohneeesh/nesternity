@@ -9,8 +9,11 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[ProjectsAPI] GET - Fetching projects');
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[ProjectsAPI] No valid authorization header');
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
     }
 
@@ -18,8 +21,11 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('[ProjectsAPI] Unauthorized:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[ProjectsAPI] User authenticated:', user.id);
 
     // Get all teams where the user is a member or owner
     const userTeams = await db.teamMember.findMany({
@@ -44,6 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     const allTeamIds = [...teamIds, ...ownedTeams.map(team => team.id)];
+    console.log('[ProjectsAPI] User has access to teams:', allTeamIds);
 
     // Get projects from all accessible teams
     const projects = await db.project.findMany({
@@ -78,17 +85,25 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    console.log('[ProjectsAPI] Found projects:', projects.length);
     return NextResponse.json(projects);
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    console.error('[ProjectsAPI] Error fetching projects:', {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[ProjectsAPI] POST - Creating project');
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[ProjectsAPI] No valid authorization header');
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
     }
 
@@ -96,13 +111,19 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('[ProjectsAPI] Unauthorized:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[ProjectsAPI] User authenticated:', user.id);
 
     const body = await request.json();
     const { name, description, clientId, teamId, startDate, endDate, status, goal } = body;
 
+    console.log('[ProjectsAPI] Request body:', { name, teamId, clientId });
+
     if (!name || !teamId) {
+      console.error('[ProjectsAPI] Missing required fields');
       return NextResponse.json({ error: 'Name and team are required' }, { status: 400 });
     }
 
@@ -122,6 +143,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!teamAccess && !isOwner) {
+      console.error('[ProjectsAPI] Access denied to team:', teamId);
       return NextResponse.json({ error: 'Access denied to this team' }, { status: 403 });
     }
 
@@ -135,6 +157,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!client) {
+        console.error('[ProjectsAPI] Client not found:', clientId);
         return NextResponse.json({ error: 'Client not found or access denied' }, { status: 404 });
       }
     }
@@ -173,9 +196,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('[ProjectsAPI] Project created:', project.id);
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    console.error('Error creating project:', error);
+    console.error('[ProjectsAPI] Error creating project:', {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
