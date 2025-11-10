@@ -384,7 +384,7 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                {/* <DollarSign className="h-4 w-4 text-muted-foreground" /> */}
                 <span className="text-2xl font-bold">
                   {proposal.currency === "INR" ? "₹" : "$"}
                   {proposal.pricing.toLocaleString()}
