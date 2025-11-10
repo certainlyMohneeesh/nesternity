@@ -69,6 +69,9 @@ model Client {
   createdByUser User         @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
   invoices      Invoice[]
   projects      Project[]    @relation("ClientProjects")
+  proposals     Proposal[]   @relation("ClientProposals")
+  estimations   Estimation[] @relation("ClientEstimations")
+  updates       UpdateDraft[] @relation("ClientUpdates")
 
   @@index([createdAt(sort: Desc)], map: "idx_clients_created_at_desc")
   @@index([createdBy], map: "idx_clients_created_by")
@@ -360,6 +363,10 @@ model Project {
   issues      Issue[]
   client      Client?       @relation("ClientProjects", fields: [clientId], references: [id])
   team        Team          @relation("TeamProjects", fields: [teamId], references: [id])
+  proposals   Proposal[]    @relation("ProjectProposals")
+  estimations Estimation[]  @relation("ProjectEstimations")
+  updates     UpdateDraft[] @relation("ProjectUpdates")
+  scopeRadar  ScopeRadar[]  @relation("ProjectScopeRadar")
 
   @@index([clientId], map: "idx_projects_client_id")
   @@index([status], map: "idx_projects_status")
@@ -550,4 +557,217 @@ enum SettlementSchedule {
   DAILY             // Daily settlement
   WEEKLY            // Weekly settlement
   MONTHLY           // Monthly settlement
+}
+
+// AI Features Models
+
+model Proposal {
+  id              String         @id @default(cuid())
+  clientId        String         @map("client_id")
+  projectId       String?        @map("project_id")
+  title           String
+  brief           String         // Client brief/requirements
+  deliverables    Json           // Array of deliverables with descriptions
+  timeline        Json           // Timeline breakdown
+  pricing         Float
+  currency        String         @default("INR")
+  paymentTerms    String?        @map("payment_terms")
+  status          ProposalStatus @default(DRAFT)
+  
+  // Change Order Support
+  isChangeOrder   Boolean        @default(false) @map("is_change_order")
+  parentProposalId String?       @map("parent_proposal_id")
+  changeReason    String?        @map("change_reason")
+  
+  // PDF & E-Signature
+  pdfUrl          String?        @map("pdf_url")
+  eSignatureUrl   String?        @map("e_signature_url")
+  signedAt        DateTime?      @map("signed_at")
+  signedByName    String?        @map("signed_by_name")
+  
+  // Email Tracking
+  sentAt          DateTime?      @map("sent_at")
+  sentTo          String?        @map("sent_to")
+  
+  // Acceptance Tracking
+  acceptedAt      DateTime?      @map("accepted_at")
+  rejectedAt      DateTime?      @map("rejected_at")
+  
+  // Expiration & Template
+  expiresAt       DateTime?      @map("expires_at")
+  sectionBlocks   Json?          @map("section_blocks") // Structured sections
+  templateId      String?        @map("template_id")
+  
+  // AI Metadata
+  generatedByAI   Boolean        @default(true) @map("generated_by_ai")
+  aiPrompt        String?        @map("ai_prompt")
+  aiModel         String?        @map("ai_model")
+  
+  createdBy       String         @map("created_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  
+  client          Client         @relation("ClientProposals", fields: [clientId], references: [id], onDelete: Cascade)
+  project         Project?       @relation("ProjectProposals", fields: [projectId], references: [id])
+  signatures      Signature[]    @relation("ProposalSignatures")
+  
+  @@index([clientId], map: "idx_proposals_client_id")
+  @@index([projectId], map: "idx_proposals_project_id")
+  @@index([status], map: "idx_proposals_status")
+  @@index([createdAt(sort: Desc)], map: "idx_proposals_created_at")
+  @@map("proposals")
+}
+
+model Estimation {
+  id                  String   @id @default(cuid())
+  clientId            String?  @map("client_id")
+  projectId           String?  @map("project_id")
+  title               String
+  description         String?
+  
+  // Estimation Results
+  estimatedHours      Float    @map("estimated_hours")
+  estimatedCost       Float    @map("estimated_cost")
+  currency            String   @default("INR")
+  confidence          Float?   // 0-1 confidence score
+  
+  // AI Analysis
+  rationale           String   // AI's reasoning for the estimate
+  suggestedPackages   Json?    @map("suggested_packages") // Array of package options
+  riskFactors         Json?    @map("risk_factors") // Identified risks
+  assumptions         Json?    // Assumptions made
+  
+  // Historical Data Used
+  similarProjectsCount Int?    @default(0) @map("similar_projects_count")
+  historicalAccuracy   Float?  @map("historical_accuracy")
+  
+  // AI Metadata
+  aiModel             String?  @map("ai_model")
+  
+  createdBy           String   @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  client              Client?  @relation("ClientEstimations", fields: [clientId], references: [id], onDelete: Cascade)
+  project             Project? @relation("ProjectEstimations", fields: [projectId], references: [id])
+  
+  @@index([clientId], map: "idx_estimations_client_id")
+  @@index([projectId], map: "idx_estimations_project_id")
+  @@index([createdAt(sort: Desc)], map: "idx_estimations_created_at")
+  @@map("estimations")
+}
+
+model UpdateDraft {
+  id              String       @id @default(cuid())
+  weekStart       DateTime     @map("week_start") // Start of the week
+  clientId        String       @map("client_id")
+  projectId       String?      @map("project_id")
+  
+  // Update Content
+  summary         String       // AI-generated summary
+  accomplishments Json         // Array of accomplishments with details
+  blockers        Json?        // Current blockers
+  nextSteps       Json         @map("next_steps") // Planned next steps
+  metrics         Json?        // Progress metrics (tasks completed, hours, etc.)
+  
+  // Status
+  status          UpdateStatus @default(DRAFT)
+  sentAt          DateTime?    @map("sent_at")
+  sentTo          String?      @map("sent_to") // Email sent to
+  
+  // AI Metadata
+  generatedByAI   Boolean      @default(true) @map("generated_by_ai")
+  aiModel         String?      @map("ai_model")
+  
+  createdBy       String       @map("created_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  
+  client          Client       @relation("ClientUpdates", fields: [clientId], references: [id], onDelete: Cascade)
+  project         Project?     @relation("ProjectUpdates", fields: [projectId], references: [id])
+  
+  @@index([clientId], map: "idx_updates_client_id")
+  @@index([projectId], map: "idx_updates_project_id")
+  @@index([weekStart], map: "idx_updates_week_start")
+  @@index([status], map: "idx_updates_status")
+  @@map("update_drafts")
+}
+
+model ScopeRadar {
+  id                String    @id @default(cuid())
+  projectId         String    @map("project_id")
+  
+  // Scope Creep Analysis
+  creepRisk         Float     @map("creep_risk") // 0-1 risk score
+  revisionCount     Int       @default(0) @map("revision_count")
+  outOfScopeCount   Int       @default(0) @map("out_of_scope_count")
+  
+  // Detection Details
+  flaggedItems      Json      @map("flagged_items") // Items detected as scope creep
+  patterns          Json?     // Detected patterns
+  recommendations   Json?     // AI recommendations
+  
+  // Change Order Draft
+  changeOrderDraft  String?   @map("change_order_draft") // AI-drafted change order email
+  estimatedImpact   Json?     @map("estimated_impact") // Time/cost impact
+  
+  // Status
+  acknowledged      Boolean   @default(false)
+  acknowledgedAt    DateTime? @map("acknowledged_at")
+  
+  // AI Metadata
+  aiModel           String?   @map("ai_model")
+  
+  flaggedAt         DateTime  @default(now()) @map("flagged_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  project           Project   @relation("ProjectScopeRadar", fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId], map: "idx_scope_radar_project_id")
+  @@index([creepRisk], map: "idx_scope_radar_risk")
+  @@index([flaggedAt(sort: Desc)], map: "idx_scope_radar_flagged_at")
+  @@map("scope_radar")
+}
+
+model Signature {
+  id            String    @id @default(cuid())
+  proposalId    String    @map("proposal_id")
+  
+  // Signer Information
+  signerName    String    @map("signer_name")
+  signerEmail   String    @map("signer_email")
+  signerTitle   String?   @map("signer_title") // Job title
+  
+  // Signature Data
+  signatureBlob String    @map("signature_blob") @db.Text // Base64 encoded signature image
+  signatureType String    @default("draw") @map("signature_type") // "draw" or "type"
+  
+  // Metadata
+  signedAt      DateTime  @default(now()) @map("signed_at")
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  
+  proposal      Proposal  @relation("ProposalSignatures", fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  @@index([proposalId], map: "idx_signatures_proposal_id")
+  @@index([signedAt(sort: Desc)], map: "idx_signatures_signed_at")
+  @@map("signatures")
+}
+
+// AI Enums
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  CONVERTED_TO_INVOICE
+}
+
+enum UpdateStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  DELIVERED
 }

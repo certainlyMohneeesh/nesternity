@@ -9,12 +9,14 @@ import { SessionProvider } from "@/components/auth/session-context";
 import NotificationCenter from "@/components/notifications/notification-center";
 import { ThemeProvider } from "@/components/theme-provider/theme-provider";
 import { StripeProvider } from "@/components/providers/StripeProvider";
-import { Menu, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle } from "lucide-react";
+import { Menu, Home, Users, FolderOpen, FileText, FileCheck, Settings, Users2, AlertCircle, Sparkles } from "lucide-react";
 import ThemePreferenceAlert from "@/components/ThemePreferenceAlert";
 
 // Define nav links without icon components to avoid serialization issues
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", iconName: "Home" },
+  { href: "/dashboard/ai", label: "AI Features", iconName: "Sparkles" },
+  { href: "/dashboard/proposals", label: "Proposals", iconName: "FileText" },
   { href: "/dashboard/clients", label: "Clients", iconName: "Users" },
   { href: "/dashboard/projects", label: "Projects", iconName: "FolderOpen" },
   { href: "/dashboard/teams", label: "Teams", iconName: "Users2" },
@@ -34,6 +36,7 @@ const iconMap = {
   AlertCircle,
   Users2,
   Settings,
+  Sparkles,
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
