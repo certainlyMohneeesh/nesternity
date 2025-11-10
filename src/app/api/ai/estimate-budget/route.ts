@@ -62,27 +62,34 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('💰 Budget estimation request for:', title);
+    console.log('📦 Deliverables count:', deliverables.length);
+    console.log('⏱️  Timeline milestones:', timeline?.length || 0);
 
     // 3. Fetch historical estimations for learning
-    const historicalEstimations = await prisma.budgetEstimation.findMany({
-      where: {
-        userId: user.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 10,
-      select: {
-        title: true,
-        estimatedBudget: true,
-        actualBudget: true,
-        deliverableCount: true,
-        timelineWeeks: true,
-        accuracy: true,
-      },
-    });
-
-    console.log(`📊 Found ${historicalEstimations.length} historical estimations for learning`);
+    let historicalEstimations = [];
+    try {
+      historicalEstimations = await prisma.budgetEstimation.findMany({
+        where: {
+          userId: user.id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 10,
+        select: {
+          title: true,
+          estimatedBudget: true,
+          actualBudget: true,
+          deliverableCount: true,
+          timelineWeeks: true,
+          accuracy: true,
+        },
+      });
+      console.log(`📊 Found ${historicalEstimations.length} historical estimations for learning`);
+    } catch (dbError) {
+      console.warn('⚠️  Could not fetch historical data:', dbError instanceof Error ? dbError.message : 'Unknown error');
+      // Continue without historical data
+    }
 
     // 4. Create AI prompt
     const prompt = `You are an expert project cost estimator. Analyze the following project proposal and provide a detailed budget estimation.
@@ -130,20 +137,27 @@ Return ONLY a valid JSON object with this structure:
 }`;
 
     // 5. Generate estimation using AI
+    const modelName = process.env.AI_MODEL || 'gemini-2.0-flash-exp';
+    console.log('🤖 Using AI model:', modelName);
+    
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: modelName,
       generationConfig: {
         temperature: 0.3, // Lower temperature for more consistent estimates
         topP: 0.8,
         topK: 20,
+        responseMimeType: 'application/json', // Force JSON output
       },
     });
 
+    console.log('🚀 Sending request to Gemini API...');
     const result = await model.generateContent(prompt);
     const response = result.response;
     let text = response.text();
 
-    console.log('🤖 AI Response received');
+    console.log('✅ AI Response received');
+    console.log('📄 Response length:', text.length, 'characters');
+    console.log('📝 Response preview:', text.substring(0, 200) + '...');
 
     // Clean up response (remove markdown code blocks if present)
     text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
@@ -151,8 +165,13 @@ Return ONLY a valid JSON object with this structure:
     let estimation: BudgetEstimation;
     try {
       estimation = JSON.parse(text);
+      console.log('✅ Successfully parsed AI response');
+      console.log('💵 Estimated budget:', estimation.estimatedBudget);
+      console.log('🎯 Confidence level:', estimation.confidence);
     } catch (parseError) {
-      console.error('❌ Failed to parse AI response:', text);
+      console.error('❌ Failed to parse AI response');
+      console.error('📄 Raw response:', text);
+      console.error('🔍 Parse error:', parseError instanceof Error ? parseError.message : 'Unknown error');
       throw new Error('Invalid AI response format');
     }
 
@@ -163,24 +182,30 @@ Return ONLY a valid JSON object with this structure:
     }, 0);
 
     // 7. Store estimation for future learning
-    await prisma.budgetEstimation.create({
-      data: {
-        userId: user.id,
-        title,
-        brief,
-        deliverables: deliverables as any,
-        timeline: timeline as any,
-        estimatedBudget: estimation.estimatedBudget,
-        confidence: estimation.confidence,
-        breakdown: estimation.breakdown as any,
-        rationale: estimation.rationale,
-        currency,
-        deliverableCount: deliverables.length,
-        timelineWeeks,
-      },
-    });
+    try {
+      await prisma.budgetEstimation.create({
+        data: {
+          userId: user.id,
+          title,
+          brief,
+          deliverables: deliverables as any,
+          timeline: timeline as any,
+          estimatedBudget: estimation.estimatedBudget,
+          confidence: estimation.confidence,
+          breakdown: estimation.breakdown as any,
+          rationale: estimation.rationale,
+          currency,
+          deliverableCount: deliverables.length,
+          timelineWeeks,
+        },
+      });
+      console.log('💾 Budget estimation stored successfully');
+    } catch (dbError) {
+      console.warn('⚠️  Could not store estimation:', dbError instanceof Error ? dbError.message : 'Unknown error');
+      // Continue even if storage fails
+    }
 
-    console.log('✅ Budget estimation stored successfully');
+    console.log('✅ Budget estimation completed successfully');
 
     return NextResponse.json({
       success: true,
@@ -189,10 +214,19 @@ Return ONLY a valid JSON object with this structure:
 
   } catch (error) {
     console.error('❌ Budget estimation error:', error);
+    
+    // Enhanced error logging
+    if (error instanceof Error) {
+      console.error('📛 Error name:', error.name);
+      console.error('📝 Error message:', error.message);
+      console.error('📚 Error stack:', error.stack);
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to generate budget estimation',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
       },
       { status: 500 }
     );

@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Loader2, Sparkles, Save, Send, FileText, CheckCircle2, Clock, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { BudgetEstimation } from '@/components/proposals/BudgetEstimation';
 
 interface Client {
   id: string;
@@ -67,6 +69,11 @@ export function ProposalEditor({ clients }: ProposalEditorProps) {
 
       const data = await response.json();
       setProposal(data.proposal);
+      
+      // Auto-fill budget from AI-generated proposal pricing
+      if (data.proposal.pricing?.amount) {
+        setBudget(data.proposal.pricing.amount.toString());
+      }
       
       toast.success('Proposal generated! ✨', {
         description: 'Your AI-powered proposal is ready to review',
@@ -180,6 +187,30 @@ export function ProposalEditor({ clients }: ProposalEditorProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="budget">Budget (INR)</Label>
+              
+              {/* AI Budget Estimation */}
+              {brief && deliverables && (
+                <>
+                  <BudgetEstimation
+                    title={`AI Proposal for ${selectedClient?.name || 'Client'}`}
+                    brief={brief}
+                    deliverables={deliverables.split('\n').filter(d => d.trim()).map(d => ({ 
+                      item: d,
+                      description: d,
+                      timeline: timeline || 'TBD'
+                    }))}
+                    timeline={timeline ? [{ 
+                      name: 'Project Timeline', 
+                      duration: timeline,
+                      deliverables: []
+                    }] : []}
+                    currency="INR"
+                    onEstimationComplete={(estimatedBudget) => setBudget(estimatedBudget.toString())}
+                  />
+                  <Separator className="my-2" />
+                </>
+              )}
+              
               <Input
                 id="budget"
                 type="number"

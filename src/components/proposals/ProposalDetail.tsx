@@ -248,10 +248,10 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {proposal.title}
               </h1>
               <Badge
@@ -262,12 +262,12 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
                 {statusLabels[proposal.status as keyof typeof statusLabels]}
               </Badge>
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Created {formatDistanceToNow(new Date(proposal.createdAt))} ago
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:shrink-0">
             {proposal.status === "DRAFT" && (
               <>
                 <Button variant="outline" size="sm" asChild>

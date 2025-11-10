@@ -145,27 +145,29 @@ export function BudgetEstimation({
       {estimation && (
         <Card className="border-primary/50">
           <CardContent className="pt-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold">AI Budget Estimation</h4>
-                  <Badge className={confidenceColors[estimation.confidence]}>
-                    {confidenceLabels[estimation.confidence]}
-                  </Badge>
-                </div>
-                <p className="text-3xl font-bold text-primary">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="font-semibold text-sm sm:text-base">AI Budget Estimation</h4>
+                <Badge className={confidenceColors[estimation.confidence]}>
+                  {confidenceLabels[estimation.confidence]}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-base sm:text-lg md:text-xl font-bold text-primary break-words min-w-0 flex-1">
                   {currencySymbol}{estimation.estimatedBudget.toLocaleString()}
                 </p>
+                <Button
+                  type="button"
+                  onClick={applyEstimation}
+                  size="sm"
+                  variant="default"
+                  className="shrink-0"
+                >
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Apply
+                </Button>
               </div>
-              <Button
-                type="button"
-                onClick={applyEstimation}
-                size="sm"
-                variant="default"
-              >
-                <DollarSign className="h-4 w-4 mr-1" />
-                Apply
-              </Button>
             </div>
 
             {showDetails && (
@@ -174,14 +176,14 @@ export function BudgetEstimation({
                   <p className="text-sm text-muted-foreground font-medium">
                     Rationale
                   </p>
-                  <p className="text-sm">{estimation.rationale}</p>
+                  <p className="text-xs sm:text-sm leading-relaxed break-words">{estimation.rationale}</p>
                 </div>
 
                 <div className="space-y-2">
                   <button
                     type="button"
                     onClick={() => setShowDetails(!showDetails)}
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
+                    className="text-xs sm:text-sm text-primary hover:underline flex items-center gap-1"
                   >
                     <TrendingUp className="h-3 w-3" />
                     View Cost Breakdown
@@ -189,12 +191,12 @@ export function BudgetEstimation({
                   
                   <div className="space-y-2 bg-muted/30 rounded-lg p-3">
                     {estimation.breakdown.map((item, index) => (
-                      <div key={index} className="flex items-start justify-between text-sm">
-                        <div className="space-y-0.5 flex-1">
-                          <p className="font-medium">{item.category}</p>
-                          <p className="text-xs text-muted-foreground">{item.reasoning}</p>
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 text-sm">
+                        <div className="space-y-0.5 flex-1 min-w-0">
+                          <p className="font-medium text-sm break-words">{item.category}</p>
+                          <p className="text-xs text-muted-foreground break-words leading-relaxed">{item.reasoning}</p>
                         </div>
-                        <p className="font-semibold ml-4">
+                        <p className="font-semibold text-sm sm:text-base shrink-0 self-start sm:ml-4">
                           {currencySymbol}{item.amount.toLocaleString()}
                         </p>
                       </div>
