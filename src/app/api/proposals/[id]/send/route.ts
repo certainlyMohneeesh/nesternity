@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/api";
 import { prisma } from "@/lib/prisma";
+import { sendProposalEmail } from "@/lib/email";
+import { generateProposalAccessToken } from "@/lib/security";
 
 export async function POST(
   request: NextRequest,
@@ -75,10 +77,15 @@ export async function POST(
       console.log('✅ PDF generated:', pdfUrl);
     }
 
-    // TODO: Send email with PDF attachment
-    // For now, we'll just update the status
+    // Generate secure access token (valid for 30 days)
+    const { token: accessToken, expiresAt: tokenExpiresAt } = generateProposalAccessToken(720);
+    console.log('🔐 Generated secure access token for proposal:', id);
 
-    // Update proposal status
+    // Set proposal expiration (30 days from now)
+    const proposalExpiresAt = new Date();
+    proposalExpiresAt.setDate(proposalExpiresAt.getDate() + 30);
+
+    // Update proposal with token, PDF, and send status
     const updatedProposal = await prisma.proposal.update({
       where: { id },
       data: {
@@ -86,16 +93,51 @@ export async function POST(
         sentAt: new Date(),
         sentTo: proposal.client.email,
         pdfUrl: pdfUrl,
+        accessToken,
+        tokenExpiresAt,
+        expiresAt: proposalExpiresAt,
       },
     });
+
+    console.log('✅ Proposal updated with security token');
+
+    // Send email with secure link
+    const emailResult = await sendProposalEmail({
+      recipientEmail: proposal.client.email,
+      recipientName: proposal.client.name,
+      recipientCompany: proposal.client.company || undefined,
+      proposalTitle: proposal.title,
+      proposalId: proposal.id,
+      accessToken,
+      pdfUrl: pdfUrl || undefined,
+      pricing: proposal.pricing,
+      currency: proposal.currency,
+      senderName: user.displayName || user.email || 'Nesternity Team',
+      expiresAt: proposalExpiresAt.toISOString(),
+    });
+
+    if (!emailResult.success) {
+      console.error('❌ Failed to send email:', emailResult.error);
+      // Still return success since proposal was updated
+      return NextResponse.json({
+        success: true,
+        proposal: updatedProposal,
+        message: "Proposal updated but email failed to send",
+        emailError: emailResult.error,
+      }, { status: 200 });
+    }
+
+    console.log('✅ Proposal email sent successfully:', emailResult.emailId);
 
     return NextResponse.json({
       success: true,
       proposal: updatedProposal,
       message: "Proposal sent successfully",
+      emailSent: true,
+      emailId: emailResult.emailId,
     });
   } catch (error) {
-    console.error("Send proposal error:", error);
+    console.error("❌ Send proposal error:", error);
     return NextResponse.json(
       { error: "Failed to send proposal" },
       { status: 500 }
