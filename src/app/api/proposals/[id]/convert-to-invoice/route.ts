@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
@@ -170,6 +170,70 @@ export async function POST(
     console.log('  🆔 Invoice ID:', invoice.id);
     console.log('  🔢 Invoice Number:', invoice.invoiceNumber);
     console.log('  📊 Total Amount:', invoice.currency, items.reduce((sum, item) => sum + item.total, 0));
+
+    // Generate PDF for the invoice
+    console.log('📄 Generating PDF for invoice...');
+    try {
+      const { generateInvoicePDF } = await import('@/lib/generatePdf');
+      
+      const invoiceForPDF = {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        createdAt: invoice.createdAt,
+        dueDate: invoice.dueDate,
+        notes: invoice.notes,
+        taxRate: invoice.taxRate,
+        discount: invoice.discount,
+        currency: invoice.currency,
+        enablePaymentLink: false,
+        paymentUrl: null,
+        watermarkText: null,
+        eSignatureUrl: null,
+        client: {
+          name: invoice.client.name,
+          email: invoice.client.email,
+          company: invoice.client.company,
+          address: invoice.client.address,
+        },
+        items: invoice.items.map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          total: item.total,
+        })),
+      };
+      
+      console.log('🔧 Starting PDF generation...');
+      const pdfUrl = await generateInvoicePDF(invoiceForPDF);
+      console.log('✅ PDF generated and uploaded:', pdfUrl);
+      
+      // Update invoice with PDF URL
+      console.log('💾 Updating invoice with PDF URL...');
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { pdfUrl: typeof pdfUrl === 'string' ? pdfUrl : pdfUrl?.toString('base64') },
+      });
+      console.log('✅ Invoice updated with PDF URL');
+    } catch (pdfError) {
+      console.error('❌ Error generating PDF for invoice:', pdfError);
+      console.error('PDF Error details:', {
+        name: pdfError instanceof Error ? pdfError.name : 'Unknown',
+        message: pdfError instanceof Error ? pdfError.message : 'Unknown error',
+        stack: pdfError instanceof Error ? pdfError.stack : undefined,
+      });
+      // Continue without PDF - invoice is still created
+      console.warn('⚠️  Invoice created successfully but PDF generation failed');
+    }
+
+    // Update proposal status to CONVERTED_TO_INVOICE
+    console.log('📝 Updating proposal status...');
+    await prisma.proposal.update({
+      where: { id },
+      data: {
+        status: "CONVERTED_TO_INVOICE",
+      },
+    });
+    console.log('✅ Proposal status updated to CONVERTED_TO_INVOICE');
 
     return NextResponse.json({
       success: true,

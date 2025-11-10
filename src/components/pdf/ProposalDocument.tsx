@@ -61,31 +61,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     border: '1 solid #cbd5e1',
-    minWidth: 130,
+    minWidth: 150,
   },
   brandingText: {
     fontSize: 10,
     color: '#64748b',
-    marginRight: 4,
+    marginRight: 6,
   },
   brandingLogo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logoImage: {
-    width: 30,
-    height: 30,
-    objectFit: 'contain',
-    marginRight: 2,
+  logoIcon: {
+    fontSize: 16,
+    color: '#2563eb',
+    marginRight: 4,
+    fontWeight: 'bold',
   },
   logoText: {
-    fontSize: 11,
-    color: '#000000',
+    fontSize: 12,
+    color: '#1f2937',
     fontWeight: 'bold',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   title: {
     fontSize: 34,
@@ -256,12 +256,20 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
     alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   phaseDeliverables: {
     fontSize: 9,
-    color: '#9ca3af',
+    color: '#4b5563',
     marginTop: 6,
-    lineHeight: 1.5,
+    lineHeight: 1.6,
+    paddingLeft: 8,
+  },
+  deliverableBullet: {
+    fontSize: 9,
+    color: '#4b5563',
+    marginBottom: 3,
+    paddingLeft: 4,
   },
   pricingSection: {
     backgroundColor: '#f0f9ff',
@@ -405,11 +413,7 @@ export function ProposalDocument({ proposal }: ProposalProps) {
             <View style={styles.brandingContainer}>
               <Text style={styles.brandingText}>Built with</Text>
               <View style={styles.brandingLogo}>
-                {/* Try to load PNG logo first, fallback to text */}
-                <Image 
-                  style={styles.logoImage}
-                  src="/nesternity_l.png"
-                />
+                <Text style={styles.logoIcon}>◆</Text>
                 <Text style={styles.logoText}>Nesternity</Text>
               </View>
             </View>
@@ -509,12 +513,16 @@ export function ProposalDocument({ proposal }: ProposalProps) {
                 <View style={styles.phaseContent}>
                   <Text style={styles.phaseName}>{phase.name || phase.phase}</Text>
                   <Text style={styles.phaseDuration}>
-                    {phase.duration || phase.timeline}
+                    Duration: {phase.duration || phase.timeline}
                   </Text>
                   {phase.deliverables && Array.isArray(phase.deliverables) && phase.deliverables.length > 0 && (
-                    <Text style={styles.phaseDeliverables}>
-                      Deliverables: {phase.deliverables.join(', ')}
-                    </Text>
+                    <View style={{ marginTop: 4 }}>
+                      {phase.deliverables.map((deliverable: string, delIndex: number) => (
+                        <Text key={delIndex} style={styles.deliverableBullet}>
+                          • {deliverable}
+                        </Text>
+                      ))}
+                    </View>
                   )}
                 </View>
               </View>

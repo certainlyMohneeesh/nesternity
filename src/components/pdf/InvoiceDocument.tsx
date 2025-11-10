@@ -97,40 +97,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     border: '1 solid #cbd5e1',
-    minWidth: 130,
+    minWidth: 150,
   },
   brandingText: {
     fontSize: 10,
     color: '#64748b',
-    marginRight: 4,
+    marginRight: 6,
   },
   brandingLogo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logoImage: {
-    width: 30,
-    height: 30,
-    objectFit: 'contain',
-    marginRight: 2,
+  logoIcon: {
+    fontSize: 16,
+    color: '#2563eb',
+    marginRight: 4,
+    fontWeight: 'bold',
   },
   logoText: {
-    fontSize: 11,
-    color: '#000000',
+    fontSize: 12,
+    color: '#1f2937',
     fontWeight: 'bold',
-    letterSpacing: 0.3,
-  },
-  logoFallback: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoIcon: {
-    fontSize: 20,
-    color: '#000000',
-    marginRight: 2,
+    letterSpacing: 0.5,
   },
   dateSection: {
     flexDirection: 'row',
@@ -390,11 +381,7 @@ export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
               <View style={styles.brandingContainer}>
                 <Text style={styles.brandingText}>Built with</Text>
                 <View style={styles.brandingLogo}>
-                  {/* Try to load PNG logo first, fallback to text */}
-                  <Image 
-                    style={styles.logoImage}
-                    src="/nesternity_l.png"
-                  />
+                  <Text style={styles.logoIcon}>◆</Text>
                   <Text style={styles.logoText}>Nesternity</Text>
                 </View>
               </View>
