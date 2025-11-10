@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkRateLimit, getClientIP, isTokenValid } from "@/lib/security";
+import { revalidatePath } from "next/cache";
 
 export async function POST(
   request: NextRequest,
@@ -137,6 +138,11 @@ export async function POST(
     });
 
     console.log('✅ Proposal marked as ACCEPTED');
+
+    // Revalidate relevant pages to show updated status
+    revalidatePath('/dashboard/proposals');
+    revalidatePath('/dashboard/contracts');
+    revalidatePath(`/dashboard/proposals/${id}`);
 
     return NextResponse.json({
       success: true,

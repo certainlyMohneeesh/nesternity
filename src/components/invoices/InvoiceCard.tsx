@@ -3,12 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Download, Calendar, DollarSign, User, FileText } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Eye, Download, Calendar, DollarSign, User, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { DownloadInvoiceButton } from './DownloadButton';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { InvoiceDocument } from '../pdf/InvoiceDocument';
+import { useRouter } from 'next/navigation';
 
 const statusColors: Record<string, string> = {
   PENDING: 'border-yellow-400',
@@ -65,8 +77,10 @@ export interface InvoiceCardProps {
 }
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChange }) => {
+  const router = useRouter();
   const [status, setStatus] = useState<"PENDING" | "PAID" | "OVERDUE" | "CANCELLED">(invoice.status);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const total = invoice.items.reduce((sum, item) => sum + item.total, 0);
   const symbol = currencySymbols[invoice.currency] || invoice.currency;
@@ -96,6 +110,32 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChang
       toast.error(err.message || 'Failed to update status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+      
+      const res = await fetch(`/api/invoices/${invoice.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error((await res.json()).error || 'Failed to delete invoice');
+      }
+      
+      toast.success('Invoice deleted successfully');
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete invoice');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -170,6 +210,36 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChang
               <Eye className="h-4 w-4 mr-1" /> View
             </a>
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                disabled={deleting}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {deleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete invoice <strong>{invoice.invoiceNumber}</strong>?
+                  This action cannot be undone and will permanently remove the invoice and all its items.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete Invoice
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
     </Card>
