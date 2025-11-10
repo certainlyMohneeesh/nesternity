@@ -28,6 +28,7 @@ import {
 import { ProfileForm } from '@/components/settings/ProfileForm';
 import { PreferencesForm } from '@/components/settings/PreferencesForm';
 import { BillingSection } from '@/components/settings/BillingSection';
+import { PaymentSettingsSection } from '@/components/settings/PaymentSettingsSection';
 
 interface UserSettings {
   id: string;
@@ -208,7 +209,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -220,6 +221,10 @@ export default function SettingsPage() {
           <TabsTrigger value="billing" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Billing
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Payments
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <SettingsIcon className="h-4 w-4" />
@@ -300,6 +305,10 @@ export default function SettingsPage() {
 
         <TabsContent value="billing" className="space-y-6">
           <BillingSection />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6">
+          <PaymentSettingsSection />
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">

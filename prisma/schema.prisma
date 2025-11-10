@@ -1,11 +1,12 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -32,6 +33,7 @@ model User {
   invites          TeamInvite[]     @relation("InvitedBy")
   teamMembers      TeamMember[]
   ownedTeams       Team[]           @relation("TeamOwner")
+  paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
 
   @@index([createdAt(sort: Desc)], map: "idx_users_created_at_desc")
   @@index([email], map: "idx_users_email")
@@ -97,6 +99,12 @@ model Invoice {
   enablePaymentLink Boolean            @default(false) @map("enable_payment_link")
   eSignatureUrl     String?            @map("e_signature_url")
   watermarkText     String?            @map("watermark_text")
+  // Razorpay payment link fields
+  razorpayPaymentLinkId String?        @map("razorpay_payment_link_id")
+  razorpayPaymentLinkUrl String?       @map("razorpay_payment_link_url")
+  razorpayPaymentLinkStatus String?    @map("razorpay_payment_link_status")
+  razorpayPaymentId String?            @map("razorpay_payment_id")
+  razorpayOrderId   String?            @map("razorpay_order_id")
   items             InvoiceItem[]
   client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   issuedBy          User               @relation("IssuedBy", fields: [issuedById], references: [id])
@@ -108,6 +116,7 @@ model Invoice {
   @@index([issuedDate], map: "idx_invoices_issued_date")
   @@index([status], map: "idx_invoices_status")
   @@index([issuedById, status, issuedDate(sort: Desc)], map: "idx_invoices_user_status")
+  @@index([razorpayPaymentLinkId], map: "idx_invoices_razorpay_link_id")
   @@map("invoices")
 }
 
@@ -401,6 +410,59 @@ model IssueComment {
   @@map("issue_comments")
 }
 
+model PaymentSettings {
+  id                  String   @id @default(cuid())
+  userId              String   @unique @map("user_id")
+  
+  // Razorpay Route (Linked Account) - New Model
+  razorpayAccountId   String?  @unique @map("razorpay_account_id") // Razorpay linked account ID
+  accountStatus       AccountStatus @default(PENDING) @map("account_status") // pending, active, suspended, needs_clarification
+  
+  // Bank Account Details (Required for Razorpay Route)
+  accountHolderName   String?  @map("account_holder_name")
+  accountNumber       String?  @map("account_number")
+  ifscCode            String?  @map("ifsc_code")
+  bankName            String?  @map("bank_name")
+  branchName          String?  @map("branch_name")
+  accountType         AccountType? @map("account_type") // SAVINGS or CURRENT
+  
+  // KYC Details (Required by Razorpay Route)
+  panNumber           String?  @map("pan_number")
+  businessName        String?  @map("business_name")
+  gstNumber           String?  @map("gst_number")
+  
+  // Contact Details
+  contactEmail        String?  @map("contact_email")
+  contactPhone        String?  @map("contact_phone")
+  
+  // Address (Required for KYC)
+  businessAddress     String?  @map("business_address")
+  city                String?
+  state               String?
+  pincode             String?
+  country             String?  @default("India")
+  
+  // Platform Commission Settings
+  enableCommission    Boolean  @default(true) @map("enable_commission") // Platform can charge commission
+  commissionPercent   Float?   @default(5.0) @map("commission_percent") // Default 5%
+  
+  // Settlement Configuration
+  settlementSchedule  SettlementSchedule @default(INSTANT) @map("settlement_schedule")
+  
+  // Status & Metadata
+  accountActive       Boolean  @default(false) @map("account_active") // Is account ready for payments
+  verificationNotes   String?  @map("verification_notes") // Notes from Razorpay verification
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  user                User     @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_payment_settings_user_id")
+  @@index([razorpayAccountId], map: "idx_payment_settings_razorpay_account")
+  @@index([accountStatus], map: "idx_payment_settings_status")
+  @@map("payment_settings")
+}
+
 enum BoardType {
   KANBAN
   SCRUM
@@ -468,4 +530,24 @@ enum ClientStatus {
   ACTIVE
   INACTIVE
   PROSPECT
+}
+
+// Razorpay Route Enums
+enum AccountStatus {
+  PENDING           // Account creation initiated, awaiting verification
+  ACTIVE            // Account verified and active
+  SUSPENDED         // Account suspended by Razorpay
+  NEEDS_CLARIFICATION // Additional info required
+}
+
+enum AccountType {
+  SAVINGS
+  CURRENT
+}
+
+enum SettlementSchedule {
+  INSTANT           // Immediate transfer after payment
+  DAILY             // Daily settlement
+  WEEKLY            // Weekly settlement
+  MONTHLY           // Monthly settlement
 }

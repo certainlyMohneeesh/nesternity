@@ -154,6 +154,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure user exists in our database
+    // First, check if there's an orphaned user with this email
+    const existingUserWithEmail = await db.user.findUnique({
+      where: { email: user.email! },
+      include: {
+        _count: {
+          select: {
+            ownedTeams: true,
+            teamMembers: true,
+          }
+        }
+      }
+    });
+    
+    if (existingUserWithEmail && existingUserWithEmail.id !== user.id) {
+      // Only delete if user has no teams or memberships
+      if (existingUserWithEmail._count.ownedTeams === 0 && existingUserWithEmail._count.teamMembers === 0) {
+        console.log(`🗑️ Deleting orphaned user: ${existingUserWithEmail.email} (${existingUserWithEmail.id})`);
+        await db.user.delete({
+          where: { id: existingUserWithEmail.id }
+        });
+      } else {
+        // User has data, don't delete - this shouldn't happen normally
+        console.warn(`⚠️ Orphaned user ${existingUserWithEmail.email} has data, not deleting`);
+        return NextResponse.json({ 
+          error: 'Account conflict. Please contact support.' 
+        }, { status: 409 });
+      }
+    }
+
+    // Now upsert the current user
     await db.user.upsert({
       where: { id: user.id },
       create: {
@@ -161,7 +191,10 @@ export async function POST(request: NextRequest) {
         email: user.email!,
         displayName: user.user_metadata?.display_name || null,
       },
-      update: {}
+      update: {
+        email: user.email!,
+        displayName: user.user_metadata?.display_name || null,
+      }
     });
 
     // Create team
