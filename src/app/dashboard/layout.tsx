@@ -16,13 +16,13 @@ import ThemePreferenceAlert from "@/components/ThemePreferenceAlert";
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", iconName: "Home" },
   { href: "/dashboard/ai", label: "AI Features", iconName: "Sparkles" },
-  { href: "/dashboard/proposals", label: "Proposals", iconName: "FileText" },
   { href: "/dashboard/clients", label: "Clients", iconName: "Users" },
   { href: "/dashboard/projects", label: "Projects", iconName: "FolderOpen" },
   { href: "/dashboard/teams", label: "Teams", iconName: "Users2" },
+  { href: "/dashboard/proposals", label: "Proposals", iconName: "FileText" },
+  { href: "/dashboard/contracts", label: "Contracts", iconName: "FileText" },
   { href: "/dashboard/invoices", label: "Invoices", iconName: "FileCheck" },
   { href: "/dashboard/issues", label: "Issues", iconName: "AlertCircle" },
-  { href: "/dashboard/contracts", label: "Contracts", iconName: "FileText" },
   { href: "/dashboard/settings", label: "Settings", iconName: "Settings" },
 ];
 
