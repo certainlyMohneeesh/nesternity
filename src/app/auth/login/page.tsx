@@ -43,8 +43,10 @@ function LoginForm() {
         console.warn('User sync error:', syncError);
       }
       
-      const redirect = searchParams.get('redirect');
-      router.push(redirect || "/dashboard");
+      // Check for both 'returnUrl' (from middleware) and 'redirect' (legacy)
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+      console.log('🔄 [Login] Redirecting to:', returnUrl || '/dashboard');
+      router.push(returnUrl || "/dashboard");
     }
     setLoading(false);
   }

@@ -1,17 +1,12 @@
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Supabase client for AUTHENTICATION ONLY
+// Supabase client for AUTHENTICATION ONLY - Uses cookies for SSR compatibility
 // Database operations go through Prisma + PostgreSQL
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  }
-});
+export const supabase: SupabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 // Clean auth helpers
 export const auth = {

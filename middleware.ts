@@ -1,24 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-
-async function getUserFromToken(token: string) {
-  // Use Supabase REST endpoint for user info (works in Edge runtime)
-  const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    },
-  });
-  if (!res.ok) return null;
-  return res.json();
-}
+import { createServerClient } from '@supabase/ssr';
 
 export default async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+
+  // Handle admin routes
   if (req.nextUrl.pathname.startsWith("/admin")) {
     // Allow access to login page
     if (req.nextUrl.pathname === "/admin/login") {
-      return NextResponse.next();
+      return res;
     }
 
     // Check for admin authentication cookie
@@ -45,24 +35,53 @@ export default async function middleware(req: NextRequest) {
       response.cookies.delete("admin-auth");
       return response;
     }
+
+    return res;
   }
 
-  if (!req.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.next();
+  // Handle protected routes (dashboard, proposals, etc.)
+  const protectedRoutes = ["/dashboard"];
+  const isProtectedRoute = protectedRoutes.some(route => 
+    req.nextUrl.pathname.startsWith(route)
+  );
+
+  if (!isProtectedRoute) {
+    return res;
   }
 
-  const access_token = req.cookies.get("sb-access-token")?.value;
-  if (!access_token) {
-    return NextResponse.redirect(new URL("/auth/register", req.url));
-  }
+  // Create Supabase client for session management
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll().map(cookie => ({
+            name: cookie.name,
+            value: cookie.value,
+          }));
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
 
-  const user = await getUserFromToken(access_token);
+  // Check authentication and refresh session
+  const { data: { user } } = await supabase.auth.getUser();
+
   if (!user) {
-    return NextResponse.redirect(new URL("/auth/register", req.url));
+    // Redirect to login with return URL
+    const loginUrl = new URL("/auth/login", req.url);
+    loginUrl.searchParams.set("returnUrl", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // User is authenticated, allow access
-  return NextResponse.next();
+  // User is authenticated, allow access with refreshed session cookies
+  return res;
 }
 
 export const config = {
