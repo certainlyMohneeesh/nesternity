@@ -663,6 +663,36 @@ model Estimation {
   @@map("estimations")
 }
 
+model BudgetEstimation {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  title              String
+  brief              String
+  deliverables       Json     // Array of deliverable objects
+  timeline           Json     // Array of timeline/milestone objects
+  
+  // Estimation Results
+  estimatedBudget    Float    @map("estimated_budget")
+  actualBudget       Float?   @map("actual_budget") // Set when proposal is finalized
+  confidence         String   // 'low', 'medium', 'high'
+  breakdown          Json     // Array of cost breakdown items
+  rationale          String   // AI's reasoning
+  currency           String   @default("INR")
+  
+  // Metadata for learning
+  deliverableCount   Int      @map("deliverable_count")
+  timelineWeeks      Float    @map("timeline_weeks")
+  accuracy           Float?   // Calculated as (1 - abs(estimated - actual) / actual) * 100
+  
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  
+  @@index([userId], map: "idx_budget_estimations_user_id")
+  @@index([createdAt(sort: Desc)], map: "idx_budget_estimations_created_at")
+  @@index([accuracy], map: "idx_budget_estimations_accuracy")
+  @@map("budget_estimations")
+}
+
 model UpdateDraft {
   id              String       @id @default(cuid())
   weekStart       DateTime     @map("week_start") // Start of the week

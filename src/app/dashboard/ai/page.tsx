@@ -27,14 +27,14 @@ export default function AIFeaturesPage() {
       stats: "Save 2-3 hours per proposal"
     },
     {
-      title: "AI Estimation",
-      description: "Get accurate project estimates based on historical data, deliverables, and client budget using machine learning.",
+      title: "AI Budget Estimation",
+      description: "Automatically estimate proposal budgets based on deliverables, timeline, and historical data. Integrated directly into proposal creation.",
       icon: Calculator,
-      href: "/dashboard/ai/estimate",
+      href: "/dashboard/proposals/new",
       color: "text-purple-600",
       bgColor: "bg-purple-50",
       status: "Active",
-      stats: "95% accuracy rate"
+      stats: "Smart learning from history"
     },
     {
       title: "Weekly Updates",
@@ -181,13 +181,13 @@ export default function AIFeaturesPage() {
               </Link>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">2. Estimate Projects</h4>
+              <h4 className="font-semibold mb-2">2. Auto-Estimate Budgets</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Get accurate estimates based on your project requirements and historical data.
+                When creating or editing proposals, AI automatically suggests budgets based on your project scope.
               </p>
-              <Link href="/dashboard/ai/estimate">
+              <Link href="/dashboard/proposals">
                 <Button size="sm" variant="outline">
-                  Try Estimator
+                  View Proposals
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
