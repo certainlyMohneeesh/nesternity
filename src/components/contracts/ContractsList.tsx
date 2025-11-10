@@ -24,9 +24,12 @@ import {
   FileText,
   Search,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type Contract = {
   id: string;
@@ -59,6 +62,8 @@ type Props = {
 export function ContractsList({ contracts: initialContracts }: Props) {
   const [contracts] = useState(initialContracts);
   const [searchTerm, setSearchTerm] = useState("");
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const router = useRouter();
 
   // Filter contracts
   const filteredContracts = contracts.filter((contract) => {
@@ -69,6 +74,36 @@ export function ContractsList({ contracts: initialContracts }: Props) {
 
     return matchesSearch;
   });
+
+  const handleConvertToInvoice = async (contractId: string) => {
+    setConvertingId(contractId);
+    try {
+      const response = await fetch(`/api/proposals/${contractId}/convert-to-invoice`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to convert to invoice");
+      }
+
+      const data = await response.json();
+      
+      toast.success("Converted to invoice! 🎉", {
+        description: `Invoice ${data.invoice.invoiceNumber} has been created`,
+      });
+
+      // Navigate to the invoice
+      router.push(`/dashboard/invoices/${data.invoice.id}`);
+    } catch (error) {
+      console.error("Convert to invoice error:", error);
+      toast.error("Failed to convert", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setConvertingId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -138,14 +173,22 @@ export function ContractsList({ contracts: initialContracts }: Props) {
                           </a>
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={`/dashboard/invoices?from=contract&id=${contract.id}`}
-                          className="cursor-pointer"
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          Convert to Invoice
-                        </Link>
+                      <DropdownMenuItem
+                        onClick={() => handleConvertToInvoice(contract.id)}
+                        disabled={convertingId === contract.id}
+                        className="cursor-pointer"
+                      >
+                        {convertingId === contract.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Converting...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Convert to Invoice
+                          </>
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

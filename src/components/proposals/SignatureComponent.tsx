@@ -40,7 +40,7 @@ export function SignatureComponent({ proposalId, onSignatureComplete }: Props) {
   };
 
   const generateTypedSignature = () => {
-    if (!typedName.trim()) return;
+    if (!typedName.trim()) return null;
 
     const canvas = document.createElement("canvas");
     canvas.width = 400;
