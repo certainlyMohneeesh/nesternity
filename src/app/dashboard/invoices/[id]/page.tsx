@@ -5,9 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
-
-import { ArrowLeft, Calendar, User, Mail, FileText, CreditCard } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { ArrowLeft, Calendar, User, Mail, FileText, CreditCard, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import React from 'react'
@@ -63,8 +74,10 @@ interface Invoice {
 
 export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
+  const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -137,6 +150,34 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
     const tax = calculateTax()
     const discount = calculateDiscount()
     return subtotal + tax - discount
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Authentication required')
+        return
+      }
+      
+      const res = await fetch(`/api/invoices/${invoice?.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+      
+      if (!res.ok) {
+        throw new Error((await res.json()).error || 'Failed to delete invoice')
+      }
+      
+      toast.success('Invoice deleted successfully')
+      router.push('/dashboard/invoices')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete invoice')
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -348,6 +389,35 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
                 invoiceId={invoice.id}
                 invoiceNumber={invoice.invoiceNumber}
               />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive"
+                    disabled={deleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleting ? 'Deleting...' : 'Delete Invoice'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete invoice <strong>{invoice.invoiceNumber}</strong>?
+                      This action cannot be undone and will permanently remove the invoice and all its items.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete Invoice
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

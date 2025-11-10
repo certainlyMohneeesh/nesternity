@@ -55,15 +55,15 @@ export default async function ProposalsPage() {
     total: proposals.length,
     draft: proposals.filter((p: any) => p.status === "DRAFT").length,
     sent: proposals.filter((p: any) => p.status === "SENT").length,
-    accepted: proposals.filter((p: any) => p.status === "ACCEPTED").length,
+    accepted: proposals.filter((p: any) => p.status === "ACCEPTED" || p.status === "CONVERTED_TO_INVOICE").length,
     rejected: proposals.filter((p: any) => p.status === "REJECTED").length,
     totalValue: proposals
-      .filter((p: any) => p.status === "ACCEPTED")
+      .filter((p: any) => p.status === "ACCEPTED" || p.status === "CONVERTED_TO_INVOICE")
       .reduce((sum: number, p: any) => sum + p.pricing, 0),
     acceptanceRate:
       proposals.filter((p: any) => p.status !== "DRAFT").length > 0
         ? (
-            (proposals.filter((p: any) => p.status === "ACCEPTED").length /
+            (proposals.filter((p: any) => p.status === "ACCEPTED" || p.status === "CONVERTED_TO_INVOICE").length /
               proposals.filter((p: any) => p.status !== "DRAFT").length) *
             100
           ).toFixed(1)

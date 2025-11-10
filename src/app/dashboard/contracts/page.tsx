@@ -22,7 +22,9 @@ export default async function ContractsPage() {
       client: {
         createdBy: user.id,
       },
-      status: "ACCEPTED",
+      status: {
+        in: ["ACCEPTED", "CONVERTED_TO_INVOICE"],
+      },
     },
     include: {
       client: {

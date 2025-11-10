@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation";
 type Contract = {
   id: string;
   title: string;
+  status: string;
   pricing: number;
   currency: string;
   acceptedAt: Date | null;
@@ -196,10 +197,17 @@ export function ContractsList({ contracts: initialContracts }: Props) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Badge className="bg-green-500">
-                    <CheckCircle className="mr-1 h-3 w-3" />
-                    Accepted
-                  </Badge>
+                  {contract.status === "CONVERTED_TO_INVOICE" ? (
+                    <Badge className="bg-purple-500">
+                      <FileText className="mr-1 h-3 w-3" />
+                      Invoiced
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-500">
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      Accepted
+                    </Badge>
+                  )}
                   <span className="text-lg font-semibold">
                     {contract.currency === "INR" ? "₹" : "$"}
                     {contract.pricing.toLocaleString()}
@@ -213,14 +221,9 @@ export function ContractsList({ contracts: initialContracts }: Props) {
                 )}
 
                 {contract.signatures.length > 0 && (
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">
-                      Signed by {contract.signatures[0].signerName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(contract.signatures[0].signedAt))}{" "}
-                      ago
-                    </p>
+                  <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                    <CheckCircle className="h-4 w-4" />
+                    Signed by {contract.signatures[0].signerName}
                   </div>
                 )}
 

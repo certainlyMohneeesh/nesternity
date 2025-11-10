@@ -76,6 +76,7 @@ const statusColors = {
   SENT: "bg-blue-500",
   ACCEPTED: "bg-green-500",
   REJECTED: "bg-red-500",
+  CONVERTED_TO_INVOICE: "bg-purple-500",
 };
 
 const statusLabels = {
@@ -83,6 +84,7 @@ const statusLabels = {
   SENT: "Sent",
   ACCEPTED: "Accepted",
   REJECTED: "Rejected",
+  CONVERTED_TO_INVOICE: "Invoiced",
 };
 
 export function ProposalsList({ proposals: initialProposals }: Props) {
@@ -180,6 +182,7 @@ export function ProposalsList({ proposals: initialProposals }: Props) {
             <SelectItem value="DRAFT">Draft</SelectItem>
             <SelectItem value="SENT">Sent</SelectItem>
             <SelectItem value="ACCEPTED">Accepted</SelectItem>
+            <SelectItem value="CONVERTED_TO_INVOICE">Invoiced</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
           </SelectContent>
         </Select>
