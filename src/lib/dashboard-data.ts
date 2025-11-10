@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // Aggregates all dashboard data for a user
 export async function getDashboardData(userId: string) {

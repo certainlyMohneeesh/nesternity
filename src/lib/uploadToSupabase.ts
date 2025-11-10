@@ -8,7 +8,9 @@ export async function uploadInvoicePDF(
   const { contentType = 'application/pdf', isHTML = false } = options
   
   try {
-    console.log('☁️  Starting PDF upload to Supabase storage:', filename);
+    console.log('☁️  Starting invoice PDF upload to Supabase storage:', filename);
+    console.log('📦 Buffer size:', pdfBuffer.length, 'bytes');
+    console.log('📝 Content type:', contentType);
     
     // Use server client with service role to bypass RLS
     const supabase = createSupabaseServerClient()
@@ -18,40 +20,10 @@ export async function uploadInvoicePDF(
       ? filename.replace('.pdf', '.html')
       : filename
     
-    // First, check if the bucket exists, if not create it
-    console.log('🔍 Checking if invoices bucket exists...');
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets()
-    
-    if (listError) {
-      console.error('❌ Error listing buckets:', listError)
-    } else {
-      console.log('📋 Available buckets:', buckets?.map(b => b.name).join(', '));
-    }
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === 'invoices')
-    console.log('📦 Bucket exists:', bucketExists);
-    
-    if (!bucketExists) {
-      // Try to create the bucket
-      console.log('🏗️  Creating invoices bucket...');
-      const { error: createError } = await supabase.storage.createBucket('invoices', {
-        public: true,
-        allowedMimeTypes: ['application/pdf', 'text/html'],
-        fileSizeLimit: 10485760 // 10MB
-      })
-      
-      if (createError) {
-        console.error('❌ Error creating bucket:', createError)
-        console.warn('⚠️  Continuing anyway - bucket might exist but not be listable');
-      } else {
-        console.log('✅ Bucket created successfully');
-      }
-    }
-
     // Determine the upload path based on content type
     const uploadPath = isHTML ? `html/${actualFilename}` : `pdfs/${actualFilename}`
     
-    console.log('📤 Uploading file to storage:', uploadPath);
+    console.log('📤 Uploading invoice file to storage: invoices/' + uploadPath);
     const { data, error } = await supabase.storage
       .from('invoices')
       .upload(uploadPath, pdfBuffer, {
@@ -60,22 +32,32 @@ export async function uploadInvoicePDF(
       })
 
     if (error) {
-      console.error('❌ Error uploading file:', error)
-      throw new Error(`Failed to upload file to storage: ${error.message}`)
+      console.error('❌ Error uploading invoice file:', error);
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        statusCode: (error as any).statusCode,
+      });
+      throw new Error(`Failed to upload invoice file to storage: ${error.message}`)
     }
 
-    console.log('✅ File uploaded successfully:', data?.path);
+    console.log('✅ Invoice file uploaded successfully:', data?.path);
 
     // Get the public URL for the uploaded file
-    console.log('🔗 Getting public URL...');
+    console.log('🔗 Getting public URL for invoice...');
     const { data: { publicUrl } } = supabase.storage
       .from('invoices')
       .getPublicUrl(uploadPath)
 
-    console.log('✅ Public URL generated:', publicUrl);
+    console.log('✅ Public URL generated for invoice:', publicUrl);
     return publicUrl
   } catch (error) {
-    console.error('❌ Error in uploadInvoicePDF:', error)
+    console.error('❌ Error in uploadInvoicePDF:', error);
+    console.error('Full error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw error
   }
 }

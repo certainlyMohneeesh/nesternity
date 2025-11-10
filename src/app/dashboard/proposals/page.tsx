@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { ProposalsList } from "@/components/proposals/ProposalsList";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";

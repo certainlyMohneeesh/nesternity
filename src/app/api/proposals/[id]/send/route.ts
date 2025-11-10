@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/api";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { sendProposalEmail } from "@/lib/email";
 import { generateProposalAccessToken } from "@/lib/security";
 

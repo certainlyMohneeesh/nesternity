@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { SignatureComponent } from "@/components/proposals/SignatureComponent";
+import { prisma } from "@/lib/db";
+import SignatureComponent from "@/components/proposals/SignatureComponent";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Calendar, FileText, AlertTriangle, Shield } from "lucide-react";

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { ProposalEditForm } from "@/components/proposals/ProposalEditForm";
 import {
   Breadcrumb,
