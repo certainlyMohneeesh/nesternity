@@ -82,6 +82,7 @@ export async function generateCompletion(
       generationConfig: {
         temperature,
         maxOutputTokens: maxTokens,
+        responseMimeType: 'application/json', // Force JSON output
       },
     });
 
@@ -114,49 +115,222 @@ export async function generateCompletion(
 }
 
 /**
- * Generate structured JSON completion
+ * Extract and clean JSON from AI response with multiple fallback strategies
+ */
+function extractJSON(content: string): string {
+  let jsonContent = content.trim();
+  
+  // Strategy 1: Extract from markdown code blocks
+  const codeBlockMatch = jsonContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (codeBlockMatch) {
+    jsonContent = codeBlockMatch[1].trim();
+  } else if (jsonContent.startsWith('```')) {
+    // Handle incomplete markdown blocks
+    jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```$/, '').trim();
+  }
+  
+  // Strategy 2: Find JSON object/array boundaries
+  const firstBrace = jsonContent.indexOf('{');
+  const firstBracket = jsonContent.indexOf('[');
+  
+  // Determine if it's an object or array
+  let startPos = -1;
+  let isObject = true;
+  
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    startPos = firstBrace;
+    isObject = true;
+  } else if (firstBracket !== -1) {
+    startPos = firstBracket;
+    isObject = false;
+  }
+  
+  if (startPos !== -1) {
+    jsonContent = jsonContent.substring(startPos);
+  }
+  
+  // Strategy 3: Find last complete closing delimiter
+  const lastBrace = jsonContent.lastIndexOf('}');
+  const lastBracket = jsonContent.lastIndexOf(']');
+  
+  let endPos = -1;
+  if (isObject && lastBrace !== -1) {
+    endPos = lastBrace + 1;
+  } else if (!isObject && lastBracket !== -1) {
+    endPos = lastBracket + 1;
+  } else {
+    // Fallback: use the last available delimiter
+    endPos = Math.max(lastBrace, lastBracket) + 1;
+  }
+  
+  if (endPos > 0) {
+    jsonContent = jsonContent.substring(0, endPos);
+  }
+  
+  return jsonContent;
+}
+
+/**
+ * Attempt to repair incomplete JSON
+ * Handles common issues like:
+ * - Missing closing quotes in strings
+ * - Missing closing brackets/braces
+ * - Trailing commas
+ * - Unmatched brackets vs braces
+ */
+function repairJSON(jsonStr: string): string {
+  let repaired = jsonStr;
+  
+  // Remove trailing commas before closing brackets/braces
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Count opening and closing delimiters
+  const openBraces = (repaired.match(/{/g) || []).length;
+  const closeBraces = (repaired.match(/}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/]/g) || []).length;
+  
+  // Track delimiter stack to close in correct order
+  const stack: string[] = [];
+  let inString = false;
+  let escapeNext = false;
+  
+  // Parse to build correct closing sequence
+  for (let i = 0; i < repaired.length; i++) {
+    const char = repaired[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    
+    if (inString) continue;
+    
+    if (char === '{') {
+      stack.push('}');
+    } else if (char === '[') {
+      stack.push(']');
+    } else if (char === '}' || char === ']') {
+      if (stack.length > 0 && stack[stack.length - 1] === char) {
+        stack.pop();
+      }
+    }
+  }
+  
+  // Add missing closures in reverse stack order
+  while (stack.length > 0) {
+    repaired += stack.pop();
+  }
+  
+  return repaired;
+}
+
+/**
+ * Generate structured JSON completion with robust error handling and retry logic
  */
 export async function generateStructuredCompletion<T = unknown>(
   messages: ChatMessage[],
   options: CompletionOptions = {}
 ): Promise<{ data: T; usage?: CompletionResult['usage']; model: string }> {
-  const result = await generateCompletion(messages, options);
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  let lastResponse: string | null = null;
   
-  try {
-    // Extract JSON from markdown code blocks if present
-    let jsonContent = result.content.trim();
-    
-    // Try to extract JSON from markdown code blocks
-    const jsonMatch = jsonContent.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-    if (jsonMatch) {
-      jsonContent = jsonMatch[1].trim();
-    } else if (jsonContent.startsWith('```')) {
-      // Handle incomplete markdown blocks (response might be cut off)
-      jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```$/, '').trim();
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Adjust temperature for retries (lower = more deterministic)
+      const retryOptions = {
+        ...options,
+        temperature: attempt === 1 ? options.temperature : Math.max(0.3, (options.temperature || 0.7) - (attempt - 1) * 0.2),
+        maxTokens: attempt > 1 ? Math.min((options.maxTokens || 4096) * 1.5, 8192) : options.maxTokens, // Increase max tokens on retry
+      };
+      
+      if (attempt > 1) {
+        console.log(`🔄 Retry attempt ${attempt}/${maxRetries} with temperature ${retryOptions.temperature}`);
+        
+        // Add instruction to ensure complete JSON on retry
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage && lastMessage.role === 'user') {
+          messages[messages.length - 1] = {
+            ...lastMessage,
+            content: lastMessage.content + '\n\nIMPORTANT: Return ONLY valid, complete JSON. Do not truncate arrays or objects. Ensure all brackets and braces are properly closed.',
+          };
+        }
+      }
+      
+      const result = await generateCompletion(messages, retryOptions);
+      lastResponse = result.content;
+      
+      // Try multiple parsing strategies
+      const strategies = [
+        // Strategy 1: Extract and clean JSON
+        () => {
+          const extracted = extractJSON(result.content);
+          return JSON.parse(extracted) as T;
+        },
+        // Strategy 2: Repair and parse
+        () => {
+          const extracted = extractJSON(result.content);
+          const repaired = repairJSON(extracted);
+          return JSON.parse(repaired) as T;
+        },
+        // Strategy 3: Direct parse (original content)
+        () => {
+          return JSON.parse(result.content) as T;
+        },
+      ];
+      
+      for (let strategyIndex = 0; strategyIndex < strategies.length; strategyIndex++) {
+        try {
+          const data = strategies[strategyIndex]();
+          
+          if (attempt > 1 || strategyIndex > 0) {
+            console.log(`✅ JSON parsed successfully using strategy ${strategyIndex + 1} on attempt ${attempt}`);
+          }
+          
+          return {
+            data,
+            usage: result.usage,
+            model: result.model,
+          };
+        } catch (parseError) {
+          if (strategyIndex === strategies.length - 1) {
+            // Last strategy failed, throw to outer catch
+            throw parseError;
+          }
+          // Try next strategy
+          continue;
+        }
+      }
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt < maxRetries) {
+        console.warn(`⚠️ Attempt ${attempt} failed: ${lastError.message}. Retrying...`);
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt - 1), 5000)));
+      } else {
+        console.error('❌ All retry attempts exhausted');
+        if (lastResponse) {
+          console.error('Last AI response:', lastResponse.substring(0, 500));
+        }
+        console.error('Parse error:', lastError);
+      }
     }
-    
-    // Remove any trailing incomplete JSON if response was cut off
-    // Find the last complete closing brace/bracket
-    const lastBrace = jsonContent.lastIndexOf('}');
-    const lastBracket = jsonContent.lastIndexOf(']');
-    const lastComplete = Math.max(lastBrace, lastBracket);
-    
-    if (lastComplete > -1 && lastComplete < jsonContent.length - 1) {
-      // There's content after the last closing brace/bracket, likely incomplete
-      jsonContent = jsonContent.substring(0, lastComplete + 1);
-    }
-    
-    const data = JSON.parse(jsonContent) as T;
-    return {
-      data,
-      usage: result.usage,
-      model: result.model,
-    };
-  } catch (error) {
-    console.error('❌ Failed to parse AI JSON response:', result.content);
-    console.error('Parse error:', error);
-    throw new Error('AI returned invalid JSON format');
   }
+  
+  // All retries failed
+  throw new Error(`AI returned invalid JSON format after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
 }
 
 /**

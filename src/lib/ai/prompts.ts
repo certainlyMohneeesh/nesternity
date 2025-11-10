@@ -55,6 +55,14 @@ export function createProposalPrompt(input: ProposalPromptInput): ChatMessage[] 
   const systemPrompt = `You are an expert business proposal writer specializing in software development and digital services. 
 Your task is to create professional, compelling proposals that balance client needs with realistic delivery expectations.
 
+CRITICAL INSTRUCTIONS:
+1. Return ONLY valid, complete JSON - no markdown code blocks, no explanations outside JSON
+2. Ensure ALL arrays and objects are properly closed with matching brackets/braces
+3. Keep deliverables array to maximum 6 items to avoid truncation
+4. Keep milestone array to maximum 4 items
+5. All string values must use proper escaping for quotes and special characters
+6. Do not truncate the response - complete all fields before ending
+
 Guidelines:
 - Be clear, concise, and professional
 - Break down deliverables into specific, measurable items
@@ -63,11 +71,11 @@ Guidelines:
 - Suggest value-based pricing when appropriate
 - Highlight unique value propositions
 
-Output Format: Return ONLY valid JSON with this structure:
+REQUIRED Output Format (complete this exact structure):
 {
-  "title": "Proposal title",
+  "title": "Proposal title (max 100 chars)",
   "deliverables": [
-    { "item": "Deliverable name", "description": "Details", "timeline": "2-3 weeks" }
+    { "item": "Deliverable name", "description": "Details (max 200 chars)", "timeline": "2-3 weeks" }
   ],
   "timeline": {
     "total": "8-10 weeks",
@@ -84,8 +92,10 @@ Output Format: Return ONLY valid JSON with this structure:
     ]
   },
   "paymentTerms": "50% upfront, 25% at milestone 2, 25% on completion",
-  "summary": "Brief executive summary of the proposal"
-}`;
+  "summary": "Brief executive summary (max 300 chars)"
+}
+
+IMPORTANT: Complete ALL fields. Do not truncate arrays. Close all brackets and braces.`;
 
   const userPrompt = `Create a professional proposal for:
 
@@ -99,7 +109,9 @@ ${input.brief}
 
 ${input.deliverables?.length ? `**Requested Deliverables:**\n${input.deliverables.map(d => `- ${d}`).join('\n')}` : ''}
 
-Generate a detailed proposal with clear deliverables, timeline, and pricing.`;
+Generate a detailed proposal with clear deliverables, timeline, and pricing.
+
+RESPOND WITH COMPLETE VALID JSON ONLY. Ensure all arrays and objects are properly closed.`;
 
   return [
     { role: 'system', content: systemPrompt },

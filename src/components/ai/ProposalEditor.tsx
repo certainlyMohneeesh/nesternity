@@ -378,7 +378,7 @@ export function ProposalEditor({ clients }: ProposalEditorProps) {
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-6 border-t">
-                <Button onClick={handleSave} disabled={saving} className="flex-1" size="lg">
+                <Button onClick={handleSave} disabled={saving} className="w-full" size="lg">
                   {saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -387,13 +387,9 @@ export function ProposalEditor({ clients }: ProposalEditorProps) {
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save as Draft
+                      Save Proposal
                     </>
                   )}
-                </Button>
-                <Button variant="outline" className="flex-1" size="lg">
-                  <Send className="mr-2 h-4 w-4" />
-                  Send to Client
                 </Button>
               </div>
             </div>

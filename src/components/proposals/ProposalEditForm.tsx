@@ -31,6 +31,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BudgetEstimation } from "./BudgetEstimation";
 
 type Client = {
   id: string;
@@ -531,8 +532,23 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>Pricing & Payment Terms</CardTitle>
+          <CardDescription>
+            Use AI to estimate budget or enter manually
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* AI Budget Estimation */}
+          <BudgetEstimation
+            title={title}
+            brief={brief}
+            deliverables={deliverables}
+            timeline={timeline}
+            currency={currency}
+            onEstimationComplete={(budget) => setPricing(budget.toString())}
+          />
+
+          <Separator />
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="pricing">Total Price *</Label>
