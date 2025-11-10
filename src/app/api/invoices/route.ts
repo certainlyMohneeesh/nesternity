@@ -204,87 +204,85 @@ export async function POST(req: NextRequest) {
       try {
         // Generate payment URL first if needed
         let paymentUrl = null;
+        let razorpayPaymentLinkId = null;
+        let razorpayPaymentLinkStatus = null;
+        
         if (enablePaymentLink) {
-          console.log('💳 Generating payment link...');
+          console.log('💳 Generating Razorpay payment link with Route...');
           try {
-            // Import stripe temporarily to create payment link
-            const { stripe } = await import('@/lib/stripe');
-            
-            // Create line items for Stripe
-            const lineItems = processedItems.map((item: any) => ({
-              price_data: {
-                currency: (currency || 'INR').toLowerCase(),
-                product_data: {
-                  name: item.description,
-                },
-                unit_amount: Math.round(item.rate * 100), // Convert to cents
-              },
-              quantity: item.quantity,
-            }));
+            // Get user's payment settings to check if linked account is active
+            const paymentSettings = await prisma.paymentSettings.findUnique({
+              where: { userId: user.id },
+            });
 
-            // Add tax as a separate line item if applicable
-            if (taxAmount > 0) {
-              lineItems.push({
-                price_data: {
-                  currency: (currency || 'INR').toLowerCase(),
-                  product_data: {
-                    name: `Tax (${taxRate || 0}%)`,
-                  },
-                  unit_amount: Math.round(taxAmount * 100),
-                },
-                quantity: 1,
-              });
-            }
-
-            // Prepare discount coupon if applicable
-            let discounts = undefined;
-            if (discountAmount > 0) {
-              const coupon = await stripe.coupons.create({
-                percent_off: discount,
-                duration: 'once',
-                name: `Discount (${discount}%)`,
-              });
+            if (paymentSettings?.razorpayAccountId && paymentSettings.accountActive) {
+              // Use Razorpay Route for payment link with auto-transfer
+              const { 
+                createPaymentLinkWithTransfer, 
+                convertToPaise,
+                calculateCommission,
+                mapSettlementSchedule
+              } = await import('@/lib/razorpay-route');
               
-              discounts = [{
-                coupon: coupon.id
-              }];
-            }
-
-            // Create Stripe checkout session
-            const sessionData: any = {
-              payment_method_types: ['card'],
-              line_items: lineItems,
-              mode: 'payment',
-              success_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-              cancel_url: `${req.nextUrl.origin}/dashboard/invoices/${invoice.id}?payment=cancelled`,
-              metadata: {
-                invoiceId: invoice.id,
-                userId: user.id,
-              },
-              customer_email: client.email,
-              invoice_creation: {
-                enabled: true,
-                invoice_data: {
-                  description: `Payment for Invoice ${invoice.invoiceNumber}`,
-                  metadata: {
-                    invoiceId: invoice.id,
-                    invoiceNumber: invoice.invoiceNumber,
-                  },
+              // Calculate commission
+              const totalInPaise = convertToPaise(total);
+              const commissionData = calculateCommission(
+                totalInPaise,
+                paymentSettings.enableCommission || false,
+                paymentSettings.commissionPercent || 5.0
+              );
+              
+              const razorpayLink = await createPaymentLinkWithTransfer({
+                amount: totalInPaise,
+                currency: (currency || 'INR').toUpperCase(),
+                description: `Payment for Invoice ${invoiceNumber}`,
+                customer: {
+                  name: client.name,
+                  email: client.email,
+                  contact: client.phone || undefined,
                 },
-              },
-            };
+                reference_id: invoice.id,
+                linked_account_id: paymentSettings.razorpayAccountId,
+                transfer_amount: commissionData.transferAmount,
+                settlement_schedule: mapSettlementSchedule(paymentSettings.settlementSchedule) as 'instant' | 'daily' | 'weekly' | 'monthly',
+                notes: {
+                  invoiceNumber: invoice.invoiceNumber,
+                  clientName: client.name,
+                  userId: user.id,
+                  commission: commissionData.commission.toString(),
+                  commissionPercent: commissionData.commissionPercent.toString(),
+                },
+              });
 
-            if (discounts) {
-              sessionData.discounts = discounts;
+              paymentUrl = razorpayLink.short_url;
+              razorpayPaymentLinkId = razorpayLink.id;
+              razorpayPaymentLinkStatus = razorpayLink.status;
+              
+              console.log('✅ Razorpay Route payment link generated:', paymentUrl);
+              console.log(`💰 Commission: ₹${commissionData.commission / 100} (${commissionData.commissionPercent}%)`);
+              console.log(`📤 Transfer to user: ₹${commissionData.transferAmount / 100}`);
+            } else {
+              // Razorpay Route not configured - user needs to link bank account
+              console.log('⚠️  Razorpay Route not configured. User needs to link bank account in Settings.');
+              console.warn('Payment link cannot be generated without linked bank account.');
+              throw new Error('Please link your bank account in Settings → Payments before creating payment links.');
             }
-
-            const session = await stripe.checkout.sessions.create(sessionData);
-            paymentUrl = session.url;
-            console.log('✅ Payment link generated:', paymentUrl);
-          } catch (paymentError) {
-            console.error('❌ Failed to generate payment link:', paymentError);
-            // Continue without payment link
+          } catch (razorpayError) {
+            console.error('❌ Failed to generate Razorpay payment link:', razorpayError);
+            throw razorpayError; // Re-throw to prevent invoice creation without payment link
           }
+        }
+
+        // Update invoice with Razorpay payment link details if generated
+        if (razorpayPaymentLinkId) {
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              razorpayPaymentLinkId,
+              razorpayPaymentLinkUrl: paymentUrl,
+              razorpayPaymentLinkStatus,
+            },
+          });
         }
 
         // Import the PDF generation function

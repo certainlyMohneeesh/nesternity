@@ -28,6 +28,35 @@ export async function POST(request: NextRequest) {
     if (!prismaUser) {
       console.log('Creating new user in Prisma:', user.id, user.email);
       
+      // Check for orphaned user with same email
+      const orphanedUser = await (db as any).user.findUnique({
+        where: { email: user.email || '' },
+        include: {
+          _count: {
+            select: {
+              ownedTeams: true,
+              teamMembers: true,
+            }
+          }
+        }
+      });
+      
+      if (orphanedUser) {
+        // Only delete if no teams or memberships
+        if (orphanedUser._count.ownedTeams === 0 && orphanedUser._count.teamMembers === 0) {
+          console.log('🗑️ Deleting orphaned user with email:', user.email);
+          await (db as any).user.delete({
+            where: { id: orphanedUser.id }
+          });
+        } else {
+          console.warn('⚠️ Orphaned user has data, skipping deletion');
+          return NextResponse.json({ 
+            error: 'Account conflict. Please contact support.',
+            user: null 
+          }, { status: 409 });
+        }
+      }
+      
       // Get display name from user metadata or use email
       const displayName = user.user_metadata?.name || 
                          user.user_metadata?.display_name || 

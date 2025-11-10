@@ -95,6 +95,32 @@ export async function POST(request: NextRequest) {
       try {
         console.log('🔄 Register API: Creating basic user record (email confirmation pending)');
         
+                // Check for orphaned user with same email
+        const orphanedUser = await db.user.findUnique({
+          where: { email: data.user.email! },
+          include: {
+            _count: {
+              select: {
+                ownedTeams: true,
+                teamMembers: true,
+              }
+            }
+          }
+        });
+        
+        if (orphanedUser) {
+          // Only delete if no teams or memberships
+          if (orphanedUser._count.ownedTeams === 0 && orphanedUser._count.teamMembers === 0) {
+            console.log('🗑️ Register API: Deleting orphaned user:', orphanedUser.email);
+            await db.user.delete({
+              where: { id: orphanedUser.id }
+            });
+          } else {
+            console.warn('⚠️ Register API: Orphaned user has data, not deleting');
+            // Continue anyway - user will be created with new ID
+          }
+        }
+        
         await db.user.create({
           data: {
             id: data.user.id,
