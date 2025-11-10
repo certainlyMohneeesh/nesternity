@@ -35,6 +35,7 @@ import {
   Building2,
   Phone,
   Edit,
+  Link2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -108,6 +109,16 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
   const [isRejecting, setIsRejecting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+
+  const copySignLink = async () => {
+    const signLink = `${window.location.origin}/proposals/${proposal.id}/sign`;
+    try {
+      await navigator.clipboard.writeText(signLink);
+      toast.success("Sign link copied to clipboard!");
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -263,6 +274,14 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
             )}
             {proposal.status === "SENT" && (
               <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={copySignLink}
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Copy Sign Link
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
