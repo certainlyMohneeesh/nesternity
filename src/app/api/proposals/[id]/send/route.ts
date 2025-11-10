@@ -23,8 +23,18 @@ export async function POST(
             createdBy: true,
             email: true,
             name: true,
+            company: true,
+            phone: true,
+            address: true,
           },
         },
+        project: {
+          select: {
+            name: true,
+            description: true,
+          },
+        },
+        signatures: true,
       },
     });
 
@@ -32,8 +42,41 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // TODO: Generate PDF if not exists
+    // Generate PDF if not already generated
+    let pdfUrl = proposal.pdfUrl;
+    
+    if (!pdfUrl) {
+      console.log('📄 Generating PDF for proposal:', proposal.title);
+      
+      const { generateProposalPDF } = await import('@/lib/generateProposalPdf');
+      
+      const proposalForPDF = {
+        id: proposal.id,
+        title: proposal.title,
+        createdAt: proposal.createdAt,
+        pricing: proposal.pricing,
+        currency: proposal.currency,
+        paymentTerms: proposal.paymentTerms,
+        brief: proposal.brief,
+        deliverables: proposal.deliverables,
+        timeline: proposal.timeline,
+        client: {
+          name: proposal.client.name,
+          email: proposal.client.email,
+          company: proposal.client.company,
+          phone: proposal.client.phone,
+          address: proposal.client.address,
+        },
+        project: proposal.project,
+        signatures: proposal.signatures,
+      };
+
+      pdfUrl = await generateProposalPDF(proposalForPDF);
+      console.log('✅ PDF generated:', pdfUrl);
+    }
+
     // TODO: Send email with PDF attachment
+    // For now, we'll just update the status
 
     // Update proposal status
     const updatedProposal = await prisma.proposal.update({
@@ -42,6 +85,7 @@ export async function POST(
         status: "SENT",
         sentAt: new Date(),
         sentTo: proposal.client.email,
+        pdfUrl: pdfUrl,
       },
     });
 
