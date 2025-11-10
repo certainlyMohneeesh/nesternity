@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useSession } from "@/components/auth/session-context";
 import { toast } from "sonner";
+import RecurringInvoicesOverview from "@/components/dashboard/RecurringInvoicesOverview";
+import ScopeRadarWidget from "@/components/dashboard/ScopeRadarWidget";
 import { 
   Users, 
   Calendar, 
@@ -330,6 +332,25 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recurring Invoices & Budget Monitor */}
+      {(data.recurringInvoices && data.recurringInvoices.length > 0) || (data.clients && data.clients.length > 0) ? (
+        <div className="grid gap-8 md:grid-cols-2">
+          {data.recurringInvoices && data.recurringInvoices.length > 0 && (
+            <RecurringInvoicesOverview invoices={data.recurringInvoices} />
+          )}
+          
+          {/* Scope Radar for first client with budget */}
+          {data.clients && data.clients.length > 0 && (
+            <ScopeRadarWidget
+              clientId={data.clients[0].id}
+              projectId={data.clients[0].projects?.[0]?.id}
+              userId={session?.user?.id || ""}
+              compact={false}
+            />
+          )}
+        </div>
+      ) : null}
 
       {/* Recent Completed Tasks */}
       {data.recentCompletedTasks.length > 0 && (

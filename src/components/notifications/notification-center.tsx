@@ -76,6 +76,7 @@ export default function NotificationCenter() {
 
   function getActivityIcon(actionType: string) {
     switch (actionType) {
+      // Tasks
       case 'task_created':
       case 'task_updated':
         return '📋';
@@ -83,12 +84,90 @@ export default function NotificationCenter() {
         return '👤';
       case 'task_completed':
         return '✅';
+      case 'task_moved':
+        return '🔄';
+      
+      // Team
       case 'member_added':
+      case 'invite_accepted':
         return '👥';
+      case 'invite_sent':
+        return '📧';
+      case 'invite_cancelled':
+        return '🚫';
+      
+      // Boards
       case 'board_created':
+      case 'board_updated':
         return '📊';
+      case 'team_updated':
+        return '⚙️';
+      
+      // Invoices
+      case 'invoice_created':
+        return '📄';
+      case 'invoice_sent':
+        return '📤';
+      case 'invoice_paid':
+        return '💰';
+      case 'invoice_overdue':
+        return '⏰';
+      case 'recurring_invoice_generated':
+        return '🔁';
+      case 'recurring_invoice_failed':
+        return '❌';
+      
+      // Proposals
+      case 'proposal_sent':
+        return '📨';
+      case 'proposal_viewed':
+        return '�️';
+      case 'proposal_accepted':
+        return '🎉';
+      case 'proposal_rejected':
+        return '❌';
+      case 'proposal_signed':
+        return '✍️';
+      
+      // Scope Sentinel
+      case 'scope_creep_detected':
+        return '🔍';
+      case 'budget_warning':
+        return '⚠️';
+      case 'budget_exceeded':
+        return '🚨';
+      case 'change_order_required':
+        return '📋';
+      
       default:
-        return '🔔';
+        return '�🔔';
+    }
+  }
+
+  function getNotificationColor(actionType: string): string {
+    switch (actionType) {
+      case 'invoice_paid':
+      case 'proposal_accepted':
+      case 'proposal_signed':
+      case 'task_completed':
+        return 'bg-green-50 border-green-200';
+      
+      case 'invoice_overdue':
+      case 'budget_exceeded':
+      case 'recurring_invoice_failed':
+      case 'proposal_rejected':
+        return 'bg-red-50 border-red-200';
+      
+      case 'budget_warning':
+      case 'scope_creep_detected':
+        return 'bg-yellow-50 border-yellow-200';
+      
+      case 'proposal_viewed':
+      case 'recurring_invoice_generated':
+        return 'bg-blue-50 border-blue-200';
+      
+      default:
+        return 'bg-gray-50 border-gray-200';
     }
   }
 
@@ -136,15 +215,14 @@ export default function NotificationCenter() {
               {notifications.map((notification) => {
                 const activity = notification.activities;
                 const isUnread = !notification.read_at;
+                const colorClass = isUnread 
+                  ? getNotificationColor(activity?.action_type || '')
+                  : 'bg-gray-50 border-gray-200';
                 
                 return (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg border transition-colors ${
-                      isUnread 
-                        ? 'bg-blue-50 border-blue-200' 
-                        : 'bg-gray-50 border-gray-200'
-                    }`}
+                    className={`p-3 rounded-lg border transition-colors ${colorClass}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="text-lg">
