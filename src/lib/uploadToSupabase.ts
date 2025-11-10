@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase'
 
 export async function uploadInvoicePDF(
   pdfBuffer: Buffer, 
@@ -9,6 +9,9 @@ export async function uploadInvoicePDF(
   
   try {
     console.log('☁️  Starting PDF upload to Supabase storage:', filename);
+    
+    // Use server client with service role to bypass RLS
+    const supabase = createSupabaseServerClient()
     
     // Adjust filename based on content type
     const actualFilename = isHTML && !filename.endsWith('.html') 
@@ -93,4 +96,45 @@ export async function uploadInvoiceFile(
   const contentType = contentTypeMap[type]
   
   return uploadInvoicePDF(buffer, filename, { contentType, isHTML })
+}
+
+// Upload proposal PDF to Supabase storage
+export async function uploadProposalPDF(
+  pdfBuffer: Buffer,
+  filename: string
+): Promise<string> {
+  try {
+    console.log('☁️  Starting proposal PDF upload to Supabase storage:', filename)
+
+    // Use server client with service role to bypass RLS
+    const supabase = createSupabaseServerClient()
+
+    const uploadPath = `pdfs/${filename}`
+    console.log('📤 Uploading proposal PDF to storage:', uploadPath)
+
+    const { data, error } = await supabase.storage
+      .from('proposals')
+      .upload(uploadPath, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true
+      })
+
+    if (error) {
+      console.error('❌ Error uploading proposal PDF:', error)
+      throw new Error(`Failed to upload proposal PDF: ${error.message}`)
+    }
+
+    console.log('✅ Proposal PDF uploaded successfully:', data?.path)
+
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('proposals')
+      .getPublicUrl(uploadPath)
+
+    console.log('✅ Public URL generated:', publicUrl)
+    return publicUrl
+  } catch (error) {
+    console.error('❌ Error in uploadProposalPDF:', error)
+    throw error
+  }
 }
