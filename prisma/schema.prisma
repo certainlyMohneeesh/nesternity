@@ -92,22 +92,36 @@ model Invoice {
   discount          Float?             @default(0)
   currency          String             @default("INR")
   pdfUrl            String?            @map("pdf_url")
+  
+  // Recurring Invoice Fields
   isRecurring       Boolean            @default(false) @map("is_recurring")
   recurrence        InvoiceRecurrence?
   nextIssueDate     DateTime?          @map("next_issue_date")
   lastSentDate      DateTime?          @map("last_sent_date")
   reminderSent      Boolean            @default(false) @map("reminder_sent")
+  
+  // Recurring Invoice Automation
+  autoSendEnabled   Boolean            @default(false) @map("auto_send_enabled") // AI-powered auto-send
+  sendDayOfPeriod   Int?               @map("send_day_of_period") // Day of month/week to send (1-31 for monthly, 1-7 for weekly)
+  recipientEmails   String[]           @default([]) @map("recipient_emails") // Additional CC emails
+  autoGenerateEnabled Boolean          @default(true) @map("auto_generate_enabled") // Auto-create next invoice
+  maxOccurrences    Int?               @map("max_occurrences") // Stop after X occurrences (null = infinite)
+  occurrenceCount   Int                @default(0) @map("occurrence_count") // Track how many generated
+  parentInvoiceId   String?            @map("parent_invoice_id") // Reference to template invoice
+  
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
   enablePaymentLink Boolean            @default(false) @map("enable_payment_link")
   eSignatureUrl     String?            @map("e_signature_url")
   watermarkText     String?            @map("watermark_text")
+  
   // Razorpay payment link fields
   razorpayPaymentLinkId String?        @map("razorpay_payment_link_id")
   razorpayPaymentLinkUrl String?       @map("razorpay_payment_link_url")
   razorpayPaymentLinkStatus String?    @map("razorpay_payment_link_status")
   razorpayPaymentId String?            @map("razorpay_payment_id")
   razorpayOrderId   String?            @map("razorpay_order_id")
+  
   items             InvoiceItem[]
   client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   issuedBy          User               @relation("IssuedBy", fields: [issuedById], references: [id])
@@ -120,6 +134,8 @@ model Invoice {
   @@index([status], map: "idx_invoices_status")
   @@index([issuedById, status, issuedDate(sort: Desc)], map: "idx_invoices_user_status")
   @@index([razorpayPaymentLinkId], map: "idx_invoices_razorpay_link_id")
+  @@index([isRecurring, nextIssueDate], map: "idx_invoices_recurring_next")
+  @@index([parentInvoiceId], map: "idx_invoices_parent_id")
   @@map("invoices")
 }
 
@@ -738,6 +754,12 @@ model ScopeRadar {
   revisionCount     Int       @default(0) @map("revision_count")
   outOfScopeCount   Int       @default(0) @map("out_of_scope_count")
   
+  // Budget Monitoring
+  originalBudget    Float?    @map("original_budget") // From proposal/client budget
+  currentEstimate   Float?    @map("current_estimate") // Current cost estimate
+  budgetOverrun     Float?    @map("budget_overrun") // Amount over budget
+  budgetOverrunPercent Float? @map("budget_overrun_percent") // Percentage over
+  
   // Detection Details
   flaggedItems      Json      @map("flagged_items") // Items detected as scope creep
   patterns          Json?     // Detected patterns
@@ -746,6 +768,11 @@ model ScopeRadar {
   // Change Order Draft
   changeOrderDraft  String?   @map("change_order_draft") // AI-drafted change order email
   estimatedImpact   Json?     @map("estimated_impact") // Time/cost impact
+  
+  // Client Communication
+  clientEmailDraft  String?   @map("client_email_draft") // AI-drafted scope warning email
+  emailSent         Boolean   @default(false) @map("email_sent")
+  emailSentAt       DateTime? @map("email_sent_at")
   
   // Status
   acknowledged      Boolean   @default(false)
@@ -762,6 +789,8 @@ model ScopeRadar {
   @@index([projectId], map: "idx_scope_radar_project_id")
   @@index([creepRisk], map: "idx_scope_radar_risk")
   @@index([flaggedAt(sort: Desc)], map: "idx_scope_radar_flagged_at")
+  @@index([budgetOverrun], map: "idx_scope_radar_budget_overrun")
+  @@index([emailSent], map: "idx_scope_radar_email_sent")
   @@map("scope_radar")
 }
 
