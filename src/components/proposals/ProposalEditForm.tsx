@@ -117,6 +117,16 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
       : [{ name: "", duration: "", deliverables: [] }]
   );
 
+  // Store raw text for deliverables input to preserve commas while typing
+  const [milestoneDelsText, setMilestoneDelsText] = useState<Record<number, string>>(
+    initialTimeline.reduce((acc, milestone, index) => {
+      acc[index] = Array.isArray(milestone.deliverables) 
+        ? milestone.deliverables.join(", ") 
+        : "";
+      return acc;
+    }, {} as Record<number, string>)
+  );
+
   // Add deliverable
   const addDeliverable = () => {
     setDeliverables([...deliverables, { item: "", description: "", timeline: "" }]);
@@ -142,13 +152,33 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
 
   // Add milestone
   const addMilestone = () => {
+    const newIndex = timeline.length;
     setTimeline([...timeline, { name: "", duration: "", deliverables: [] }]);
+    setMilestoneDelsText({ ...milestoneDelsText, [newIndex]: "" });
   };
 
   // Remove milestone
   const removeMilestone = (index: number) => {
     if (timeline.length > 1) {
       setTimeline(timeline.filter((_, i) => i !== index));
+      // Clean up the text state
+      const newTextState = { ...milestoneDelsText };
+      delete newTextState[index];
+      // Re-index the remaining items
+      const reindexed: Record<number, string> = {};
+      Object.keys(newTextState)
+        .map(Number)
+        .filter(i => i > index)
+        .forEach(i => {
+          reindexed[i - 1] = newTextState[i];
+        });
+      Object.keys(newTextState)
+        .map(Number)
+        .filter(i => i < index)
+        .forEach(i => {
+          reindexed[i] = newTextState[i];
+        });
+      setMilestoneDelsText(reindexed);
     }
   };
 
@@ -290,12 +320,12 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
 
             <div className="space-y-2">
               <Label htmlFor="project">Project (Optional)</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId || "none"} onValueChange={(val) => setProjectId(val === "none" ? "" : val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Project</SelectItem>
+                  <SelectItem value="none">No Project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -459,8 +489,14 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
                 <Label>Deliverables (comma-separated)</Label>
                 <Input
                   placeholder="e.g., Wireframes, Mockups, Style Guide"
-                  value={milestone.deliverables.join(", ")}
-                  onChange={(e) =>
+                  value={milestoneDelsText[index] || ""}
+                  onChange={(e) => {
+                    // Update the text state to preserve commas
+                    setMilestoneDelsText({
+                      ...milestoneDelsText,
+                      [index]: e.target.value
+                    });
+                    // Update the milestone with parsed array
                     updateMilestone(
                       index,
                       "deliverables",
@@ -468,8 +504,8 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
                         .split(",")
                         .map((d) => d.trim())
                         .filter((d) => d)
-                    )
-                  }
+                    );
+                  }}
                 />
               </div>
             </div>
