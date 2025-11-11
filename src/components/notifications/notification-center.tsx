@@ -48,32 +48,6 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
-
-  // Load read notifications from localStorage on mount
-  useEffect(() => {
-    if (session?.user) {
-      const stored = localStorage.getItem(`read_notifications_${session.user.id}`);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setReadNotifications(new Set(parsed));
-        } catch (e) {
-          console.error('Failed to parse stored read notifications:', e);
-        }
-      }
-    }
-  }, [session?.user]);
-
-  // Save read notifications to localStorage whenever it changes
-  useEffect(() => {
-    if (session?.user && readNotifications.size > 0) {
-      localStorage.setItem(
-        `read_notifications_${session.user.id}`,
-        JSON.stringify(Array.from(readNotifications))
-      );
-    }
-  }, [readNotifications, session?.user]);
 
   useEffect(() => {
     if (session?.user) {
@@ -89,38 +63,26 @@ export default function NotificationCenter() {
     if (!session?.user) return;
     setLoading(true);
     const data = await getUserNotifications(session.user.id);
-    // Filter out notifications that have been marked as read
-    const unreadData = data.filter(n => !readNotifications.has(n.id));
-    setNotifications(unreadData);
+    setNotifications(data);
     setLoading(false);
   }
 
   async function fetchUnreadCount() {
     if (!session?.user) return;
     const count = await getUnreadNotificationCount(session.user.id);
-    // Adjust count based on locally read notifications
-    const adjustedCount = Math.max(0, count - readNotifications.size);
-    setUnreadCount(adjustedCount);
+    setUnreadCount(count);
   }
 
-  async function handleMarkAsRead(notificationId: string) {
-    await markNotificationAsRead(notificationId);
-    // Add to read notifications set
-    setReadNotifications(prev => new Set([...prev, notificationId]));
+  async function handleMarkAsRead(activityId: string) {
+    await markNotificationAsRead(activityId);
     // Remove the notification from the list
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setNotifications(prev => prev.filter(n => n.activity_id !== activityId));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }
 
   async function handleMarkAllAsRead() {
     if (!session?.user) return;
-    await markAllNotificationsAsRead(session.user.id);
-    // Add all current notification IDs to read set
-    setReadNotifications(prev => {
-      const newSet = new Set(prev);
-      notifications.forEach(n => newSet.add(n.id));
-      return newSet;
-    });
+    await markAllNotificationsAsRead();
     // Remove all notifications from the list
     setNotifications([]);
     setUnreadCount(0);

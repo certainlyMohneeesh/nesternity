@@ -17,11 +17,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Count activities from last 7 days as "unread"
+    // Count activities from last 7 days that don't have a notification record
+    // or have a notification record where readAt is null
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const count = await db.activity.count({
+    const activities = await db.activity.findMany({
       where: {
         createdAt: {
           gte: sevenDaysAgo
@@ -32,8 +33,23 @@ export async function GET(request: NextRequest) {
             { members: { some: { userId: user.id } } }
           ]
         }
+      },
+      include: {
+        notifications: {
+          where: {
+            userId: user.id
+          },
+          select: {
+            readAt: true
+          }
+        }
       }
     });
+
+    // Count only unread: no notification record OR notification with readAt null
+    const count = activities.filter(activity => 
+      activity.notifications.length === 0 || activity.notifications[0].readAt === null
+    ).length;
 
     return NextResponse.json({ count });
 

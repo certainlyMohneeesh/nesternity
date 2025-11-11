@@ -50,6 +50,15 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true
           }
+        },
+        notifications: {
+          where: {
+            userId: user.id
+          },
+          select: {
+            id: true,
+            readAt: true
+          }
         }
       },
       orderBy: {
@@ -60,34 +69,39 @@ export async function GET(request: NextRequest) {
 
     console.log('[NotificationsAPI] Found activities:', activities.length);
 
-    // Transform to notification-like format
-    const notifications = activities.map(activity => ({
-      id: activity.id,
-      userId: activity.userId,
-      activityId: activity.id,
-      readAt: null, // We don't have read tracking yet - can be added later
-      createdAt: activity.createdAt.toISOString(),
-      activities: {
-        id: activity.id,
-        userId: activity.userId,
-        teamId: activity.teamId,
-        actionType: activity.type,
-        title: activity.title,
-        description: typeof activity.details === 'object' && activity.details !== null
-          ? (activity.details as any).description || null
-          : null,
-        metadata: activity.details || {},
+    // Transform to notification-like format and filter out read notifications
+    const notifications = activities
+      .filter(activity => {
+        // Keep if no notification record (never marked as read) or if readAt is null
+        return activity.notifications.length === 0 || activity.notifications[0].readAt === null;
+      })
+      .map(activity => ({
+        id: activity.notifications.length > 0 ? activity.notifications[0].id : activity.id,
+        userId: user.id,
+        activityId: activity.id,
+        readAt: activity.notifications.length > 0 ? activity.notifications[0].readAt : null,
         createdAt: activity.createdAt.toISOString(),
-        users: {
-          displayName: activity.user.displayName,
-          email: activity.user.email
-        },
-        team: {
-          id: activity.team.id,
-          name: activity.team.name
+        activities: {
+          id: activity.id,
+          userId: activity.userId,
+          teamId: activity.teamId,
+          actionType: activity.type,
+          title: activity.title,
+          description: typeof activity.details === 'object' && activity.details !== null
+            ? (activity.details as any).description || null
+            : null,
+          metadata: activity.details || {},
+          createdAt: activity.createdAt.toISOString(),
+          users: {
+            displayName: activity.user.displayName,
+            email: activity.user.email
+          },
+          team: {
+            id: activity.team.id,
+            name: activity.team.name
+          }
         }
-      }
-    }));
+      }));
 
     return NextResponse.json({ 
       success: true,
