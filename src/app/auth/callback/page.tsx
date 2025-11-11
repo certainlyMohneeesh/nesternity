@@ -19,6 +19,136 @@ function AuthCallbackContent() {
           return;
         }
 
+        // Check for token_hash first (magic links from email)
+        const tokenHash = searchParams.get('token_hash');
+        const type = searchParams.get('type');
+        
+        if (tokenHash) {
+          console.log('🔑 Auth Callback: Token hash found, verifying...', { type });
+          
+          // Supabase will automatically exchange the token_hash for a session
+          // We just need to call getSession which triggers the exchange
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('❌ Auth Callback: Token verification error:', sessionError);
+            setError('Invalid or expired link. Please request a new one.');
+            setLoading(false);
+            return;
+          }
+          
+          if (!session) {
+            console.log('⚠️ Auth Callback: No session after token_hash, trying verifyOtp...');
+            
+            // Try using verifyOtp for token_hash
+            try {
+              const { data, error: verifyError } = await supabase.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: type === 'recovery' ? 'recovery' : type === 'invite' ? 'invite' : 'email'
+              });
+              
+              if (verifyError || !data.session) {
+                console.error('❌ Auth Callback: OTP verification failed:', verifyError);
+                setError('Invalid or expired link. Please request a new one.');
+                setLoading(false);
+                return;
+              }
+              
+              console.log('✅ Auth Callback: OTP verified successfully', {
+                userId: data.session.user?.id,
+                type
+              });
+              
+              // Handle based on type
+              if (type === 'recovery') {
+                console.log('🔄 Auth Callback: Password recovery - redirecting to reset page');
+                const { access_token, refresh_token } = data.session;
+                window.location.href = `/auth/reset-password#access_token=${access_token}&refresh_token=${refresh_token}&type=recovery`;
+                return;
+              }
+              
+              if (type === 'invite') {
+                console.log('🔄 Auth Callback: Team invite flow');
+                const teamId = searchParams.get('team_id');
+                const role = searchParams.get('role');
+                if (teamId && role) {
+                  router.push(`/invite/callback?team_id=${teamId}&role=${role}`);
+                  return;
+                }
+              }
+              
+              // For signup confirmation
+              console.log('🔄 Auth Callback: Email confirmation - syncing user');
+              const user = data.session.user;
+              const access_token = data.session.access_token;
+              
+              // Sync user to database
+              try {
+                await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/sync-user`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+              } catch (syncError) {
+                console.warn('⚠️ Auth Callback: User sync warning:', syncError);
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, 500));
+              window.location.href = '/dashboard';
+              return;
+              
+            } catch (otpError) {
+              console.error('❌ Auth Callback: OTP exception:', otpError);
+              setError('Authentication failed. Please try again.');
+              setLoading(false);
+              return;
+            }
+          }
+          
+          // If we have a session from getSession
+          console.log('✅ Auth Callback: Session found from token_hash', { type });
+          
+          if (type === 'recovery') {
+            console.log('🔄 Auth Callback: Password recovery - redirecting to reset page');
+            const { access_token, refresh_token } = session;
+            window.location.href = `/auth/reset-password#access_token=${access_token}&refresh_token=${refresh_token}&type=recovery`;
+            return;
+          }
+          
+          // Continue with signup/invite flow
+          const user = session.user;
+          const access_token = session.access_token;
+          
+          if (type === 'invite') {
+            console.log('🔄 Auth Callback: Team invite flow');
+            const teamId = searchParams.get('team_id');
+            const role = searchParams.get('role');
+            if (teamId && role) {
+              router.push(`/invite/callback?team_id=${teamId}&role=${role}`);
+              return;
+            }
+          }
+          
+          // Sync user for signup
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/sync-user`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${access_token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+          } catch (syncError) {
+            console.warn('⚠️ Auth Callback: User sync warning:', syncError);
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+          window.location.href = '/dashboard';
+          return;
+        }
+
         // Check for OAuth code in URL parameters (PKCE flow)
         const code = searchParams.get('code');
         
@@ -114,13 +244,13 @@ function AuthCallbackContent() {
         
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
-        const type = params.get('type');
+        const hashType = params.get('type');
         const provider_token = params.get('provider_token');
 
         console.log('🔑 Auth Callback: Token check', {
           hasAccessToken: !!access_token,
           hasRefreshToken: !!refresh_token,
-          type,
+          type: hashType,
           hasProviderToken: !!provider_token
         });
 
@@ -146,14 +276,14 @@ function AuthCallbackContent() {
           });
 
           // Handle specific callback types
-          if (type === 'recovery') {
+          if (hashType === 'recovery') {
             console.log('🔄 Auth Callback: Password recovery flow');
             // Redirect to reset password page with tokens in hash
             window.location.href = `/auth/reset-password#access_token=${access_token}&refresh_token=${refresh_token}&type=recovery`;
             return;
           }
 
-          if (type === 'invite') {
+          if (hashType === 'invite') {
             console.log('🔄 Auth Callback: Team invite flow');
             const teamId = searchParams.get('team_id');
             const role = searchParams.get('role');
@@ -164,7 +294,7 @@ function AuthCallbackContent() {
           }
 
           // For email confirmation (signup or email change) or OAuth sign-in
-          if (type === 'signup' || type === 'email_change' || !type) {
+          if (hashType === 'signup' || hashType === 'email_change' || !hashType) {
             console.log('🔄 Auth Callback: Email confirmation/OAuth flow');
             
             // Verify the user is actually authenticated
