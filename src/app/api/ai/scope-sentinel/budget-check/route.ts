@@ -301,6 +301,7 @@ Return JSON:
       });
 
       if (!existingRadar) {
+        // Create new radar
         const newRadar = await prisma.scopeRadar.create({
           data: {
             projectId,
@@ -322,7 +323,7 @@ Return JSON:
           },
         });
         scopeRadarId = newRadar.id;
-        console.log(`[BudgetCheckAPI] Created scope radar alert: ${scopeRadarId}`);
+        console.log(`[BudgetCheckAPI] Created new scope radar alert: ${scopeRadarId}`);
 
         // Send notification to user
         try {
@@ -361,7 +362,28 @@ Return JSON:
           // Don't fail the request if notification fails
         }
       } else {
-        console.log(`[BudgetCheckAPI] Existing radar found, skipping creation`);
+        // Update existing radar with latest data
+        console.log(`[BudgetCheckAPI] Updating existing radar: ${existingRadar.id}`);
+        const updatedRadar = await prisma.scopeRadar.update({
+          where: { id: existingRadar.id },
+          data: {
+            creepRisk: riskLevel === 'critical' ? 0.9 : 0.6,
+            originalBudget,
+            currentEstimate: invoiceTotal,
+            budgetOverrun: overrunAmount,
+            budgetOverrunPercent: overrunPercent,
+            flaggedItems: invoices.slice(0, 5).map(inv => ({
+              item: inv.invoiceNumber,
+              amount: inv.items.reduce((s, i) => s + i.total, 0),
+              date: inv.issuedDate.toISOString(),
+            })),
+            clientEmailDraft: aiResult.data.clientEmailDraft,
+            recommendations: aiResult.data.recommendations,
+            flaggedAt: new Date(), // Update timestamp
+          },
+        });
+        scopeRadarId = updatedRadar.id;
+        console.log(`[BudgetCheckAPI] Updated radar with latest budget data`);
       }
     } else if (riskLevel !== 'safe' && !projectId) {
       console.log(`[BudgetCheckAPI] Risk detected but no projectId, skipping ScopeRadar creation`);
