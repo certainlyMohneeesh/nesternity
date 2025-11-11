@@ -1,6 +1,5 @@
 "use client";
 import { useState, Suspense } from "react";
-import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   async function handleLogin(e: React.FormEvent) {
@@ -23,32 +21,40 @@ function LoginForm() {
     setError("");
     setLoading(true);
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
-    } else if (data.session) {
-      // Sync user to Prisma database
-      try {
-        const syncResponse = await fetch('/api/auth/sync-user', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${data.session.access_token}`
-          }
-        });
-        
-        if (!syncResponse.ok) {
-          console.warn('Failed to sync user to database');
-        }
-      } catch (syncError) {
-        console.warn('User sync error:', syncError);
+    try {
+      // Call server-side login API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
+        setLoading(false);
+        return;
       }
-      
-      // Check for both 'returnUrl' (from middleware) and 'redirect' (legacy)
-      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
-      console.log('🔄 [Login] Redirecting to:', returnUrl || '/dashboard');
-      router.push(returnUrl || "/dashboard");
+
+      if (data.success) {
+        // Check for both 'returnUrl' (from middleware) and 'redirect' (legacy)
+        const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+        console.log('🔄 [Login] Redirecting to:', returnUrl || '/dashboard');
+        
+        // Force a full page refresh to ensure session is loaded
+        window.location.href = returnUrl || '/dashboard';
+      } else {
+        setError('Login failed. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('[Login] Error:', err);
+      setError('Failed to connect to server. Please check your internet connection.');
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
