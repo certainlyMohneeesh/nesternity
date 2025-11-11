@@ -6,7 +6,38 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Supabase client for AUTHENTICATION ONLY - Uses cookies for SSR compatibility
 // Database operations go through Prisma + PostgreSQL
-export const supabase: SupabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+export const supabase: SupabaseClient = createBrowserClient(
+  supabaseUrl, 
+  supabaseAnonKey,
+  {
+    cookies: {
+      getAll() {
+        // Return empty array during SSR/pre-rendering
+        if (typeof document === 'undefined') return [];
+        
+        return document.cookie
+          .split('; ')
+          .filter(Boolean)
+          .map(cookie => {
+            const [name, ...value] = cookie.split('=');
+            return { name, value: value.join('=') };
+          });
+      },
+      setAll(cookiesToSet) {
+        // Skip during SSR/pre-rendering
+        if (typeof document === 'undefined') return;
+        
+        cookiesToSet.forEach(({ name, value, options }) => {
+          document.cookie = `${name}=${value}; path=${options?.path || '/'}; ${
+            options?.maxAge ? `max-age=${options.maxAge}` : ''
+          }; ${options?.sameSite ? `samesite=${options.sameSite}` : ''}; ${
+            options?.secure ? 'secure' : ''
+          }`;
+        });
+      },
+    },
+  }
+);
 
 // Clean auth helpers
 export const auth = {
