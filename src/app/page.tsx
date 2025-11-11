@@ -351,7 +351,7 @@ export default function HomePage() {
           </div>
           <div className="pt-8 border-t border-muted/20 text-center text-muted-foreground">
             <p>
-              Built with ❤️ <a href="https://cythical.cyth.me" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">Cythical Labs</a> • © {new Date().getFullYear()} <a>Nesternity</a>
+              Built with ❤️ <a href="https://cyth.dev" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">Cythical Labs</a> • © {new Date().getFullYear()} <a>Nesternity</a>
             </p>
           </div>
         </div>

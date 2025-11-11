@@ -156,19 +156,47 @@ export async function getUserNotifications(
 }
 
 export async function markNotificationAsRead(
-  notificationId: string
+  activityId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement when Notification model is added to Prisma
-  console.log('[Notifications] Mark as read not implemented yet (no Notification model in Prisma)');
-  return { success: true };
+  try {
+    const response = await fetch(`/api/notifications/${activityId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      return { success: false, error: errorData.error || 'Failed to mark as read' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[Notifications] Error marking notification as read:', error);
+    return { success: false, error: error?.message || 'Failed to mark as read' };
+  }
 }
 
-export async function markAllNotificationsAsRead(
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement when Notification model is added to Prisma
-  console.log('[Notifications] Mark all as read not implemented yet (no Notification model in Prisma)');
-  return { success: true };
+export async function markAllNotificationsAsRead(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch('/api/notifications/mark-all-read', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      return { success: false, error: errorData.error || 'Failed to mark all as read' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[Notifications] Error marking all notifications as read:', error);
+    return { success: false, error: error?.message || 'Failed to mark all as read' };
+  }
 }
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
