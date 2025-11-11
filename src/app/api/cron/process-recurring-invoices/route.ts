@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
             name: true,
             email: true,
             company: true,
+            createdBy: true,
           },
         },
         issuedBy: {
@@ -77,6 +78,18 @@ export async function GET(request: NextRequest) {
     for (const parentInvoice of dueInvoices) {
       try {
         console.log(`\n📄 Processing: ${parentInvoice.invoiceNumber}`);
+
+        // Get user's default team for notifications
+        const userTeam = await prisma.team.findFirst({
+          where: {
+            OR: [
+              { createdBy: parentInvoice.client.createdBy },
+              { members: { some: { userId: parentInvoice.client.createdBy } } }
+            ]
+          },
+          orderBy: { createdAt: 'asc' }, // Get oldest team (likely default)
+          select: { id: true }
+        });
 
         // Check max occurrences
         if (parentInvoice.maxOccurrences && parentInvoice.occurrenceCount >= parentInvoice.maxOccurrences) {
@@ -197,29 +210,39 @@ export async function GET(request: NextRequest) {
             emailSent = true;
             console.log(`📧 Email sent to ${parentInvoice.client.email}`);
 
-            // Create notification
-            await createInvoiceNotification(
-              parentInvoice.issuedById,
-              ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED,
-              newInvoiceNumber,
-              parentInvoice.client.name,
-              finalTotal,
-              newInvoice.currency,
-              { invoiceId: newInvoice.id }
-            );
+            // Create notification (only if we have a team)
+            if (userTeam) {
+              await createInvoiceNotification(
+                parentInvoice.issuedById,
+                ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED,
+                newInvoiceNumber,
+                parentInvoice.client.name,
+                finalTotal,
+                newInvoice.currency,
+                { 
+                  invoiceId: newInvoice.id,
+                  teamId: userTeam.id
+                }
+              );
+            }
           } catch (emailError) {
             console.error(`❌ Email failed:`, emailError);
             
-            // Create failure notification
-            await createInvoiceNotification(
-              parentInvoice.issuedById,
-              ACTIVITY_TYPES.RECURRING_INVOICE_FAILED,
-              newInvoiceNumber,
-              parentInvoice.client.name,
-              0,
-              newInvoice.currency,
-              { error: emailError instanceof Error ? emailError.message : 'Unknown error' }
-            );
+            // Create failure notification (only if we have a team)
+            if (userTeam) {
+              await createInvoiceNotification(
+                parentInvoice.issuedById,
+                ACTIVITY_TYPES.RECURRING_INVOICE_FAILED,
+                newInvoiceNumber,
+                parentInvoice.client.name,
+                0,
+                newInvoice.currency,
+                { 
+                  error: emailError instanceof Error ? emailError.message : 'Unknown error',
+                  teamId: userTeam.id
+                }
+              );
+            }
           }
         }
 

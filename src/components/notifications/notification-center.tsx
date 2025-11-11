@@ -1,10 +1,38 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCircle } from "lucide-react";
+import { 
+  Bell, 
+  Check, 
+  CheckCircle, 
+  FileText,
+  Send,
+  Eye,
+  PartyPopper,
+  X,
+  FileCheck,
+  DollarSign,
+  Receipt,
+  Clock,
+  RefreshCw,
+  AlertTriangle,
+  AlertCircle,
+  Search,
+  FileEdit,
+  UserPlus,
+  Users,
+  MailPlus,
+  LayoutDashboard,
+  Settings,
+  Loader2,
+  Sparkles,
+  Inbox
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { useSession } from "@/components/auth/session-context";
 import { 
   getUserNotifications, 
@@ -20,6 +48,32 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
+
+  // Load read notifications from localStorage on mount
+  useEffect(() => {
+    if (session?.user) {
+      const stored = localStorage.getItem(`read_notifications_${session.user.id}`);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setReadNotifications(new Set(parsed));
+        } catch (e) {
+          console.error('Failed to parse stored read notifications:', e);
+        }
+      }
+    }
+  }, [session?.user]);
+
+  // Save read notifications to localStorage whenever it changes
+  useEffect(() => {
+    if (session?.user && readNotifications.size > 0) {
+      localStorage.setItem(
+        `read_notifications_${session.user.id}`,
+        JSON.stringify(Array.from(readNotifications))
+      );
+    }
+  }, [readNotifications, session?.user]);
 
   useEffect(() => {
     if (session?.user) {
@@ -35,30 +89,40 @@ export default function NotificationCenter() {
     if (!session?.user) return;
     setLoading(true);
     const data = await getUserNotifications(session.user.id);
-    setNotifications(data);
+    // Filter out notifications that have been marked as read
+    const unreadData = data.filter(n => !readNotifications.has(n.id));
+    setNotifications(unreadData);
     setLoading(false);
   }
 
   async function fetchUnreadCount() {
     if (!session?.user) return;
     const count = await getUnreadNotificationCount(session.user.id);
-    setUnreadCount(count);
+    // Adjust count based on locally read notifications
+    const adjustedCount = Math.max(0, count - readNotifications.size);
+    setUnreadCount(adjustedCount);
   }
 
   async function handleMarkAsRead(notificationId: string) {
     await markNotificationAsRead(notificationId);
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n)
-    );
+    // Add to read notifications set
+    setReadNotifications(prev => new Set([...prev, notificationId]));
+    // Remove the notification from the list
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }
 
   async function handleMarkAllAsRead() {
     if (!session?.user) return;
     await markAllNotificationsAsRead(session.user.id);
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read_at: new Date().toISOString() }))
-    );
+    // Add all current notification IDs to read set
+    setReadNotifications(prev => {
+      const newSet = new Set(prev);
+      notifications.forEach(n => newSet.add(n.id));
+      return newSet;
+    });
+    // Remove all notifications from the list
+    setNotifications([]);
     setUnreadCount(0);
   }
 
@@ -75,99 +139,134 @@ export default function NotificationCenter() {
   }
 
   function getActivityIcon(actionType: string) {
+    const iconClass = "h-4 w-4";
+    
     switch (actionType) {
       // Tasks
       case 'task_created':
       case 'task_updated':
-        return '📋';
+        return <FileText className={iconClass} />;
       case 'task_assigned':
-        return '👤';
+        return <UserPlus className={iconClass} />;
       case 'task_completed':
-        return '✅';
+        return <CheckCircle className={cn(iconClass, "text-green-600")} />;
       case 'task_moved':
-        return '🔄';
+        return <RefreshCw className={iconClass} />;
       
-      // Team
+      // Team & Invites
       case 'member_added':
       case 'invite_accepted':
-        return '👥';
+        return <Users className={cn(iconClass, "text-blue-600")} />;
       case 'invite_sent':
-        return '📧';
+        return <MailPlus className={cn(iconClass, "text-blue-500")} />;
       case 'invite_cancelled':
-        return '🚫';
+        return <X className={cn(iconClass, "text-gray-500")} />;
       
       // Boards
       case 'board_created':
       case 'board_updated':
-        return '📊';
+        return <LayoutDashboard className={iconClass} />;
       case 'team_updated':
-        return '⚙️';
+        return <Settings className={iconClass} />;
       
       // Invoices
       case 'invoice_created':
-        return '📄';
+        return <Receipt className={iconClass} />;
       case 'invoice_sent':
-        return '📤';
+        return <Send className={cn(iconClass, "text-blue-600")} />;
       case 'invoice_paid':
-        return '💰';
+        return <DollarSign className={cn(iconClass, "text-green-600")} />;
       case 'invoice_overdue':
-        return '⏰';
+        return <Clock className={cn(iconClass, "text-red-600")} />;
       case 'recurring_invoice_generated':
-        return '🔁';
+        return <RefreshCw className={cn(iconClass, "text-blue-600")} />;
       case 'recurring_invoice_failed':
-        return '❌';
+        return <AlertCircle className={cn(iconClass, "text-red-600")} />;
       
       // Proposals
       case 'proposal_sent':
-        return '📨';
+        return <Send className={cn(iconClass, "text-purple-600")} />;
       case 'proposal_viewed':
-        return '�️';
+        return <Eye className={cn(iconClass, "text-blue-600")} />;
       case 'proposal_accepted':
-        return '🎉';
+        return <PartyPopper className={cn(iconClass, "text-green-600")} />;
       case 'proposal_rejected':
-        return '❌';
+        return <X className={cn(iconClass, "text-red-600")} />;
       case 'proposal_signed':
-        return '✍️';
+        return <FileCheck className={cn(iconClass, "text-green-600")} />;
       
       // Scope Sentinel
       case 'scope_creep_detected':
-        return '🔍';
+        return <Search className={cn(iconClass, "text-orange-600")} />;
       case 'budget_warning':
-        return '⚠️';
+        return <AlertTriangle className={cn(iconClass, "text-yellow-600")} />;
       case 'budget_exceeded':
-        return '🚨';
+        return <AlertCircle className={cn(iconClass, "text-red-600")} />;
       case 'change_order_required':
-        return '📋';
+        return <FileEdit className={cn(iconClass, "text-orange-600")} />;
       
       default:
-        return '�🔔';
+        return <Bell className={iconClass} />;
     }
   }
 
-  function getNotificationColor(actionType: string): string {
+  function getNotificationStyle(actionType: string): {
+    bgClass: string;
+    borderClass: string;
+    iconBgClass: string;
+  } {
     switch (actionType) {
+      // Success states
       case 'invoice_paid':
       case 'proposal_accepted':
       case 'proposal_signed':
       case 'task_completed':
-        return 'bg-green-50 border-green-200';
+        return {
+          bgClass: 'bg-green-50/50 dark:bg-green-950/20',
+          borderClass: 'border-green-200 dark:border-green-800',
+          iconBgClass: 'bg-green-100 dark:bg-green-900/30'
+        };
       
+      // Error states
       case 'invoice_overdue':
       case 'budget_exceeded':
       case 'recurring_invoice_failed':
       case 'proposal_rejected':
-        return 'bg-red-50 border-red-200';
+        return {
+          bgClass: 'bg-red-50/50 dark:bg-red-950/20',
+          borderClass: 'border-red-200 dark:border-red-800',
+          iconBgClass: 'bg-red-100 dark:bg-red-900/30'
+        };
       
+      // Warning states
       case 'budget_warning':
       case 'scope_creep_detected':
-        return 'bg-yellow-50 border-yellow-200';
+      case 'change_order_required':
+        return {
+          bgClass: 'bg-yellow-50/50 dark:bg-yellow-950/20',
+          borderClass: 'border-yellow-200 dark:border-yellow-800',
+          iconBgClass: 'bg-yellow-100 dark:bg-yellow-900/30'
+        };
       
+      // Info states
       case 'proposal_viewed':
       case 'recurring_invoice_generated':
-        return 'bg-blue-50 border-blue-200';
+      case 'invoice_sent':
+      case 'proposal_sent':
+      case 'invite_sent':
+        return {
+          bgClass: 'bg-blue-50/50 dark:bg-blue-950/20',
+          borderClass: 'border-blue-200 dark:border-blue-800',
+          iconBgClass: 'bg-blue-100 dark:bg-blue-900/30'
+        };
       
+      // Default
       default:
-        return 'bg-gray-50 border-gray-200';
+        return {
+          bgClass: 'bg-gray-50/50 dark:bg-gray-900/20',
+          borderClass: 'border-gray-200 dark:border-gray-700',
+          iconBgClass: 'bg-gray-100 dark:bg-gray-800/30'
+        };
     }
   }
 
@@ -176,12 +275,16 @@ export default function NotificationCenter() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="relative hover:bg-accent"
+        >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              className="absolute -top-1.5 -right-1.5 h-5 min-w-5 rounded-full px-1 flex items-center justify-center text-xs font-semibold shadow-sm"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
@@ -189,13 +292,25 @@ export default function NotificationCenter() {
         </Button>
       </SheetTrigger>
       
-      <SheetContent className="w-80">
-        <SheetHeader className="space-y-4">
+      <SheetContent className="w-full sm:w-[420px] p-0 flex flex-col">
+        <SheetHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
-            <SheetTitle>Notifications</SheetTitle>
+            <div className="flex items-center gap-2">
+              <SheetTitle className="text-lg font-semibold">Notifications</SheetTitle>
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
+                  {unreadCount} new
+                </Badge>
+              )}
+            </div>
             {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
-                <CheckCircle className="h-4 w-4 mr-1" />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleMarkAllAsRead}
+                className="h-8 text-xs"
+              >
+                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                 Mark all read
               </Button>
             )}
@@ -203,70 +318,128 @@ export default function NotificationCenter() {
         </SheetHeader>
 
         {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          <div className="flex-1 flex items-center justify-center py-12">
+            <div className="text-center space-y-3">
+              <Loader2 className="h-8 w-8 mx-auto text-muted-foreground animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading notifications...</p>
+            </div>
+          </div>
         ) : notifications.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No notifications yet</p>
+          <div className="flex-1 flex items-center justify-center py-12">
+            <div className="text-center space-y-3 max-w-[280px]">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <Inbox className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">No notifications yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  We'll notify you when something important happens
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
-          <ScrollArea className="h-[calc(100vh-120px)] mt-4">
-            <div className="space-y-2">
-              {notifications.map((notification) => {
+          <ScrollArea className="flex-1">
+            <div className="px-4 py-3 space-y-2">
+              {notifications.map((notification, index) => {
                 const activity = notification.activities;
                 const isUnread = !notification.read_at;
-                const colorClass = isUnread 
-                  ? getNotificationColor(activity?.action_type || '')
-                  : 'bg-gray-50 border-gray-200';
+                const style = getNotificationStyle(activity?.action_type || '');
                 
                 return (
-                  <div
-                    key={notification.id}
-                    className={`p-3 rounded-lg border transition-colors ${colorClass}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="text-lg">
-                        {getActivityIcon(activity?.action_type || '')}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">
-                              {activity?.title}
-                            </p>
-                            {activity?.description && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {activity.description}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              by {activity?.users?.display_name || activity?.users?.email || 'Unknown'}
-                            </p>
-                          </div>
-                          
-                          {isUnread && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleMarkAsRead(notification.id)}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                          )}
+                  <div key={notification.id}>
+                    <div
+                      className={cn(
+                        "group relative p-4 rounded-lg border transition-all duration-200",
+                        "hover:shadow-sm",
+                        isUnread ? "cursor-pointer" : "",
+                        isUnread 
+                          ? cn(style.bgClass, style.borderClass)
+                          : "bg-background border-border hover:bg-accent/50"
+                      )}
+                      onClick={() => {
+                        if (isUnread) {
+                          handleMarkAsRead(notification.id);
+                        }
+                      }}
+                    >
+                      <div className="flex gap-3">
+                        {/* Icon */}
+                        <div className={cn(
+                          "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
+                          isUnread ? style.iconBgClass : "bg-muted"
+                        )}>
+                          {getActivityIcon(activity?.action_type || '')}
                         </div>
                         
-                        <div className="text-xs text-muted-foreground mt-2">
-                          {formatTimeAgo(notification.created_at)}
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={cn(
+                              "text-sm leading-snug",
+                              isUnread ? "font-semibold" : "font-medium text-muted-foreground"
+                            )}>
+                              {activity?.title}
+                            </p>
+                            {isUnread && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMarkAsRead(notification.id);
+                                  }}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {activity?.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {activity.description}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center gap-2 pt-1">
+                            <p className="text-xs text-muted-foreground">
+                              {activity?.users?.display_name || activity?.users?.email || 'System'}
+                            </p>
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <p className="text-xs text-muted-foreground">
+                              {formatTimeAgo(notification.created_at)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    {index < notifications.length - 1 && (
+                      <Separator className="my-2" />
+                    )}
                   </div>
                 );
               })}
             </div>
           </ScrollArea>
+        )}
+        
+        {/* Footer */}
+        {notifications.length > 0 && (
+          <div className="border-t px-6 py-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-xs"
+              onClick={() => setOpen(false)}
+            >
+              Close
+            </Button>
+          </div>
         )}
       </SheetContent>
     </Sheet>

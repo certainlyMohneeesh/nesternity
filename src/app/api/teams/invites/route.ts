@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Resend } from 'resend';
 import { nanoid } from 'nanoid';
+import { createInviteNotification, ACTIVITY_TYPES } from '@/lib/notifications';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -201,6 +202,25 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Get inviter info for notification
+    const inviter = await db.user.findUnique({
+      where: { id: user.id },
+      select: { displayName: true, email: true }
+    });
+
+    // Create notification
+    await createInviteNotification(
+      user.id,
+      team.name,
+      inviter?.displayName || inviter?.email || 'Someone',
+      ACTIVITY_TYPES.INVITE_SENT,
+      {
+        teamId,
+        inviteId: invite.id,
+        inviteeEmail: email
+      }
+    ).catch(err => console.error('Failed to create invite notification:', err));
+
     return NextResponse.json({ 
       invite: {
         id: invite.id,
@@ -276,6 +296,25 @@ export async function DELETE(request: NextRequest) {
       where: { id: inviteId },
       data: { usedAt: new Date() }
     });
+
+    // Get user info for notification
+    const inviter = await db.user.findUnique({
+      where: { id: user.id },
+      select: { displayName: true, email: true }
+    });
+
+    // Create notification for cancelled invite
+    await createInviteNotification(
+      user.id,
+      invite.team.name,
+      inviter?.displayName || inviter?.email || 'Someone',
+      ACTIVITY_TYPES.INVITE_CANCELLED,
+      {
+        teamId: invite.teamId,
+        inviteId,
+        inviteeEmail: invite.email
+      }
+    ).catch(err => console.error('Failed to create invite cancelled notification:', err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

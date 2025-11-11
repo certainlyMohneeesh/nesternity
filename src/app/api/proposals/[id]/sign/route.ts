@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkRateLimit, getClientIP, isTokenValid } from "@/lib/security";
 import { revalidatePath } from "next/cache";
+import { createProposalNotification, ACTIVITY_TYPES } from "@/lib/notifications";
 
 export async function POST(
   request: NextRequest,
@@ -53,14 +54,22 @@ export async function POST(
       where: { id },
       select: {
         id: true,
+        title: true,
+        pricing: true,
+        currency: true,
         status: true,
         accessToken: true,
         tokenExpiresAt: true,
         expiresAt: true,
-        signatures: {
-          select: { id: true },
-          take: 1,
-        },
+        createdBy: true,
+        clientId: true,
+        client: {
+          select: {
+            id: true,
+            name: true,
+            createdBy: true,
+          }
+        }
       },
     });
 
@@ -93,7 +102,7 @@ export async function POST(
     }
 
     // Check if already signed
-    if (proposal.status === "ACCEPTED" || proposal.signatures.length > 0) {
+    if (proposal.status === "ACCEPTED") {
       return NextResponse.json(
         { error: "Proposal has already been signed" },
         { status: 409 }
@@ -138,6 +147,31 @@ export async function POST(
     });
 
     console.log('✅ Proposal marked as ACCEPTED');
+
+    // Get user's team for notification
+    const userTeam = await prisma.team.findFirst({
+      where: { createdBy: proposal.client.createdBy },
+      select: { id: true }
+    });
+
+    // Create notification for proposal signed
+    if (userTeam) {
+      await createProposalNotification(
+        proposal.createdBy,
+        ACTIVITY_TYPES.PROPOSAL_SIGNED,
+        proposal.title,
+        proposal.client.name,
+        proposal.pricing,
+        proposal.currency,
+        {
+          teamId: userTeam.id,
+          proposalId: id,
+          clientId: proposal.clientId,
+          signerName,
+          signerEmail
+        }
+      ).catch(err => console.error('Failed to create proposal signed notification:', err));
+    }
 
     // Revalidate relevant pages to show updated status
     revalidatePath('/dashboard/proposals');

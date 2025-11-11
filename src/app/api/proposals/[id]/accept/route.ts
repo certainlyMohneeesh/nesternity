@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
+import { createProposalNotification, ACTIVITY_TYPES } from "@/lib/notifications";
 
 export async function POST(
   request: NextRequest,
@@ -17,9 +18,17 @@ export async function POST(
     // Check if proposal exists and belongs to user
     const proposal = await prisma.proposal.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        pricing: true,
+        currency: true,
+        status: true,
+        acceptedAt: true,
         client: {
           select: {
+            id: true,
+            name: true,
             createdBy: true,
           },
         },
@@ -38,6 +47,29 @@ export async function POST(
         acceptedAt: new Date(),
       },
     });
+
+    // Get user's team for notification
+    const userTeam = await prisma.team.findFirst({
+      where: { createdBy: user.id },
+      select: { id: true }
+    });
+
+    // Create notification for proposal accepted
+    if (userTeam) {
+      await createProposalNotification(
+        user.id,
+        ACTIVITY_TYPES.PROPOSAL_ACCEPTED,
+        proposal.title,
+        proposal.client.name,
+        proposal.pricing,
+        proposal.currency,
+        {
+          teamId: userTeam.id,
+          proposalId: id,
+          clientId: proposal.client.id
+        }
+      ).catch(err => console.error('Failed to create proposal accepted notification:', err));
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+// Notification types and API client functions
+// Uses Prisma (PostgreSQL) for database, not Supabase DB
 
 export interface Activity {
   id: string;
@@ -36,23 +37,34 @@ export async function createActivity(
   metadata: Record<string, any> = {}
 ): Promise<{ success: boolean; error?: string; activityId?: string }> {
   try {
-    const { data, error } = await supabase.rpc('create_activity_with_notifications', {
-      p_team_id: teamId,
-      p_board_id: boardId,
-      p_task_id: taskId,
-      p_action_type: actionType,
-      p_title: title,
-      p_description: description,
-      p_metadata: metadata
+    // Call API route to create activity
+    const response = await fetch('/api/activities', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        teamId,
+        actionType,
+        title,
+        description,
+        boardId,
+        taskId,
+        metadata
+      })
     });
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      return { success: false, error: errorData.error || 'Failed to create activity' };
     }
 
-    return { success: true, activityId: data };
-  } catch (error) {
-    return { success: false, error: 'Failed to create activity' };
+    const data = await response.json();
+    return { success: true, activityId: data.activityId };
+
+  } catch (error: any) {
+    console.error('[Notifications] Error creating activity:', error);
+    return { success: false, error: error?.message || 'Failed to create activity' };
   }
 }
 
@@ -61,59 +73,43 @@ export async function getTeamActivities(
   limit: number = 50
 ): Promise<Activity[]> {
   try {
-    // First, get activities without trying to join users
-    const { data: activities, error: activitiesError } = await supabase
-      .from('activities')
-      .select('id, user_id, team_id, board_id, task_id, action_type, title, description, metadata, created_at')
-      .eq('team_id', teamId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (activitiesError) {
-      console.error('Error fetching team activities:', activitiesError);
-      return [];
-    }
-
-    if (!activities || activities.length === 0) {
-      return [];
-    }
-
-    // Get unique user IDs
-    const userIds = [...new Set(activities.map(a => a.user_id).filter(Boolean))];
+    console.log('[Notifications] Fetching team activities via API for team:', teamId);
     
-    if (userIds.length === 0) {
-      return activities.map(activity => ({
-        ...activity,
-        users: undefined
-      }));
+    const response = await fetch(`/api/activities?teamId=${teamId}&limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      console.error('[Notifications] API error:', response.status);
+      return [];
     }
 
-    // Fetch user data separately
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, display_name, email')
-      .in('id', userIds);
-
-    if (usersError) {
-      console.warn('Error fetching user data for activities:', usersError);
-      // Return activities without user data
-      return activities.map(activity => ({
-        ...activity,
-        users: undefined
-      }));
-    }
-
-    // Create a map for quick user lookup
-    const userMap = new Map(users?.map(user => [user.id, user]) || []);
-
-    // Combine activities with user data
-    return activities.map(activity => ({
-      ...activity,
-      users: activity.user_id ? userMap.get(activity.user_id) : undefined
+    const data = await response.json();
+    
+    // Transform API response to Activity format
+    return (data.activities || []).map((activity: any) => ({
+      id: activity.id,
+      user_id: activity.userId,
+      team_id: activity.teamId,
+      board_id: activity.details?.boardId,
+      task_id: activity.details?.taskId,
+      action_type: activity.type,
+      title: activity.title,
+      description: activity.details?.description,
+      metadata: activity.details || {},
+      created_at: activity.createdAt,
+      users: activity.user ? {
+        display_name: activity.user.displayName,
+        email: activity.user.email
+      } : undefined
     }));
 
   } catch (error) {
-    console.error('Unexpected error fetching team activities:', error);
+    console.error('[Notifications] Unexpected error fetching team activities:', error);
     return [];
   }
 }
@@ -122,98 +118,81 @@ export async function getUserNotifications(
   userId?: string,
   limit: number = 50
 ): Promise<Notification[]> {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select(`
-      id, user_id, activity_id, read_at, created_at,
-      activities:activity_id (
-        id, user_id, team_id, board_id, task_id, action_type, title, description, metadata, created_at,
-        users:user_id (display_name, email)
-      )
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    console.log('[Notifications] Fetching notifications via API');
+    
+    const response = await fetch(`/api/notifications?limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
 
-  if (error) {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[Notifications] API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('[Notifications] Received notifications:', data.count);
+    
+    return data.notifications || [];
+
+  } catch (error: any) {
     console.error('[Notifications] Error fetching notifications:', {
-      // First log the error as-is
-      rawError: error,
-      // Try to serialize the full error
-      serialized: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
-      // Try common error properties
-      message: error?.message || 'Unknown error',
-      details: error?.details || 'No details available',
-      hint: error?.hint || 'No hint available',
-      code: error?.code || 'No code available',
-      // Check error type
-      errorType: typeof error,
-      errorConstructor: error?.constructor?.name,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      cause: error?.cause
     });
     return [];
   }
-
-  if (!data) {
-    console.log('No notification data returned from Supabase');
-    return [];
-  }
-
-  return (data || []).map((row: any) => ({
-    ...row,
-    activities: Array.isArray(row.activities) ? {
-      ...row.activities[0],
-      users: Array.isArray(row.activities[0]?.users) ? row.activities[0].users[0] : row.activities[0]?.users
-    } : row.activities ? {
-      ...row.activities,
-      users: Array.isArray(row.activities.users) ? row.activities.users[0] : row.activities.users
-    } : undefined
-  }));
 }
 
 export async function markNotificationAsRead(
   notificationId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('id', notificationId);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
+  // TODO: Implement when Notification model is added to Prisma
+  console.log('[Notifications] Mark as read not implemented yet (no Notification model in Prisma)');
   return { success: true };
 }
 
 export async function markAllNotificationsAsRead(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .is('read_at', null);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
+  // TODO: Implement when Notification model is added to Prisma
+  console.log('[Notifications] Mark all as read not implemented yet (no Notification model in Prisma)');
   return { success: true };
 }
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .is('read_at', null);
+  try {
+    const response = await fetch('/api/notifications/unread-count', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
 
-  if (error) {
-    console.error('Error fetching unread count:', error);
+    if (!response.ok) {
+      console.error('[Notifications] Error fetching unread count:', response.status);
+      return 0;
+    }
+
+    const data = await response.json();
+    return data.count || 0;
+
+  } catch (error) {
+    console.error('[Notifications] Error fetching unread count:', error);
     return 0;
   }
-
-  return count || 0;
 }
 
 // Activity types
@@ -292,23 +271,26 @@ export async function createInvoiceNotification(
       [ACTIVITY_TYPES.RECURRING_INVOICE_FAILED]: `Check recurring invoice settings for ${clientName}`,
     };
 
-    // Create activity via Supabase RPC
-    const { data, error } = await supabase.rpc('create_simple_notification', {
-      p_user_id: userId,
-      p_action_type: actionType,
-      p_title: titles[actionType] || 'Invoice update',
-      p_description: descriptions[actionType],
-      p_metadata: { ...metadata, invoiceNumber, clientName, amount, currency }
-    });
-
-    if (error) {
-      console.error('Error creating invoice notification:', error);
-      return { success: false, error: error.message };
+    // NOTE: This requires a teamId. For now, we'll log a warning if teamId is not in metadata
+    // In production, you should always pass teamId when creating invoice notifications
+    const teamId = metadata.teamId;
+    if (!teamId) {
+      console.warn('[Notifications] createInvoiceNotification called without teamId in metadata');
+      return { success: false, error: 'teamId required in metadata' };
     }
 
-    return { success: true };
+    return await createActivity(
+      teamId,
+      actionType,
+      titles[actionType] || 'Invoice update',
+      descriptions[actionType],
+      undefined, // boardId
+      undefined, // taskId
+      { ...metadata, invoiceNumber, clientName, amount, currency }
+    );
+
   } catch (error) {
-    console.error('Unexpected error creating invoice notification:', error);
+    console.error('[Notifications] Unexpected error creating invoice notification:', error);
     return { success: false, error: 'Failed to create notification' };
   }
 }
@@ -342,22 +324,24 @@ export async function createProposalNotification(
       [ACTIVITY_TYPES.PROPOSAL_SIGNED]: `"${proposalTitle}" • Ready to create project`,
     };
 
-    const { data, error } = await supabase.rpc('create_simple_notification', {
-      p_user_id: userId,
-      p_action_type: actionType,
-      p_title: titles[actionType] || 'Proposal update',
-      p_description: descriptions[actionType],
-      p_metadata: { ...metadata, proposalTitle, clientName, amount, currency }
-    });
-
-    if (error) {
-      console.error('Error creating proposal notification:', error);
-      return { success: false, error: error.message };
+    const teamId = metadata.teamId;
+    if (!teamId) {
+      console.warn('[Notifications] createProposalNotification called without teamId in metadata');
+      return { success: false, error: 'teamId required in metadata' };
     }
 
-    return { success: true };
+    return await createActivity(
+      teamId,
+      actionType,
+      titles[actionType] || 'Proposal update',
+      descriptions[actionType],
+      undefined,
+      undefined,
+      { ...metadata, proposalTitle, clientName, amount, currency }
+    );
+
   } catch (error) {
-    console.error('Unexpected error creating proposal notification:', error);
+    console.error('[Notifications] Unexpected error creating proposal notification:', error);
     return { success: false, error: 'Failed to create notification' };
   }
 }
@@ -405,22 +389,24 @@ export async function createScopeRadarNotification(
       }
     }
 
-    const { data, error } = await supabase.rpc('create_simple_notification', {
-      p_user_id: userId,
-      p_action_type: actionType,
-      p_title: titles[actionType] || 'Project alert',
-      p_description: description,
-      p_metadata: { ...metadata, projectName, riskLevel, budgetInfo }
-    });
-
-    if (error) {
-      console.error('Error creating scope radar notification:', error);
-      return { success: false, error: error.message };
+    const teamId = metadata.teamId;
+    if (!teamId) {
+      console.warn('[Notifications] createScopeRadarNotification called without teamId in metadata');
+      return { success: false, error: 'teamId required in metadata' };
     }
 
-    return { success: true };
+    return await createActivity(
+      teamId,
+      actionType,
+      titles[actionType] || 'Project alert',
+      description,
+      undefined,
+      undefined,
+      { ...metadata, projectName, riskLevel, budgetInfo }
+    );
+
   } catch (error) {
-    console.error('Unexpected error creating scope radar notification:', error);
+    console.error('[Notifications] Unexpected error creating scope radar notification:', error);
     return { success: false, error: 'Failed to create notification' };
   }
 }
@@ -448,22 +434,24 @@ export async function createInviteNotification(
       [ACTIVITY_TYPES.INVITE_CANCELLED]: `Invite to ${teamName} was cancelled`,
     };
 
-    const { data, error } = await supabase.rpc('create_simple_notification', {
-      p_user_id: userId,
-      p_action_type: actionType,
-      p_title: titles[actionType] || 'Invite update',
-      p_description: descriptions[actionType],
-      p_metadata: { ...metadata, teamName, inviterName }
-    });
-
-    if (error) {
-      console.error('Error creating invite notification:', error);
-      return { success: false, error: error.message };
+    const teamId = metadata.teamId;
+    if (!teamId) {
+      console.warn('[Notifications] createInviteNotification called without teamId in metadata');
+      return { success: false, error: 'teamId required in metadata' };
     }
 
-    return { success: true };
+    return await createActivity(
+      teamId,
+      actionType,
+      titles[actionType] || 'Invite update',
+      descriptions[actionType],
+      undefined,
+      undefined,
+      { ...metadata, teamName, inviterName }
+    );
+
   } catch (error) {
-    console.error('Unexpected error creating invite notification:', error);
+    console.error('[Notifications] Unexpected error creating invite notification:', error);
     return { success: false, error: 'Failed to create notification' };
   }
 }

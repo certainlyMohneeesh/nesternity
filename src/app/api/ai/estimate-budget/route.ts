@@ -66,7 +66,14 @@ export async function POST(request: NextRequest) {
     console.log('⏱️  Timeline milestones:', timeline?.length || 0);
 
     // 3. Fetch historical estimations for learning
-    let historicalEstimations = [];
+    let historicalEstimations: Array<{
+      title: string;
+      estimatedBudget: number;
+      actualBudget: number | null;
+      deliverableCount: number;
+      timelineWeeks: number;
+      accuracy: number | null;
+    }> = [];
     try {
       historicalEstimations = await prisma.budgetEstimation.findMany({
         where: {

@@ -55,12 +55,13 @@ export default async function RecurringInvoicesPage() {
   const activeInvoices = recurringInvoices.filter(inv => inv.autoGenerateEnabled);
   const totalRecurringValue = recurringInvoices.reduce((sum, inv) => {
     const subtotal = inv.items.reduce((s, item) => s + item.total, 0);
-    const tax = subtotal * (inv.taxRate / 100);
-    const discount = subtotal * (inv.discount / 100);
+    const tax = subtotal * ((inv.taxRate || 0) / 100);
+    const discount = subtotal * ((inv.discount || 0) / 100);
     return sum + (subtotal + tax - discount);
   }, 0);
 
   const upcomingThisWeek = recurringInvoices.filter(inv => {
+    if (!inv.nextIssueDate) return false;
     const nextDate = new Date(inv.nextIssueDate);
     const weekFromNow = new Date();
     weekFromNow.setDate(weekFromNow.getDate() + 7);
@@ -157,16 +158,21 @@ export default async function RecurringInvoicesPage() {
       {/* Invoices Grid */}
       {recurringInvoices.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {recurringInvoices.map((invoice) => (
-            <RecurringInvoiceCard
-              key={invoice.id}
-              invoice={{
-                ...invoice,
-                nextIssueDate: new Date(invoice.nextIssueDate),
-                lastSentDate: invoice.lastSentDate ? new Date(invoice.lastSentDate) : null,
-              }}
-            />
-          ))}
+          {recurringInvoices
+            .filter(invoice => invoice.recurrence !== null && invoice.nextIssueDate !== null)
+            .map((invoice) => (
+              <RecurringInvoiceCard
+                key={invoice.id}
+                invoice={{
+                  ...invoice,
+                  recurrence: invoice.recurrence!,
+                  nextIssueDate: new Date(invoice.nextIssueDate!),
+                  lastSentDate: invoice.lastSentDate ? new Date(invoice.lastSentDate) : null,
+                  taxRate: invoice.taxRate || 0,
+                  discount: invoice.discount || 0,
+                }}
+              />
+            ))}
         </div>
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
