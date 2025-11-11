@@ -92,9 +92,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { teamId, type, title, details } = await request.json();
+    const body = await request.json();
+    const { 
+      teamId, 
+      type, 
+      actionType, // Support both 'type' and 'actionType' 
+      title, 
+      description,
+      details,
+      metadata,
+      boardId,
+      taskId
+    } = body;
 
-    if (!teamId || !type || !title) {
+    const activityType = actionType || type;
+
+    if (!teamId || !activityType || !title) {
       return NextResponse.json({ error: 'Team ID, type, and title required' }, { status: 400 });
     }
 
@@ -113,13 +126,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Team not found or access denied' }, { status: 404 });
     }
 
+    // Build details object
+    const activityDetails: any = { ...(details || {}), ...(metadata || {}) };
+    if (description) {
+      activityDetails.description = description;
+    }
+    if (boardId) {
+      activityDetails.boardId = boardId;
+    }
+    if (taskId) {
+      activityDetails.taskId = taskId;
+    }
+
     const activity = await db.activity.create({
       data: {
         teamId,
         userId: user.id,
-        type,
+        type: activityType,
         title,
-        details: details || null
+        details: Object.keys(activityDetails).length > 0 ? activityDetails : null
       },
       include: {
         user: {
@@ -131,7 +156,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ activity });
+    return NextResponse.json({ 
+      activity,
+      activityId: activity.id,
+      success: true 
+    });
   } catch (error) {
     console.error('Create activity error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

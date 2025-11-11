@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { generateStructuredCompletion } from '@/lib/ai/gemini';
+import { createScopeRadarNotification, ACTIVITY_TYPES } from '@/lib/notifications';
 
 interface BudgetCheckRequest {
   projectId?: string;
@@ -322,6 +323,43 @@ Return JSON:
         });
         scopeRadarId = newRadar.id;
         console.log(`[BudgetCheckAPI] Created scope radar alert: ${scopeRadarId}`);
+
+        // Send notification to user
+        try {
+          const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { team: true }
+          });
+
+          if (project) {
+            const notificationType = overrunPercent > 0 
+              ? ACTIVITY_TYPES.BUDGET_EXCEEDED 
+              : ACTIVITY_TYPES.BUDGET_WARNING;
+            
+            await createScopeRadarNotification(
+              user.id,
+              notificationType,
+              project.name,
+              riskLevel === 'critical' ? 'critical' : 'high',
+              {
+                original: originalBudget,
+                current: invoiceTotal,
+                overrun: overrunAmount,
+                currency
+              },
+              {
+                teamId: project.teamId,
+                projectId: project.id,
+                clientName,
+                scopeRadarId: newRadar.id
+              }
+            );
+            console.log(`[BudgetCheckAPI] Notification sent for ${notificationType}`);
+          }
+        } catch (notifError) {
+          console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
+          // Don't fail the request if notification fails
+        }
       } else {
         console.log(`[BudgetCheckAPI] Existing radar found, skipping creation`);
       }

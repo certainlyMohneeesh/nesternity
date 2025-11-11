@@ -83,7 +83,9 @@ export async function GET(
     // Update proposal with PDF URL
     await prisma.proposal.update({
       where: { id },
-      data: { pdfUrl },
+      data: { 
+        pdfUrl: typeof pdfUrl === 'string' ? pdfUrl : pdfUrl?.toString() || null
+      },
     });
 
     return NextResponse.json({

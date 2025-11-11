@@ -14,6 +14,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user details from database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { displayName: true, email: true }
+    });
+
     const { id } = await context.params;
 
     // Check if proposal exists and belongs to user
@@ -45,7 +51,7 @@ export async function POST(
     }
 
     // Generate PDF if not already generated
-    let pdfUrl = proposal.pdfUrl;
+    let pdfUrl: string | null = proposal.pdfUrl;
     
     if (!pdfUrl) {
       console.log('📄 Generating PDF for proposal:', proposal.title);
@@ -73,7 +79,9 @@ export async function POST(
         signatures: proposal.signatures,
       };
 
-      pdfUrl = await generateProposalPDF(proposalForPDF);
+      const generatedPdf = await generateProposalPDF(proposalForPDF);
+      // Convert to string if it's a Buffer
+      pdfUrl = typeof generatedPdf === 'string' ? generatedPdf : generatedPdf?.toString() || null;
       console.log('✅ PDF generated:', pdfUrl);
     }
 
@@ -112,7 +120,7 @@ export async function POST(
       pdfUrl: pdfUrl || undefined,
       pricing: proposal.pricing,
       currency: proposal.currency,
-      senderName: user.displayName || user.email || 'Nesternity Team',
+      senderName: dbUser?.displayName || dbUser?.email || user.email || 'Nesternity Team',
       expiresAt: proposalExpiresAt.toISOString(),
     });
 
