@@ -148,7 +148,8 @@ function AuthCallbackContent() {
           // Handle specific callback types
           if (type === 'recovery') {
             console.log('🔄 Auth Callback: Password recovery flow');
-            router.push('/auth/reset-password');
+            // Redirect to reset password page with tokens in hash
+            window.location.href = `/auth/reset-password#access_token=${access_token}&refresh_token=${refresh_token}&type=recovery`;
             return;
           }
 

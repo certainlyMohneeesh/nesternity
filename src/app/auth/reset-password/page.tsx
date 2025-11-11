@@ -24,31 +24,81 @@ function ResetPasswordForm() {
   useEffect(() => {
     // Check if user has a valid reset session
     const checkSession = async () => {
+      console.log('🔄 Reset Password: Checking session...');
+      
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
+        console.log('✅ Reset Password: Valid session found');
         setIsValidSession(true);
       } else {
-        // Check for access_token and refresh_token in URL (from reset link)
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
+        console.log('⚠️ Reset Password: No session found, checking URL parameters...');
         
-        if (accessToken && refreshToken) {
-          try {
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (!error) {
-              setIsValidSession(true);
-            } else {
+        // Check for tokens in hash fragment (Supabase magic link format)
+        if (typeof window !== 'undefined') {
+          const hashFragment = window.location.hash.substring(1);
+          const params = new URLSearchParams(hashFragment);
+          
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          const type = params.get('type');
+          
+          console.log('🔑 Reset Password: Hash params', { 
+            hasAccessToken: !!accessToken, 
+            hasRefreshToken: !!refreshToken,
+            type 
+          });
+          
+          if (accessToken && refreshToken && type === 'recovery') {
+            try {
+              console.log('🔄 Reset Password: Setting session from hash tokens...');
+              const { error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
+              
+              if (!error) {
+                console.log('✅ Reset Password: Session established from hash');
+                setIsValidSession(true);
+                // Clean up URL by removing hash
+                window.history.replaceState(null, '', window.location.pathname);
+              } else {
+                console.error('❌ Reset Password: Failed to set session:', error);
+                setError('Invalid or expired reset link');
+              }
+            } catch (e) {
+              console.error('❌ Reset Password: Exception setting session:', e);
               setError('Invalid or expired reset link');
             }
-          } catch (e) {
-            setError('Invalid or expired reset link');
+          } else {
+            // Also check query parameters as fallback
+            const queryAccessToken = searchParams.get('access_token');
+            const queryRefreshToken = searchParams.get('refresh_token');
+            
+            if (queryAccessToken && queryRefreshToken) {
+              try {
+                console.log('🔄 Reset Password: Setting session from query tokens...');
+                const { error } = await supabase.auth.setSession({
+                  access_token: queryAccessToken,
+                  refresh_token: queryRefreshToken
+                });
+                
+                if (!error) {
+                  console.log('✅ Reset Password: Session established from query');
+                  setIsValidSession(true);
+                } else {
+                  console.error('❌ Reset Password: Failed to set session:', error);
+                  setError('Invalid or expired reset link');
+                }
+              } catch (e) {
+                console.error('❌ Reset Password: Exception setting session:', e);
+                setError('Invalid or expired reset link');
+              }
+            } else {
+              console.error('❌ Reset Password: No valid tokens found');
+              setError('Invalid or expired reset link');
+            }
           }
-        } else {
-          setError('Invalid or expired reset link');
         }
       }
     };
