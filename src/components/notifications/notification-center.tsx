@@ -48,13 +48,21 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [hasLoadedCount, setHasLoadedCount] = useState(false);
 
+  // Fetch unread count only once on mount
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user && !hasLoadedCount) {
       fetchUnreadCount();
-      if (open) {
-        fetchNotifications();
-      }
+      setHasLoadedCount(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  // Fetch notifications when sheet opens
+  useEffect(() => {
+    if (session?.user && open) {
+      fetchNotifications();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, open]);
