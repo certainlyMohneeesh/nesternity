@@ -44,8 +44,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Send password reset email using Supabase (which will use your SMTP configuration)
+    // IMPORTANT: redirectTo should point to /auth/callback which will handle the token
+    // and then redirect to /auth/reset-password with the session established
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
     });
 
     if (error) {
