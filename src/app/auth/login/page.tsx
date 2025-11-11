@@ -21,7 +21,16 @@ function LoginForm() {
     setError("");
     setLoading(true);
     
+    const startTime = Date.now();
+    console.log('[Login Page] Starting login process...');
+    
     try {
+      console.log('[Login Page] Calling login API...');
+      
+      // Set a timeout for the fetch request (30 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
       // Call server-side login API
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -29,30 +38,73 @@ function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
       });
 
-      const data = await response.json();
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      console.log(`[Login Page] API response received in ${duration}ms`);
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('[Login Page] Failed to parse response:', jsonError);
+        setError('Server returned an invalid response. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[Login Page] Response:', {
+        ok: response.ok,
+        status: response.status,
+        success: data.success,
+      });
 
       if (!response.ok) {
-        setError(data.error || 'Login failed');
+        console.error('[Login Page] Login failed:', {
+          status: response.status,
+          error: data.error,
+          details: data.details,
+          requestId: data.requestId,
+        });
+        setError(data.error || data.details || 'Login failed');
         setLoading(false);
         return;
       }
 
       if (data.success) {
         // Check for both 'returnUrl' (from middleware) and 'redirect' (legacy)
-        const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
-        console.log('🔄 [Login] Redirecting to:', returnUrl || '/dashboard');
+        const returnUrl = searchParams.get('returnUrl') || 
+                         searchParams.get('redirect') || 
+                         searchParams.get('redirectTo') || 
+                         '/dashboard';
+        
+        console.log('[Login Page] ✅ Login successful, redirecting to:', returnUrl);
         
         // Force a full page refresh to ensure session is loaded
-        window.location.href = returnUrl || '/dashboard';
+        window.location.href = returnUrl;
       } else {
+        console.error('[Login Page] Login failed: success=false');
         setError('Login failed. Please try again.');
         setLoading(false);
       }
     } catch (err) {
-      console.error('[Login] Error:', err);
-      setError('Failed to connect to server. Please check your internet connection.');
+      const duration = Date.now() - startTime;
+      console.error(`[Login Page] ❌ Error after ${duration}ms:`, err);
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Request timeout. Please check your internet connection and try again.');
+        } else if (err.message.includes('fetch')) {
+          setError('Cannot connect to server. Please check your internet connection.');
+        } else {
+          setError(`Error: ${err.message}`);
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+      
       setLoading(false);
     }
   }
