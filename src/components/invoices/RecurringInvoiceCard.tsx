@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCurrencySymbol } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -96,6 +97,9 @@ export default function RecurringInvoiceCard({
   const taxAmount = subtotal * (invoice.taxRate / 100);
   const discountAmount = subtotal * (invoice.discount / 100);
   const total = subtotal + taxAmount - discountAmount;
+
+  // Get currency symbol
+  const currencySymbol = getCurrencySymbol(invoice.currency);
 
   // Format recurrence
   const getRecurrenceLabel = () => {
@@ -291,7 +295,7 @@ export default function RecurringInvoiceCard({
               <span className="text-sm text-muted-foreground">Invoice Amount</span>
             </div>
             <span className="text-lg font-bold">
-              {invoice.currency} {total.toFixed(2)}
+              {currencySymbol}{total.toFixed(2)}
             </span>
           </div>
 
@@ -345,7 +349,7 @@ export default function RecurringInvoiceCard({
                   {item.description} (x{item.quantity})
                 </span>
                 <span className="font-medium ml-2">
-                  {invoice.currency} {item.total.toFixed(2)}
+                  {currencySymbol}{item.total.toFixed(2)}
                 </span>
               </div>
             ))}
