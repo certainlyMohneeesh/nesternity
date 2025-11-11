@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { getCurrencySymbol } from '@/lib/utils'
 
 interface ProposalProps {
   proposal: {
@@ -389,7 +390,7 @@ const styles = StyleSheet.create({
 export function ProposalDocument({ proposal }: ProposalProps) {
   const deliverables = Array.isArray(proposal.deliverables) ? proposal.deliverables : []
   const timeline = Array.isArray(proposal.timeline) ? proposal.timeline : []
-  const currencySymbol = proposal.currency === 'INR' ? '₹' : '$'
+  const currencySymbol = getCurrencySymbol(proposal.currency)
 
   return (
     <Document>

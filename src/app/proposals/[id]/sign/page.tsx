@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SignatureComponent } from "@/components/proposals/SignatureComponent";
+import { getCurrencySymbol } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Calendar, FileText, AlertTriangle, Shield } from "lucide-react";
@@ -210,7 +211,7 @@ export default async function PublicProposalSignPage({ params, searchParams }: P
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Total Value:</span>
                     <span className="text-lg font-bold">
-                      {proposal.currency === "INR" ? "₹" : "$"}
+                      {getCurrencySymbol(proposal.currency)}
                       {proposal.pricing.toLocaleString()}
                     </span>
                   </div>

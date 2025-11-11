@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getCurrencySymbol } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -209,7 +210,7 @@ export function ContractsList({ contracts: initialContracts }: Props) {
                     </Badge>
                   )}
                   <span className="text-lg font-semibold">
-                    {contract.currency === "INR" ? "₹" : "$"}
+                    {getCurrencySymbol(contract.currency)}
                     {contract.pricing.toLocaleString()}
                   </span>
                 </div>

@@ -4,6 +4,7 @@
  */
 
 import { generateStructuredCompletion } from './gemini';
+import { getCurrencySymbol } from '@/lib/utils';
 
 export interface ScopeCreepEmailData {
   clientName: string;
@@ -63,12 +64,12 @@ Guidelines:
       content: `Generate a professional email to ${data.clientName} about budget concerns for ${data.projectName}.
 
 **Budget Status:**
-- Original Budget: ${data.currency === 'INR' ? '₹' : '$'}${data.originalBudget.toLocaleString()}
-- Current Spend: ${data.currency === 'INR' ? '₹' : '$'}${data.currentSpend.toLocaleString()}
-${data.overrunAmount > 0 ? `- **Budget Overrun: ${data.currency === 'INR' ? '₹' : '$'}${data.overrunAmount.toLocaleString()} (${data.overrunPercent.toFixed(1)}%)**` : `- Remaining Budget: ${data.currency === 'INR' ? '₹' : '$'}${data.remainingBudget.toLocaleString()}`}
+- Original Budget: ${getCurrencySymbol(data.currency)}${data.originalBudget.toLocaleString()}
+- Current Spend: ${getCurrencySymbol(data.currency)}${data.currentSpend.toLocaleString()}
+${data.overrunAmount > 0 ? `- **Budget Overrun: ${getCurrencySymbol(data.currency)}${data.overrunAmount.toLocaleString()} (${data.overrunPercent.toFixed(1)}%)**` : `- Remaining Budget: ${getCurrencySymbol(data.currency)}${data.remainingBudget.toLocaleString()}`}
 
 ${data.flaggedItems.length > 0 ? `**Contributing Factors:**
-${data.flaggedItems.map(item => `- ${item.item}: ${data.currency === 'INR' ? '₹' : '$'}${item.cost.toLocaleString()}${item.reason ? ` (${item.reason})` : ''}`).join('\n')}` : ''}
+${data.flaggedItems.map(item => `- ${item.item}: ${getCurrencySymbol(data.currency)}${item.cost.toLocaleString()}${item.reason ? ` (${item.reason})` : ''}`).join('\n')}` : ''}
 
 The email should:
 1. Thank them for their business
@@ -122,12 +123,12 @@ Guidelines:
 
 **Client:** ${data.clientName}${data.companyName ? ` (${data.companyName})` : ''}
 **Invoice:** ${data.invoiceNumber}
-**Amount:** ${data.currency === 'INR' ? '₹' : '$'}${data.amount.toLocaleString()}
+**Amount:** ${getCurrencySymbol(data.currency)}${data.amount.toLocaleString()}
 **Due Date:** ${data.dueDate}
 **Frequency:** ${data.recurrence}
 
 **Line Items:**
-${data.items.map(item => `- ${item.description}: ${item.quantity} × ${data.currency === 'INR' ? '₹' : '$'}${item.rate} = ${data.currency === 'INR' ? '₹' : '$'}${item.total.toLocaleString()}`).join('\n')}
+${data.items.map(item => `- ${item.description}: ${item.quantity} × ${getCurrencySymbol(data.currency)}${item.rate} = ${getCurrencySymbol(data.currency)}${item.total.toLocaleString()}`).join('\n')}
 
 ${data.paymentLink ? `**Payment Link:** ${data.paymentLink}` : ''}
 
@@ -159,7 +160,7 @@ Return only the complete HTML email body.`,
  * Fallback scope creep warning email
  */
 function generateFallbackScopeCreepEmail(data: ScopeCreepEmailData): string {
-  const currencySymbol = data.currency === 'INR' ? '₹' : '$';
+  const currencySymbol = getCurrencySymbol(data.currency);
 
   return `
 <!DOCTYPE html>
@@ -252,7 +253,7 @@ function generateFallbackScopeCreepEmail(data: ScopeCreepEmailData): string {
  * Fallback recurring invoice email
  */
 function generateFallbackRecurringInvoiceEmail(data: RecurringInvoiceEmailData): string {
-  const currencySymbol = data.currency === 'INR' ? '₹' : '$';
+  const currencySymbol = getCurrencySymbol(data.currency);
 
   return `
 <!DOCTYPE html>
