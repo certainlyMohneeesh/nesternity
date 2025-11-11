@@ -3,6 +3,8 @@ import { useState, Suspense } from "react";
 // import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { AuthDivider } from "@/components/auth/auth-divider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +71,13 @@ function RegisterForm() {
       title="Create your account"
       subtitle="Start your journey with Nesternity"
     >
+      {/* OAuth Buttons */}
+      <OAuthButtons mode="signup" />
 
+      {/* Divider */}
+      <AuthDivider text="or continue with email" />
+
+      {/* Email/Password Form */}
       <form onSubmit={handleRegister} className="space-y-6">
         <div>
           <Label htmlFor="name">Full name</Label>

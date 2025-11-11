@@ -19,6 +19,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Parse request body for additional OAuth metadata
+    let requestBody: any = {};
+    try {
+      requestBody = await request.json();
+    } catch {
+      // No body is fine for non-OAuth logins
+    }
+
+    console.log('🔄 Sync User: Processing user', {
+      userId: user.id,
+      email: user.email,
+      provider: user.app_metadata?.provider,
+      hasOAuthMetadata: !!requestBody.fullName || !!requestBody.avatarUrl
+    });
+
     // Check if user exists in Prisma database
     let prismaUser = await (db as any).user.findUnique({
       where: { id: user.id }
@@ -26,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // If user doesn't exist, create them
     if (!prismaUser) {
-      console.log('Creating new user in Prisma:', user.id, user.email);
+      console.log('🔄 Sync User: Creating new user in database');
       
       // Check for orphaned user with same email
       const orphanedUser = await (db as any).user.findUnique({
@@ -44,12 +59,12 @@ export async function POST(request: NextRequest) {
       if (orphanedUser) {
         // Only delete if no teams or memberships
         if (orphanedUser._count.ownedTeams === 0 && orphanedUser._count.teamMembers === 0) {
-          console.log('🗑️ Deleting orphaned user with email:', user.email);
+          console.log('🗑️ Sync User: Deleting orphaned user with email:', user.email);
           await (db as any).user.delete({
             where: { id: orphanedUser.id }
           });
         } else {
-          console.warn('⚠️ Orphaned user has data, skipping deletion');
+          console.warn('⚠️ Sync User: Orphaned user has data, skipping deletion');
           return NextResponse.json({ 
             error: 'Account conflict. Please contact support.',
             user: null 
@@ -57,17 +72,31 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Get display name from user metadata or use email
-      const displayName = user.user_metadata?.name || 
+      // Get display name from various sources (OAuth metadata or user metadata)
+      const displayName = requestBody.fullName || 
+                         user.user_metadata?.full_name ||
+                         user.user_metadata?.name || 
                          user.user_metadata?.display_name || 
                          user.email?.split('@')[0] || 
                          'User';
+
+      const avatarUrl = requestBody.avatarUrl || 
+                       user.user_metadata?.avatar_url || 
+                       null;
       
+      console.log('👤 Sync User: Creating user with', {
+        displayName,
+        hasAvatar: !!avatarUrl,
+        provider: user.app_metadata?.provider || 'email'
+      });
+
       prismaUser = await (db as any).user.create({
         data: {
           id: user.id,
           email: user.email || '',
           displayName: displayName,
+          // You can add avatarUrl field to your Prisma schema if needed
+          // avatarUrl: avatarUrl,
         }
       });
 
@@ -115,7 +144,9 @@ export async function POST(request: NextRequest) {
         ]
       });
 
-      console.log('Created default team and board for user:', prismaUser.id);
+      console.log('✅ Sync User: Created default team and board for user:', prismaUser.id);
+    } else {
+      console.log('✅ Sync User: User already exists in database:', prismaUser.id);
     }
 
     return NextResponse.json({ 
@@ -128,7 +159,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('User sync error:', error);
+    console.error('❌ Sync User: Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -2,6 +2,8 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { AuthDivider } from "@/components/auth/auth-divider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,21 +116,28 @@ function LoginForm() {
       title="Sign in to your account"
       subtitle="Welcome back! Please enter your details."
     >
-        <div className="bg-transparent py-3 px-2 sm:py-4 sm:px-3 shadow-xl rounded-lg pb-4 mb-6">
-          <div className="flex items-center gap-1.5">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <span className="text-xs font-medium text-blue-800">
-              Notice
-            </span>
-          </div>
-          <p className="text-xs text-blue-700 mt-0.5">
-            If you are new to Nesternity, please sign up first. If you have an account, use your registered email and password to log in.
-          </p>
+      <div className="bg-transparent py-3 px-2 sm:py-4 sm:px-3 shadow-xl rounded-lg pb-4 mb-6">
+        <div className="flex items-center gap-1.5">
+          <Shield className="h-4 w-4 text-blue-600" />
+          <span className="text-xs font-medium text-blue-800">
+            Notice
+          </span>
         </div>
+        <p className="text-xs text-blue-700 mt-0.5">
+          If you are new to Nesternity, please sign up first. If you have an account, use your registered email and password to log in.
+        </p>
+      </div>
 
-            <div className="pb-0.5" />
+      <div className="pb-0.5" />
 
-            <form onSubmit={handleLogin} className="space-y-6">
+      {/* OAuth Buttons */}
+      <OAuthButtons mode="signin" />
+
+      {/* Divider */}
+      <AuthDivider text="or continue with email" />
+
+      {/* Email/Password Form */}
+      <form onSubmit={handleLogin} className="space-y-6">
         <div>
           <Label htmlFor="email">Email address</Label>
           <Input
