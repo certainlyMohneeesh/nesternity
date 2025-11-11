@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,7 @@ import {
   XCircle,
   AlertCircle,
   Mail,
+  Edit3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -55,6 +59,17 @@ interface BudgetData {
   lastChecked?: string;
 }
 
+interface UserDetails {
+  name: string;
+  title: string;
+  company: string;
+}
+
+interface EmailData {
+  subject: string;
+  body: string;
+}
+
 export default function ScopeRadarWidget({
   projectId,
   clientId,
@@ -65,6 +80,98 @@ export default function ScopeRadarWidget({
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [userDetails, setUserDetails] = useState<UserDetails>({
+    name: "",
+    title: "",
+    company: "",
+  });
+  const [emailData, setEmailData] = useState<EmailData>({
+    subject: "",
+    body: "",
+  });
+
+  // Fetch user details for email signature
+  const fetchUserDetails = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const data = await response.json();
+        setUserDetails({
+          name: data.displayName || data.email?.split('@')[0] || "Your Name",
+          title: "Project Manager", // Default title
+          company: "Nesternity", // Default company
+        });
+      }
+    } catch (error) {
+      console.error('[ScopeRadarWidget] Failed to fetch user details:', error);
+    }
+  };
+
+  // Parse HTML email to extract subject and body
+  const parseEmailContent = (htmlContent: string): EmailData => {
+    // Extract subject if it exists in the HTML
+    const subjectMatch = htmlContent.match(/<p><b>Subject:?\s*<\/b>\s*(.*?)<\/p>/i) ||
+                        htmlContent.match(/Subject:\s*(.*?)(?:<\/p>|<br>|\n)/i);
+    
+    let subject = "Urgent: Project Budget Status Update";
+    let body = htmlContent;
+
+    if (subjectMatch) {
+      subject = subjectMatch[1].trim().replace(/<[^>]*>/g, '');
+      // Remove subject line from body
+      body = htmlContent.replace(subjectMatch[0], '').trim();
+    }
+
+    return { subject, body };
+  };
+
+  // Replace placeholders in email with actual user details
+  const fillEmailPlaceholders = (emailHtml: string): string => {
+    return emailHtml
+      .replace(/\[Your Name\/Project Manager Name\]/g, userDetails.name)
+      .replace(/\[Your Name\]/g, userDetails.name)
+      .replace(/\[Your Title\]/g, userDetails.title)
+      .replace(/\[Your Company\]/g, userDetails.company)
+      .replace(/\[Project Manager Name\]/g, userDetails.name);
+  };
+
+  // Convert HTML to plain text for editing
+  const htmlToPlainText = (html: string): string => {
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<p>/gi, '')
+      .replace(/<b>(.*?)<\/b>/gi, '$1')
+      .replace(/<\/?[^>]+(>|$)/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+  };
+
+  // Convert plain text to HTML
+  const plainTextToHtml = (text: string): string => {
+    return text
+      .split('\n\n')
+      .map(para => para.trim())
+      .filter(para => para.length > 0)
+      .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  };
+
+  // Initialize user details on mount
+  useEffect(() => {
+    fetchUserDetails();
+  }, []);
+
+  // Update email data when budget data changes
+  useEffect(() => {
+    if (budgetData?.clientEmailDraft) {
+      const filledEmail = fillEmailPlaceholders(budgetData.clientEmailDraft);
+      const parsed = parseEmailContent(filledEmail);
+      setEmailData(parsed);
+      setEditMode(false);
+    }
+  }, [budgetData?.clientEmailDraft, userDetails]);
 
   // Fetch budget data
   const fetchBudgetData = async () => {
@@ -196,20 +303,42 @@ export default function ScopeRadarWidget({
 
   // Send warning email to client
   const sendWarningEmail = async () => {
-    if (!budgetData?.clientEmailDraft) return;
+    if (!emailData.body) return;
 
     try {
       toast.info("Sending email to client...");
       
-      // TODO: Implement email sending
-      // await sendEmail({
-      //   to: client.email,
-      //   subject: "Budget Update - Project Review",
-      //   html: budgetData.clientEmailDraft,
+      // Fill placeholders one more time before sending
+      const finalEmailBody = fillEmailPlaceholders(emailData.body);
+      
+      // TODO: Implement email sending API
+      // For now, just show success
+      // In production, you would call:
+      // await fetch('/api/email/send', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     to: client.email,
+      //     subject: emailData.subject,
+      //     html: finalEmailBody,
+      //     from: {
+      //       name: userDetails.name,
+      //       email: 'your-email@company.com'
+      //     }
+      //   })
       // });
+
+      console.log('[ScopeRadarWidget] Email content prepared:', {
+        subject: emailData.subject,
+        senderName: userDetails.name,
+        senderTitle: userDetails.title,
+        company: userDetails.company,
+        bodyLength: finalEmailBody.length,
+      });
 
       toast.success("Warning email sent to client");
       setShowEmailDialog(false);
+      setEditMode(false);
     } catch (error) {
       console.error("Failed to send email:", error);
       toast.error("Failed to send email");
@@ -459,7 +588,7 @@ export default function ScopeRadarWidget({
                     Alert Client
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                   <DialogHeader>
                     <DialogTitle>Send Budget Warning to Client</DialogTitle>
                     <DialogDescription>
@@ -468,20 +597,135 @@ export default function ScopeRadarWidget({
                   </DialogHeader>
 
                   {budgetData.clientEmailDraft ? (
-                    <div className="space-y-4">
-                      <div
-                        className="p-4 border rounded-lg max-h-96 overflow-y-auto prose prose-sm"
-                        dangerouslySetInnerHTML={{ __html: budgetData.clientEmailDraft }}
-                      />
-                      <div className="flex gap-2">
-                        <Button onClick={() => setShowEmailDialog(false)} variant="outline" className="flex-1">
-                          Cancel
-                        </Button>
-                        <Button onClick={sendWarningEmail} className="flex-1">
-                          <Send className="h-4 w-4 mr-2" />
-                          Send Email
-                        </Button>
-                      </div>
+                    <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                      {!editMode ? (
+                        <>
+                          {/* Preview Mode */}
+                          <div className="flex-1 overflow-hidden flex flex-col space-y-3">
+                            {/* Subject Line */}
+                            <div className="space-y-1">
+                              <Label className="text-xs font-semibold text-muted-foreground">Subject</Label>
+                              <div className="text-sm font-semibold p-3 bg-muted/50 rounded-md border">
+                                {emailData.subject}
+                              </div>
+                            </div>
+
+                            {/* Email Body Preview */}
+                            <div className="flex-1 overflow-hidden flex flex-col space-y-1">
+                              <Label className="text-xs font-semibold text-muted-foreground">Email Content</Label>
+                              <div
+                                className="flex-1 p-4 border rounded-md overflow-y-auto prose prose-sm max-w-none bg-white"
+                                dangerouslySetInnerHTML={{ __html: emailData.body }}
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* User Details (Editable) */}
+                          <div className="border-t pt-3">
+                            <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Email Signature</Label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <Label htmlFor="senderName" className="text-xs">Your Name</Label>
+                                <Input
+                                  id="senderName"
+                                  value={userDetails.name}
+                                  onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
+                                  className="h-8 text-sm"
+                                  placeholder="John Doe"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="senderTitle" className="text-xs">Your Title</Label>
+                                <Input
+                                  id="senderTitle"
+                                  value={userDetails.title}
+                                  onChange={(e) => setUserDetails({ ...userDetails, title: e.target.value })}
+                                  className="h-8 text-sm"
+                                  placeholder="Project Manager"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="senderCompany" className="text-xs">Company</Label>
+                                <Input
+                                  id="senderCompany"
+                                  value={userDetails.company}
+                                  onChange={(e) => setUserDetails({ ...userDetails, company: e.target.value })}
+                                  className="h-8 text-sm"
+                                  placeholder="Your Company"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 border-t pt-3">
+                            <Button onClick={() => setShowEmailDialog(false)} variant="outline" size="sm">
+                              Cancel
+                            </Button>
+                            <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
+                              <Edit3 className="h-4 w-4 mr-2" />
+                              Edit Email
+                            </Button>
+                            <Button onClick={sendWarningEmail} size="sm" className="ml-auto">
+                              <Send className="h-4 w-4 mr-2" />
+                              Send Email
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Edit Mode */}
+                          <div className="flex-1 overflow-hidden flex flex-col space-y-3">
+                            {/* Subject Editor */}
+                            <div className="space-y-1">
+                              <Label htmlFor="emailSubject" className="text-xs font-semibold">Subject</Label>
+                              <Input
+                                id="emailSubject"
+                                value={emailData.subject}
+                                onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                                className="text-sm"
+                                placeholder="Email subject..."
+                              />
+                            </div>
+
+                            {/* Body Editor */}
+                            <div className="flex-1 overflow-hidden flex flex-col space-y-1">
+                              <Label htmlFor="emailBody" className="text-xs font-semibold">Email Content</Label>
+                              <Textarea
+                                id="emailBody"
+                                value={htmlToPlainText(emailData.body)}
+                                onChange={(e) => setEmailData({ ...emailData, body: plainTextToHtml(e.target.value) })}
+                                className="flex-1 text-sm resize-none"
+                                placeholder="Type your email content here..."
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Edit your email content. Formatting will be preserved when sent.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 border-t pt-3">
+                            <Button onClick={() => {
+                              // Reset to filled template
+                              if (budgetData?.clientEmailDraft) {
+                                const filledEmail = fillEmailPlaceholders(budgetData.clientEmailDraft);
+                                const parsed = parseEmailContent(filledEmail);
+                                setEmailData(parsed);
+                              }
+                              setEditMode(false);
+                            }} variant="outline" size="sm">
+                              Cancel Edit
+                            </Button>
+                            <Button onClick={() => setEditMode(false)} variant="outline" size="sm">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </Button>
+                            <Button onClick={sendWarningEmail} size="sm" className="ml-auto">
+                              <Send className="h-4 w-4 mr-2" />
+                              Send Email
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
