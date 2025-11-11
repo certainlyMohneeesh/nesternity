@@ -186,10 +186,10 @@ export default function ScopeRadarWidget({
 
       console.log('[ScopeRadarWidget] Response status:', response.status);
 
-      // If no existing data (404), trigger a fresh budget check
+      // If no existing data (404), trigger a fresh budget check (silently on initial load)
       if (response.status === 404) {
         console.log('[ScopeRadarWidget] No existing budget data, running initial check');
-        await checkBudget();
+        await checkBudget(false); // Don't show toast on auto-check
         return;
       }
 
@@ -236,7 +236,7 @@ export default function ScopeRadarWidget({
   };
 
   // Check budget with AI analysis
-  const checkBudget = async () => {
+  const checkBudget = async (showToast = true) => {
     try {
       setChecking(true);
       console.log('[ScopeRadarWidget] Running budget check for:', { clientId, projectId });
@@ -289,9 +289,12 @@ export default function ScopeRadarWidget({
         lastChecked: new Date().toISOString(),
       });
 
-      toast.success("Budget analysis complete", {
-        description: `Risk level: ${data.riskLevel.toUpperCase()}`,
-      });
+      // Only show toast if explicitly requested (manual re-check)
+      if (showToast) {
+        toast.success("Budget analysis complete", {
+          description: `Risk level: ${data.riskLevel.toUpperCase()}`,
+        });
+      }
     } catch (error) {
       console.error("[ScopeRadarWidget] Failed to check budget:", error);
       toast.error("Failed to analyze budget", {
@@ -473,7 +476,7 @@ export default function ScopeRadarWidget({
             </p>
           </div>
           <Button 
-            onClick={checkBudget} 
+            onClick={() => checkBudget(true)} 
             disabled={checking} 
             className="w-full"
             size="lg"
@@ -602,7 +605,7 @@ export default function ScopeRadarWidget({
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             <Button
-              onClick={checkBudget}
+              onClick={() => checkBudget(true)}
               disabled={checking}
               variant="outline"
               size="sm"
@@ -764,7 +767,7 @@ export default function ScopeRadarWidget({
                       <p className="text-sm text-muted-foreground">
                         Click "Generate Email" to create a professional budget warning message.
                       </p>
-                      <Button onClick={checkBudget} disabled={checking} className="w-full">
+                      <Button onClick={() => checkBudget(true)} disabled={checking} className="w-full">
                         {checking && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
                         Generate Email
                       </Button>

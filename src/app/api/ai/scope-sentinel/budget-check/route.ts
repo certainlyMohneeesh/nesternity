@@ -289,18 +289,26 @@ Return JSON:
     // 11. Save to ScopeRadar if not safe (only if we have projectId)
     let scopeRadarId: string | undefined;
 
-    if (riskLevel !== 'safe' && projectId) {
+    if (projectId) {
+      // Always find existing radar for this project
       const existingRadar = await prisma.scopeRadar.findFirst({
-        where: {
-          projectId,
-          budgetOverrun: {
-            gte: overrunAmount - 1000, // Within 1000 of current
-          },
-          emailSent: false,
-        },
+        where: { projectId },
+        orderBy: { flaggedAt: 'desc' },
       });
 
-      if (!existingRadar) {
+      if (riskLevel === 'safe') {
+        // If safe and radar exists, delete it
+        if (existingRadar) {
+          await prisma.scopeRadar.delete({
+            where: { id: existingRadar.id },
+          });
+          console.log(`[BudgetCheckAPI] Deleted radar - budget is safe now`);
+        } else {
+          console.log(`[BudgetCheckAPI] Budget is safe, no radar needed`);
+        }
+      } else {
+        // Risk is warning or critical - create or update radar
+        if (!existingRadar) {
         // Create new radar
         const newRadar = await prisma.scopeRadar.create({
           data: {
@@ -385,7 +393,8 @@ Return JSON:
         console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
         // Don't fail the request if notification fails
       }
-    } else if (riskLevel !== 'safe' && !projectId) {
+      }
+    } else if (riskLevel !== 'safe') {
       console.log(`[BudgetCheckAPI] Risk detected but no projectId, skipping ScopeRadar creation`);
     }
 
