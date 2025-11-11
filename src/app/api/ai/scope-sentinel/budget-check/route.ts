@@ -324,43 +324,6 @@ Return JSON:
         });
         scopeRadarId = newRadar.id;
         console.log(`[BudgetCheckAPI] Created new scope radar alert: ${scopeRadarId}`);
-
-        // Send notification to user
-        try {
-          const project = await prisma.project.findUnique({
-            where: { id: projectId },
-            include: { team: true }
-          });
-
-          if (project) {
-            const notificationType = overrunPercent > 0 
-              ? ACTIVITY_TYPES.BUDGET_EXCEEDED 
-              : ACTIVITY_TYPES.BUDGET_WARNING;
-            
-            await createScopeRadarNotification(
-              user.id,
-              notificationType,
-              project.name,
-              riskLevel === 'critical' ? 'critical' : 'high',
-              {
-                original: originalBudget,
-                current: invoiceTotal,
-                overrun: overrunAmount,
-                currency
-              },
-              {
-                teamId: project.teamId,
-                projectId: project.id,
-                clientName,
-                scopeRadarId: newRadar.id
-              }
-            );
-            console.log(`[BudgetCheckAPI] Notification sent for ${notificationType}`);
-          }
-        } catch (notifError) {
-          console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
-          // Don't fail the request if notification fails
-        }
       } else {
         // Update existing radar with latest data
         console.log(`[BudgetCheckAPI] Updating existing radar: ${existingRadar.id}`);
@@ -384,6 +347,43 @@ Return JSON:
         });
         scopeRadarId = updatedRadar.id;
         console.log(`[BudgetCheckAPI] Updated radar with latest budget data`);
+      }
+
+      // Send notification on every check (new or update)
+      try {
+        const project = await prisma.project.findUnique({
+          where: { id: projectId },
+          include: { team: true }
+        });
+
+        if (project) {
+          const notificationType = overrunPercent > 0 
+            ? ACTIVITY_TYPES.BUDGET_EXCEEDED 
+            : ACTIVITY_TYPES.BUDGET_WARNING;
+          
+          await createScopeRadarNotification(
+            user.id,
+            notificationType,
+            project.name,
+            riskLevel === 'critical' ? 'critical' : 'high',
+            {
+              original: originalBudget,
+              current: invoiceTotal,
+              overrun: overrunAmount,
+              currency
+            },
+            {
+              teamId: project.teamId,
+              projectId: project.id,
+              clientName,
+              scopeRadarId
+            }
+          );
+          console.log(`[BudgetCheckAPI] Notification sent for ${notificationType} (re-check)`);
+        }
+      } catch (notifError) {
+        console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
+        // Don't fail the request if notification fails
       }
     } else if (riskLevel !== 'safe' && !projectId) {
       console.log(`[BudgetCheckAPI] Risk detected but no projectId, skipping ScopeRadar creation`);
