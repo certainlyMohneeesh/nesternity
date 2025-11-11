@@ -303,45 +303,85 @@ export default function ScopeRadarWidget({
 
   // Send warning email to client
   const sendWarningEmail = async () => {
-    if (!emailData.body) return;
+    if (!emailData.body) {
+      console.error('[ScopeRadarWidget] Cannot send email: emailData.body is empty');
+      toast.error("Email content is missing");
+      return;
+    }
+
+    if (!clientId) {
+      console.error('[ScopeRadarWidget] Cannot send email: clientId is missing');
+      toast.error("Client information is missing");
+      return;
+    }
 
     try {
+      console.log('[ScopeRadarWidget] Preparing to send budget warning email:', {
+        clientId,
+        subject: emailData.subject,
+        senderName: userDetails.name,
+        senderTitle: userDetails.title,
+        senderCompany: userDetails.company,
+        bodyLength: emailData.body.length,
+      });
+
       toast.info("Sending email to client...");
       
       // Fill placeholders one more time before sending
       const finalEmailBody = fillEmailPlaceholders(emailData.body);
-      
-      // TODO: Implement email sending API
-      // For now, just show success
-      // In production, you would call:
-      // await fetch('/api/email/send', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     to: client.email,
-      //     subject: emailData.subject,
-      //     html: finalEmailBody,
-      //     from: {
-      //       name: userDetails.name,
-      //       email: 'your-email@company.com'
-      //     }
-      //   })
-      // });
 
-      console.log('[ScopeRadarWidget] Email content prepared:', {
-        subject: emailData.subject,
-        senderName: userDetails.name,
-        senderTitle: userDetails.title,
-        company: userDetails.company,
-        bodyLength: finalEmailBody.length,
+      console.log('[ScopeRadarWidget] Calling email API...');
+      const response = await fetch('/api/email/budget-warning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          subject: emailData.subject,
+          htmlContent: finalEmailBody,
+          senderName: userDetails.name,
+          senderTitle: userDetails.title,
+          senderCompany: userDetails.company,
+        }),
       });
 
-      toast.success("Warning email sent to client");
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error('[ScopeRadarWidget] Email API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: responseData.error,
+          details: responseData.details,
+          requestId: responseData.requestId,
+        });
+
+        toast.error("Failed to send email", {
+          description: responseData.details || responseData.error || "Please try again later",
+        });
+        return;
+      }
+
+      console.log('[ScopeRadarWidget] ✅ Email sent successfully:', {
+        emailId: responseData.emailId,
+        recipient: responseData.recipient,
+        duration: responseData.duration,
+      });
+
+      toast.success("Budget warning email sent!", {
+        description: `Sent to ${responseData.recipient?.name || 'client'}`,
+      });
+
       setShowEmailDialog(false);
       setEditMode(false);
     } catch (error) {
-      console.error("Failed to send email:", error);
-      toast.error("Failed to send email");
+      console.error('[ScopeRadarWidget] ❌ Failed to send email:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      
+      toast.error("Failed to send email", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+      });
     }
   };
 
