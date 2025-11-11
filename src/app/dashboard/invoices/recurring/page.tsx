@@ -5,6 +5,7 @@ import RecurringInvoiceCard from "@/components/invoices/RecurringInvoiceCard";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, DollarSign, RefreshCw, Home, FileText } from "lucide-react";
 import Link from "next/link";
+import { getCurrencySymbol } from "@/lib/utils";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -53,12 +54,23 @@ export default async function RecurringInvoicesPage() {
 
   // Calculate stats
   const activeInvoices = recurringInvoices.filter(inv => inv.autoGenerateEnabled);
-  const totalRecurringValue = recurringInvoices.reduce((sum, inv) => {
+  
+  // Calculate total recurring value with currency information
+  const recurringValueByCurrency = recurringInvoices.reduce((acc, inv) => {
     const subtotal = inv.items.reduce((s, item) => s + item.total, 0);
     const tax = subtotal * ((inv.taxRate || 0) / 100);
     const discount = subtotal * ((inv.discount || 0) / 100);
-    return sum + (subtotal + tax - discount);
-  }, 0);
+    const total = subtotal + tax - discount;
+    
+    const currency = inv.currency || 'USD';
+    acc[currency] = (acc[currency] || 0) + total;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Get primary currency (most common or first)
+  const primaryCurrency = Object.keys(recurringValueByCurrency)[0] || 'USD';
+  const totalRecurringValue = recurringValueByCurrency[primaryCurrency] || 0;
+  const currencySymbol = getCurrencySymbol(primaryCurrency);
 
   const upcomingThisWeek = recurringInvoices.filter(inv => {
     if (!inv.nextIssueDate) return false;
@@ -137,7 +149,14 @@ export default async function RecurringInvoicesPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Recurring Value</p>
-              <p className="text-3xl font-bold">${totalRecurringValue.toLocaleString()}</p>
+              <p className="text-3xl font-bold">
+                {currencySymbol}{totalRecurringValue.toLocaleString()}
+              </p>
+              {Object.keys(recurringValueByCurrency).length > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Multiple currencies
+                </p>
+              )}
             </div>
           </div>
         </div>
