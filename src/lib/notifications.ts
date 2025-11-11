@@ -1,6 +1,8 @@
 // Notification types and API client functions
 // Uses Prisma (PostgreSQL) for database, not Supabase DB
 
+import { db } from '@/lib/db';
+
 export interface Activity {
   id: string;
   user_id: string;
@@ -34,33 +36,34 @@ export async function createActivity(
   description?: string,
   boardId?: string,
   taskId?: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
+  userId?: string
 ): Promise<{ success: boolean; error?: string; activityId?: string }> {
   try {
-    // Call API route to create activity
-    const response = await fetch('/api/activities', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        teamId,
-        actionType,
-        title,
-        description,
-        boardId,
-        taskId,
-        metadata
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      return { success: false, error: errorData.error || 'Failed to create activity' };
+    // Build details object
+    const activityDetails: any = { ...(metadata || {}) };
+    if (description) {
+      activityDetails.description = description;
+    }
+    if (boardId) {
+      activityDetails.boardId = boardId;
+    }
+    if (taskId) {
+      activityDetails.taskId = taskId;
     }
 
-    const data = await response.json();
-    return { success: true, activityId: data.activityId };
+    // Create activity directly in database
+    const activity = await db.activity.create({
+      data: {
+        teamId,
+        userId: userId || teamId, // Fallback to teamId if userId not provided
+        type: actionType,
+        title,
+        details: Object.keys(activityDetails).length > 0 ? activityDetails : null
+      }
+    });
+
+    return { success: true, activityId: activity.id };
 
   } catch (error: any) {
     console.error('[Notifications] Error creating activity:', error);
@@ -430,7 +433,8 @@ export async function createScopeRadarNotification(
       description,
       undefined,
       undefined,
-      { ...metadata, projectName, riskLevel, budgetInfo }
+      { ...metadata, projectName, riskLevel, budgetInfo },
+      userId // Pass userId to createActivity
     );
 
   } catch (error) {
