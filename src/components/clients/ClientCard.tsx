@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { formatCurrency } from '@/lib/utils';
 import { 
   Building2, 
   Mail, 
@@ -51,17 +52,6 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
       case 'PROSPECT': return 'bg-blue-100 text-blue-700 border-blue-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
-  };
-
-  const formatCurrency = (amount?: number, currency?: string) => {
-    if (amount === undefined || amount === null) return 'Not set';
-    // Use the selected currency or fallback to USD
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   const getInitials = () => {
@@ -128,7 +118,7 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-green-600">
-              {formatCurrency(client.budget, client.currency)}
+              {client.budget ? formatCurrency(client.budget, client.currency || 'USD') : 'Not set'}
             </div>
             <div className="text-xs text-muted-foreground">Budget ({client.currency || 'USD'})</div>
           </div>

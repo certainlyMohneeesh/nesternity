@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, TrendingUp, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils";
 
 interface Deliverable {
   item: string;
@@ -97,7 +98,7 @@ export function BudgetEstimation({
       setShowDetails(true);
 
       toast.success("Budget estimated! 💰", {
-        description: `AI suggests ${currency === 'INR' ? '₹' : '$'}${data.estimation.estimatedBudget.toLocaleString()}`,
+        description: `AI suggests ${formatCurrency(data.estimation.estimatedBudget, currency)}`,
       });
     } catch (error) {
       console.error("Estimation error:", error);
@@ -118,7 +119,7 @@ export function BudgetEstimation({
     }
   };
 
-  const currencySymbol = currency === 'INR' ? '₹' : '$';
+  const currencySymbol = getCurrencySymbol(currency);
 
   return (
     <div className="space-y-4">

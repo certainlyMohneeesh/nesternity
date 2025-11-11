@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -58,9 +59,10 @@ export default function RecurringInvoicesOverview({
     return nextDate <= weekFromNow && inv.autoGenerateEnabled;
   });
 
-  const totalMonthlyValue = invoices
+  // Calculate total monthly value with currency awareness
+  const monthlyValueByCurrency = invoices
     .filter((inv) => inv.autoGenerateEnabled)
-    .reduce((sum, inv) => {
+    .reduce((acc, inv) => {
       const subtotal = inv.items.reduce((s, item) => s + item.total, 0);
       const tax = subtotal * (inv.taxRate / 100);
       const discount = subtotal * (inv.discount / 100);
@@ -74,8 +76,17 @@ export default function RecurringInvoicesOverview({
         YEARLY: 0.083,
       }[inv.recurrence] || 1;
       
-      return sum + (total * multiplier);
-    }, 0);
+      const monthlyValue = total * multiplier;
+      const currency = inv.currency || 'USD';
+      acc[currency] = (acc[currency] || 0) + monthlyValue;
+      
+      return acc;
+    }, {} as Record<string, number>);
+
+  // Get primary currency (most common or first)
+  const primaryCurrency = Object.keys(monthlyValueByCurrency)[0] || 'USD';
+  const totalMonthlyValue = monthlyValueByCurrency[primaryCurrency] || 0;
+  const monthlyCurrencySymbol = getCurrencySymbol(primaryCurrency);
 
   if (invoices.length === 0) {
     return (
@@ -142,9 +153,11 @@ export default function RecurringInvoicesOverview({
               <TrendingUp className="h-4 w-4 text-green-600" />
             </div>
             <p className="text-2xl font-bold">
-              ${Math.round(totalMonthlyValue).toLocaleString()}
+              {monthlyCurrencySymbol}{Math.round(totalMonthlyValue).toLocaleString()}
             </p>
-            <p className="text-xs text-muted-foreground">Monthly</p>
+            <p className="text-xs text-muted-foreground">
+              Monthly{Object.keys(monthlyValueByCurrency).length > 1 ? ' (mixed)' : ''}
+            </p>
           </div>
 
           <div className="text-center p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
@@ -208,7 +221,7 @@ export default function RecurringInvoicesOverview({
                   </div>
                   <div className="text-right ml-4">
                     <p className="font-bold text-sm">
-                      {invoice.currency} {total.toFixed(0)}
+                      {getCurrencySymbol(invoice.currency)}{total.toFixed(0)}
                     </p>
                     {invoice.maxOccurrences && (
                       <p className="text-xs text-muted-foreground">

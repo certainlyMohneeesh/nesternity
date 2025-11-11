@@ -2,6 +2,7 @@
 // Uses Prisma (PostgreSQL) for database, not Supabase DB
 
 import { db } from '@/lib/db';
+import { getCurrencySymbol } from '@/lib/utils';
 
 export interface Activity {
   id: string;
@@ -293,12 +294,13 @@ export async function createInvoiceNotification(
       [ACTIVITY_TYPES.RECURRING_INVOICE_FAILED]: `❌ Failed to generate recurring invoice`,
     };
 
+    const currencySymbol = getCurrencySymbol(currency);
     const descriptions: Record<string, string> = {
-      [ACTIVITY_TYPES.INVOICE_CREATED]: `${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()} • ${clientName}`,
-      [ACTIVITY_TYPES.INVOICE_SENT]: `${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()} • Email sent`,
-      [ACTIVITY_TYPES.INVOICE_PAID]: `Received ${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()} from ${clientName}`,
-      [ACTIVITY_TYPES.INVOICE_OVERDUE]: `${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()} • Send reminder to ${clientName}`,
-      [ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED]: `${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()} • Sent to ${clientName}`,
+      [ACTIVITY_TYPES.INVOICE_CREATED]: `${currencySymbol}${amount.toLocaleString()} • ${clientName}`,
+      [ACTIVITY_TYPES.INVOICE_SENT]: `${currencySymbol}${amount.toLocaleString()} • Email sent`,
+      [ACTIVITY_TYPES.INVOICE_PAID]: `Received ${currencySymbol}${amount.toLocaleString()} from ${clientName}`,
+      [ACTIVITY_TYPES.INVOICE_OVERDUE]: `${currencySymbol}${amount.toLocaleString()} • Send reminder to ${clientName}`,
+      [ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED]: `${currencySymbol}${amount.toLocaleString()} • Sent to ${clientName}`,
       [ACTIVITY_TYPES.RECURRING_INVOICE_FAILED]: `Check recurring invoice settings for ${clientName}`,
     };
 
@@ -347,10 +349,11 @@ export async function createProposalNotification(
       [ACTIVITY_TYPES.PROPOSAL_SIGNED]: `✍️ ${clientName} signed the proposal`,
     };
 
+    const currencySymbol = currency ? getCurrencySymbol(currency) : '';
     const descriptions: Record<string, string> = {
       [ACTIVITY_TYPES.PROPOSAL_SENT]: proposalTitle,
       [ACTIVITY_TYPES.PROPOSAL_VIEWED]: `"${proposalTitle}" • Click to see details`,
-      [ACTIVITY_TYPES.PROPOSAL_ACCEPTED]: `"${proposalTitle}" • ${amount && currency ? `${currency === 'INR' ? '₹' : '$'}${amount.toLocaleString()}` : ''}`,
+      [ACTIVITY_TYPES.PROPOSAL_ACCEPTED]: `"${proposalTitle}" • ${amount && currency ? `${currencySymbol}${amount.toLocaleString()}` : ''}`,
       [ACTIVITY_TYPES.PROPOSAL_REJECTED]: `"${proposalTitle}" • Follow up with client`,
       [ACTIVITY_TYPES.PROPOSAL_SIGNED]: `"${proposalTitle}" • Ready to create project`,
     };
@@ -411,7 +414,7 @@ export async function createScopeRadarNotification(
     let description = '';
     if (budgetInfo) {
       const { original, current, overrun, currency } = budgetInfo;
-      const currencySymbol = currency === 'INR' ? '₹' : '$';
+      const currencySymbol = getCurrencySymbol(currency);
       if (overrun > 0) {
         description = `Over budget by ${currencySymbol}${overrun.toLocaleString()} • ${currencySymbol}${current.toLocaleString()} / ${currencySymbol}${original.toLocaleString()}`;
       } else {

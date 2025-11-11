@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -389,19 +390,10 @@ export default function ScopeRadarWidget({
     fetchBudgetData();
   }, [clientId, projectId]);
 
-  // Format currency with proper symbol
-  const formatCurrency = (amount: number) => {
-    if (!budgetData) return `₹${amount.toLocaleString()}`;
-    
-    const currencySymbols: Record<string, string> = {
-      'INR': '₹',
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-    };
-    
-    const symbol = currencySymbols[budgetData.currency] || budgetData.currency + ' ';
-    return `${symbol}${amount.toLocaleString('en-IN')}`;
+  // Format currency helper
+  const formatBudgetCurrency = (amount: number) => {
+    if (!budgetData) return formatCurrency(amount, 'INR');
+    return formatCurrency(amount, budgetData.currency);
   };
 
   // Get risk level styling
@@ -519,13 +511,13 @@ export default function ScopeRadarWidget({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Budget</span>
-              <span className="font-bold">{formatCurrency(budgetData.originalBudget || 0)}</span>
+              <span className="font-bold">{formatBudgetCurrency(budgetData.originalBudget || 0)}</span>
             </div>
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Spent</span>
               <span className="font-bold text-blue-600">
-                {formatCurrency(budgetData.invoiceTotal || 0)}
+                {formatBudgetCurrency(budgetData.invoiceTotal || 0)}
               </span>
             </div>
 
@@ -533,14 +525,14 @@ export default function ScopeRadarWidget({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Remaining</span>
                 <span className="font-bold text-green-600">
-                  {formatCurrency(budgetData.remainingBudget || 0)}
+                  {formatBudgetCurrency(budgetData.remainingBudget || 0)}
                 </span>
               </div>
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Overrun</span>
                 <span className="font-bold text-red-600">
-                  {formatCurrency(Math.abs(budgetData.overrunAmount || 0))}
+                  {formatBudgetCurrency(Math.abs(budgetData.overrunAmount || 0))}
                 </span>
               </div>
             )}

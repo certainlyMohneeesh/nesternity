@@ -1,5 +1,6 @@
 // Email service using Resend
 import { Resend } from 'resend';
+import { getCurrencySymbol } from '@/lib/utils';
 
 // Initialize Resend with API key
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -376,7 +377,7 @@ function generateProposalEmailHTML(data: ProposalEmailData, signUrl: string): st
                     <div style="margin: 15px 0 0 0;">
                         <span style="color: #64748b; font-size: 14px;">Investment:</span><br>
                         <strong style="color: #0ea5e9; font-size: 24px; font-weight: bold;">
-                            ${data.currency === 'INR' ? '₹' : '$'}${data.pricing.toLocaleString()}
+                            ${getCurrencySymbol(data.currency)}${data.pricing.toLocaleString()}
                         </strong>
                     </div>
                 </div>
@@ -477,7 +478,7 @@ We're excited to present a new proposal for your project.
 PROPOSAL OVERVIEW
 ================
 Project: ${data.proposalTitle}
-Investment: ${data.currency === 'INR' ? '₹' : '$'}${data.pricing.toLocaleString()}
+Investment: ${getCurrencySymbol(data.currency)}${data.pricing.toLocaleString()}
 
 REVIEW & SIGN
 ${signUrl}

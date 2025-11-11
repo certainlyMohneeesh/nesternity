@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getCurrencySymbol } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -386,7 +387,7 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
               <div className="flex items-center gap-2">
                 {/* <DollarSign className="h-4 w-4 text-muted-foreground" /> */}
                 <span className="text-2xl font-bold">
-                  {proposal.currency === "INR" ? "₹" : "$"}
+                  {getCurrencySymbol(proposal.currency)}
                   {proposal.pricing.toLocaleString()}
                 </span>
               </div>
