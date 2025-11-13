@@ -47,17 +47,25 @@ interface Client {
   company?: string
 }
 
+interface Organisation {
+  id: string
+  name: string
+  email: string
+}
+
 interface InvoiceFormProps {
   teamId?: string // Optional team context
   organisationId?: string // Organisation ID for data scoping
+  organisation?: Organisation | null // Organisation details for auto-client creation
   clients?: Client[] // Optional pre-fetched clients (for backward compatibility)
   onSuccess?: () => void
 }
 
-export default function InvoiceForm({ teamId, organisationId, clients: propClients, onSuccess }: InvoiceFormProps) {
+export default function InvoiceForm({ teamId, organisationId, organisation, clients: propClients, onSuccess }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>(propClients || [])
   const [fetchingClients, setFetchingClients] = useState(false)
+  const [creatingClient, setCreatingClient] = useState(false)
   
   const {
     register,
@@ -113,9 +121,15 @@ export default function InvoiceForm({ teamId, organisationId, clients: propClien
         return
       }
 
+      // Build endpoint with organisationId filter
+      const params = new URLSearchParams()
+      if (organisationId) {
+        params.append('organisationId', organisationId)
+      }
+
       const endpoint = teamId 
-        ? `/api/teams/${teamId}/clients`
-        : '/api/clients'
+        ? `/api/teams/${teamId}/clients${params.toString() ? `?${params}` : ''}`
+        : `/api/clients${params.toString() ? `?${params}` : ''}`
 
       const response = await fetch(endpoint, {
         headers: {
@@ -125,7 +139,14 @@ export default function InvoiceForm({ teamId, organisationId, clients: propClien
       
       if (response.ok) {
         const data = await response.json()
-        setClients(data)
+        
+        // Auto-create default client if none exist and we have organisation details
+        if (data.length === 0 && organisationId && organisation) {
+          console.log('[InvoiceForm] No clients found, auto-creating default client for organisation')
+          await createDefaultClient(session.access_token)
+        } else {
+          setClients(data)
+        }
       } else {
         throw new Error('Failed to fetch clients')
       }
@@ -134,6 +155,43 @@ export default function InvoiceForm({ teamId, organisationId, clients: propClien
       toast.error('Failed to fetch clients')
     } finally {
       setFetchingClients(false)
+    }
+  }
+
+  // Create default client using organisation details
+  const createDefaultClient = async (token: string) => {
+    if (!organisation || !organisationId) return
+
+    setCreatingClient(true)
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: organisation.name,
+          email: organisation.email,
+          company: organisation.name,
+          organisationId: organisationId,
+          status: 'ACTIVE'
+        })
+      })
+
+      if (response.ok) {
+        const newClient = await response.json()
+        console.log('[InvoiceForm] Auto-created default client:', newClient.id)
+        setClients([newClient])
+        toast.success('Default client created for your organisation')
+      } else {
+        throw new Error('Failed to create default client')
+      }
+    } catch (error) {
+      console.error('Error creating default client:', error)
+      toast.error('Failed to create default client')
+    } finally {
+      setCreatingClient(false)
     }
   }
 
@@ -223,12 +281,21 @@ export default function InvoiceForm({ teamId, organisationId, clients: propClien
 
           <div className="space-y-2">
             <Label htmlFor="clientId">Client *</Label>
-            <Select onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)} disabled={fetchingClients}>
+            <Select 
+              onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)} 
+              disabled={fetchingClients || creatingClient}
+            >
               <SelectTrigger>
-                <SelectValue placeholder={fetchingClients ? "Loading clients..." : "Select a client"} />
+                <SelectValue placeholder={
+                  creatingClient 
+                    ? "Creating default client..." 
+                    : fetchingClients 
+                      ? "Loading clients..." 
+                      : "Select a client"
+                } />
               </SelectTrigger>
               <SelectContent>
-                {clients.length === 0 && !fetchingClients ? (
+                {clients.length === 0 && !fetchingClients && !creatingClient ? (
                   <SelectItem value="none" disabled>
                     No clients available
                   </SelectItem>

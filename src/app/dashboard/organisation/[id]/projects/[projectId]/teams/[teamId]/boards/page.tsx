@@ -109,7 +109,9 @@ export default function BoardsPage({ params }: { params: Promise<{ id: string; p
         return;
       }
 
-      const response = await fetch(`/api/teams/${teamId}/boards`, {
+      const params = new URLSearchParams();
+      params.append('organisationId', orgId);
+      const response = await fetch(`/api/teams/${teamId}/boards?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -136,7 +138,9 @@ export default function BoardsPage({ params }: { params: Promise<{ id: string; p
       const token = await getSessionToken();
       if (!token) return;
 
-      const response = await fetch(`/api/teams/${teamId}/projects`, {
+      const params = new URLSearchParams();
+      params.append('organisationId', orgId);
+      const response = await fetch(`/api/teams/${teamId}/projects?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -189,6 +193,7 @@ export default function BoardsPage({ params }: { params: Promise<{ id: string; p
           name: boardName.trim(),
           description: boardDescription.trim() || null,
           type: boardType,
+          organisationId: orgId,
           projectId: selectedProject && selectedProject !== '' ? selectedProject : null
         })
       });

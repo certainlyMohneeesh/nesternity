@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 
+
 export default async function ProposalsPage({
   params,
 }: {
@@ -22,9 +23,10 @@ export default async function ProposalsPage({
     redirect("/auth/login?returnUrl=/dashboard/proposals");
   }
 
-  // Fetch all proposals for this user's clients
+  // Fetch all proposals for this user's clients filtered by organisation
   const proposals = await prisma.proposal.findMany({
     where: {
+      organisationId: orgId,
       client: {
         createdBy: user.id,
       },

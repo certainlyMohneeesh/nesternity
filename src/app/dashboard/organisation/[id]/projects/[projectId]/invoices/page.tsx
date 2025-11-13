@@ -50,6 +50,12 @@ interface Invoice {
   }>
 }
 
+interface Organisation {
+  id: string
+  name: string
+  email: string
+}
+
 export default function InvoiceHistoryPage() {
   const params = useParams()
   const orgId = params.id as string
@@ -61,6 +67,27 @@ export default function InvoiceHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
+  const [organisation, setOrganisation] = useState<Organisation | null>(null)
+
+  const fetchOrganisation = async () => {
+    try {
+      const token = await getSessionToken()
+      if (!token) return
+
+      const response = await fetch(`/api/organisations/${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setOrganisation(data)
+      }
+    } catch (error) {
+      console.error('[InvoicesPage] Error fetching organisation:', error)
+    }
+  }
 
   const fetchInvoices = async () => {
     try {
@@ -107,6 +134,7 @@ export default function InvoiceHistoryPage() {
   }
 
   useEffect(() => {
+    fetchOrganisation()
     fetchInvoices()
   }, [statusFilter])
 
@@ -191,6 +219,7 @@ export default function InvoiceHistoryPage() {
               </DialogHeader>
               <InvoiceForm
                 organisationId={orgId}
+                organisation={organisation}
                 onSuccess={handleFormSuccess}
               />
             </DialogContent>

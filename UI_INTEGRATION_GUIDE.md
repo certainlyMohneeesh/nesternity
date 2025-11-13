@@ -80,6 +80,125 @@ const payload = {
 
 ---
 
+### 4. Proposals Page ✅
+**File:** `/src/app/dashboard/organisation/[id]/projects/[projectId]/proposals/page.tsx`
+
+**Changes Made:**
+- Added `organisationId` filter to Prisma query
+- Proposals now scoped to organisation
+
+**Code Example:**
+```typescript
+const proposals = await prisma.proposal.findMany({
+  where: {
+    organisationId: orgId,  // ✅ Added
+    client: {
+      createdBy: user.id,
+    },
+  },
+  // ... rest of query
+});
+```
+
+---
+
+### 5. Issues Page ✅
+**File:** `/src/app/dashboard/organisation/[id]/projects/[projectId]/issues/page.tsx`
+
+**Changes Made:**
+- Extract `organisationId` and `projectId` from URL params
+- Added `organisationId` to all GET requests (issues, projects, boards, teams)
+- Added `organisationId` to POST request body when creating issues
+- Issues now properly scoped to organisation and project
+
+**Code Example:**
+```typescript
+// Extract params
+const params = useParams()
+const organisationId = params.id as string
+const projectId = params.projectId as string
+
+// GET Issues
+const params = new URLSearchParams()
+params.append('organisationId', organisationId)
+params.append('projectId', projectId)
+const response = await fetch(`/api/issues?${params}`)
+
+// POST Issue
+const response = await fetch('/api/issues', {
+  method: 'POST',
+  body: JSON.stringify({
+    ...formData,
+    organisationId,  // ✅ Added
+    projectId,
+    // ... other fields
+  })
+});
+```
+
+---
+
+### 6. Clients Page ✅
+**File:** `/src/app/dashboard/organisation/[id]/projects/[projectId]/teams/[teamId]/clients/page.tsx`
+
+**Changes Made:**
+- Extract `organisationId` from route params
+- Added `organisationId` to GET requests for clients and boards
+- Clients now properly scoped to organisation
+
+**Code Example:**
+```typescript
+// Extract params
+const routeParams = useParams()
+const organisationId = routeParams.id as string
+
+// GET Clients
+const params = new URLSearchParams();
+params.append('organisationId', organisationId);
+const response = await fetch(`/api/teams/${teamId}/clients?${params}`)
+
+// GET Boards
+const params = new URLSearchParams();
+params.append('organisationId', organisationId);
+const response = await fetch(`/api/teams/${teamId}/boards?${params}`)
+```
+
+---
+
+### 7. Boards Page ✅
+**File:** `/src/app/dashboard/organisation/[id]/projects/[projectId]/teams/[teamId]/boards/page.tsx`
+
+**Changes Made:**
+- Added `organisationId` to GET requests for boards and projects
+- Added `organisationId` to POST request body when creating boards
+- Boards now properly scoped to organisation
+
+**Code Example:**
+```typescript
+// GET Boards
+const params = new URLSearchParams();
+params.append('organisationId', orgId);
+const response = await fetch(`/api/teams/${teamId}/boards?${params}`)
+
+// GET Projects
+const params = new URLSearchParams();
+params.append('organisationId', orgId);
+const response = await fetch(`/api/teams/${teamId}/projects?${params}`)
+
+// POST Board
+const response = await fetch(`/api/teams/${teamId}/boards`, {
+  method: 'POST',
+  body: JSON.stringify({
+    name: boardName.trim(),
+    organisationId: orgId,  // ✅ Added
+    projectId: selectedProject || null,
+    // ... other fields
+  })
+});
+```
+
+---
+
 ## 🔨 Utility Hook Created
 
 **File:** `/src/hooks/use-route-params.ts`
@@ -96,6 +215,20 @@ const { organisationId, projectId } = useRouteParams();
 ---
 
 ## 📋 Remaining Pages to Update
+
+✅ **ALL PAGES UPDATED!**
+
+All core feature pages have been updated with `organisationId` filtering:
+- ✅ Teams
+- ✅ Invoices  
+- ✅ Proposals
+- ✅ Issues
+- ✅ Clients
+- ✅ Boards
+
+---
+
+## 📋 Previously: Remaining Pages to Update (NOW COMPLETE)
 
 ### 1. Proposals Page
 **File:** `/src/app/dashboard/organisation/[id]/projects/[projectId]/proposals/page.tsx`

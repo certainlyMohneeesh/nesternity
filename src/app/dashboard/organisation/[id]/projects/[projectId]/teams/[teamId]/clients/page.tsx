@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,9 @@ const projectStatusColors = {
   CANCELLED: 'bg-red-100 text-red-800',
 };
 
-export default function TeamClientsPage({ params }: { params: Promise<{ teamId: string }> }) {
+export default function TeamClientsPage({ params }: { params: Promise<{ id: string; teamId: string }> }) {
+  const routeParams = useParams()
+  const organisationId = routeParams.id as string
   const { teamId } = use(params);
   const { session, loading: sessionLoading } = useSession();
   const [clients, setClients] = useState<Client[]>([]);
@@ -78,8 +81,10 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
         return;
       }
 
-      console.log('Fetching clients for team:', teamId);
-      const response = await fetch(`/api/teams/${teamId}/clients`, {
+      console.log('Fetching clients for team:', teamId, 'organisation:', organisationId);
+      const params = new URLSearchParams();
+      params.append('organisationId', organisationId);
+      const response = await fetch(`/api/teams/${teamId}/clients?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -109,7 +114,9 @@ export default function TeamClientsPage({ params }: { params: Promise<{ teamId: 
       const token = await getSessionToken();
       if (!session?.access_token) return;
 
-      const response = await fetch(`/api/teams/${teamId}/boards`, {
+      const params = new URLSearchParams();
+      params.append('organisationId', organisationId);
+      const response = await fetch(`/api/teams/${teamId}/boards?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
