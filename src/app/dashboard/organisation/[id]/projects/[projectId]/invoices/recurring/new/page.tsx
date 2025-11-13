@@ -32,10 +32,25 @@ export default async function NewRecurringInvoicePage({
   const userId = user.id;
   console.log('[NewRecurringInvoicePage] Fetching clients for user:', userId);
 
-  // Fetch user's clients
-  const clients = await prisma.client.findMany({
+  // Fetch organisation details
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: orgId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  });
+
+  if (!organisation) {
+    redirect("/dashboard");
+  }
+
+  // Fetch user's clients filtered by organisationId
+  let clients = await prisma.client.findMany({
     where: {
       createdBy: userId,
+      organisationId: orgId,
     },
     select: {
       id: true,
@@ -48,7 +63,29 @@ export default async function NewRecurringInvoicePage({
     },
   });
 
-  console.log('[NewRecurringInvoicePage] Found clients:', clients.length);
+  console.log('[NewRecurringInvoicePage] Found clients for organisation:', clients.length);
+
+  // Auto-create default client if none exist
+  if (clients.length === 0) {
+    console.log('[NewRecurringInvoicePage] No clients found, creating default client for organisation');
+    const defaultClient = await prisma.client.create({
+      data: {
+        name: organisation.name,
+        email: organisation.email,
+        company: organisation.name,
+        createdBy: userId,
+        organisationId: orgId,
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        company: true,
+      },
+    });
+    clients = [defaultClient];
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -96,21 +133,7 @@ export default async function NewRecurringInvoicePage({
       </div>
 
       {/* Form */}
-      {clients.length > 0 ? (
-        <RecurringInvoiceForm clients={clients} userId={userId} />
-      ) : (
-        <div className="text-center py-16 border-2 border-dashed rounded-lg">
-          <h3 className="text-xl font-semibold mb-2">No Clients Found</h3>
-          <p className="text-muted-foreground mb-6">
-            You need to create a client before setting up recurring invoices.
-          </p>
-          <Link href="/dashboard/organisation?tab=clients">
-            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
-              Create Client
-            </button>
-          </Link>
-        </div>
-      )}
+      <RecurringInvoiceForm clients={clients} userId={userId} />
     </div>
   );
 }

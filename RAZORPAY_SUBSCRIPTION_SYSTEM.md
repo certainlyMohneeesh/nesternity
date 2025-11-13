@@ -4,93 +4,47 @@
 1. [Overview](#overview)
 2. [Current State Analysis](#current-state-analysis)
 3. [Migration Strategy](#migration-strategy)
-4. [Subscription Plans](#subscription-plans)
+4. [Generous Subscription Plans (India-first)](#subscription-plans)
 5. [Database Schema Changes](#database-schema-changes)
-6. [Feature Limitations](#feature-limitations)
-7. [Implementation Phases](#implementation-phases)
-8. [API Integration](#api-integration)
-9. [Admin Dashboard](#admin-dashboard)
-10. [Testing Strategy](#testing-strategy)
+6. [Feature Limits & Middleware](#feature-limits--middleware)
+7. [Seed & Backfill Scripts](#seed--backfill-scripts)
+8. [AI Cost Controls & Safety](#ai-cost-controls--safety)
+9. [Implementation Phases & Rollout](#implementation-phases--rollout)
+10. [API Integration](#api-integration)
+11. [Admin Dashboard](#admin-dashboard)
+12. [Testing & Monitoring Strategy](#testing--monitoring-strategy)
+13. [Security Considerations](#security-considerations)
+14. [Next Steps & Checklist](#next-steps--checklist)
 
 ---
 
 ## 1. Overview
 
 ### Goals
-- **Complete Stripe → Razorpay Migration**: Replace all Stripe payment integrations with Razorpay
-- **Subscription-Based Access Control**: Implement tiered subscription plans with feature limitations
-- **AI Features Metering**: Control access to AI proposal maker, contracts, recurring invoices, and scope radar
-- **Admin Control Panel**: Full subscription management from admin dashboard
-- **Indian Market Focus**: Razorpay's superior support for Indian payment methods (UPI, Netbanking, Cards, Wallets)
+- Replace Stripe integrations with Razorpay for Indian payments.
+- Implement subscription-based access control with generous free tier suitable for Indian freelancers and early adopters.
+- Meter and control AI features (proposals/contracts/scope radar) with sensible, generous quotas and cost-protection mechanisms.
+- Provide admin tools for plan management, manual upgrades, and usage backfills.
+- Make the billing and quota enforcement extensible for multi-gateway support in the future (Stripe, PayPal, Wise).
 
 ### Why Razorpay?
-- **Indian Compliance**: Built for Indian regulations (GST, TDS, etc.)
-- **Lower Transaction Fees**: 2% vs Stripe's 2.9% + INR 3
-- **Better UPI Integration**: Native UPI support with instant settlement
-- **Rupee Settlement**: No currency conversion fees
-- **Local Payment Methods**: Cards, UPI, Wallets, Netbanking, EMI
-- **Better Customer Support**: India-based support team
+- Indian-first payments, strong UPI support and lower transaction fees.
+- Route (for India/Malaysia) provides platform-managed payouts and commission.
+- Good webhook support and local compliance (GST/TDS considerations).
 
 ---
 
 ## 2. Current State Analysis
 
-### Stripe Components to Remove/Replace
-
-#### Database Models (Prisma Schema)
-```prisma
-// TO BE REMOVED:
-model StripeCustomer {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  stripeCustomerId   String   @unique
-  email              String
-  name               String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-}
-
-model StripeSubscription {
-  id                     String   @id @default(cuid())
-  userId                 String   @unique
-  stripeSubscriptionId   String   @unique
-  stripeCustomerId       String
-  status                 String
-  priceId                String
-  quantity               Int?
-  cancelAtPeriodEnd      Boolean  @default(false)
-  currentPeriodStart     DateTime
-  currentPeriodEnd       DateTime
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-}
-
-model StripePayment {
-  id                 String   @id @default(cuid())
-  userId             String
-  stripePaymentId    String   @unique
-  amount             Int
-  currency           String
-  status             String
-  description        String?
-  createdAt          DateTime @default(now())
-}
-```
-
-#### API Routes to Replace
-- `/api/stripe/create-checkout-session`
-- `/api/stripe/create-portal-session`
-- `/api/stripe/webhooks`
-- `/api/stripe/subscription`
-- Any other stripe-related endpoints
-
-#### Environment Variables to Replace
+### Replace Stripe artifacts
+- Remove Stripe models and endpoints (examples: `/api/stripe/*`, Stripe models in Prisma).
+- Replace environment variables related to Stripe with Razorpay keys:
 ```env
 # REMOVE:
-STRIPE_SECRET_KEY=
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+# STRIPE_SECRET_KEY=
+# STRIPE_PUBLISHABLE_KEY=
+# STRIPE_WEBHOOK_SECRET=
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
 # ADD:
 RAZORPAY_KEY_ID=
@@ -101,171 +55,94 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 
 ---
 
-## 3. Migration Strategy
+## 3. Migration Strategy (High level)
 
-### Phase 1: Database Schema Update (Week 1)
-- Remove all Stripe models
-- Add Razorpay models
-- Add subscription plan tables
-- Add usage tracking tables
-- Run migration scripts
-
-### Phase 2: Razorpay Integration (Week 1-2)
-- Set up Razorpay SDK
-- Implement payment gateway
-- Create subscription checkout flow
-- Set up webhook handlers
-- Test payment flows
-
-### Phase 3: Feature Limitations (Week 2-3)
-- Implement subscription middleware
-- Add feature gates for AI tools
-- Add usage tracking
-- Implement quota management
-- Create upgrade prompts
-
-### Phase 4: Admin Dashboard (Week 3-4)
-- Subscription overview
-- User management
-- Plan management
-- Analytics dashboard
-- Manual subscription controls
-
-### Phase 5: Testing & Deployment (Week 4)
-- Integration testing
-- Payment flow testing
-- Webhook testing
-- Load testing
-- Production deployment
+1. Update Prisma schema (add Razorpay models and subscription plans).
+2. Create migration scripts; run on staging first and validate data.
+3. Seed new subscription plans (generous defaults).
+4. Implement middleware to check quotas & feature gates.
+5. Replace Stripe UI/flows with Razorpay Payment Links / Route (for India) REST calls.
+6. Add webhook handlers and reconcile existing invoices/subscriptions.
+7. Launch behind a feature flag and do staged rollout.
 
 ---
 
-## 4. Subscription Plans
+## 4. Generous Subscription Plans (India-friendly)
 
-### Plan Tiers
+Design principles:
+- Make the FREE tier truly useful so users can onboard and reach product value.
+- Keep paid tiers affordable in INR with clear upgrade incentives.
+- Offer yearly discounts (15–20%) and a limited Growth trial for new signups.
 
-#### 1. FREE Plan (₹0/month)
-**Target**: Individual freelancers starting out
+Pricing & limits (monthly; display in UI in INR):
 
-**Limits**:
-- **Organisations**: 1
-- **Projects**: 2
-- **Team Members**: 3
-- **AI Proposals**: 5/month
-- **AI Contracts**: 0 (upgrade required)
-- **Recurring Invoices**: 2 active
-- **Scope Radar**: Basic (manual alerts only)
-- **Invoice Generation**: 10/month
-- **Storage**: 100 MB
-- **Email Notifications**: Basic
+- FREE — ₹0 / month (Generous Starter)
+  - Organisations: 3
+  - Projects: 10
+  - Team Members: 10
+  - AI Proposals: 50 / month
+  - AI Contracts: 5 / month
+  - Recurring Invoices: 5 active
+  - Invoice Generation: 200 / month
+  - Storage: 1 GB
+  - Scope Radar: Basic (manual + weekly checks)
+  - Support: Community (email)
 
-**Features**:
-- ✅ Basic invoicing
-- ✅ Client management
-- ✅ Task boards (1 active)
-- ✅ Basic AI proposal generation
-- ❌ AI contract generation
-- ❌ Advanced analytics
-- ❌ Priority support
-- ❌ Custom branding
+- STARTER — ₹299 / month (or yearly with ~17% discount)
+  - Organisations: 10
+  - Projects: 50
+  - Team Members: 25
+  - AI Proposals: 300 / month
+  - AI Contracts: 50 / month
+  - Recurring Invoices: 20 active
+  - Invoice Generation: 1000 / month
+  - Storage: 10 GB
+  - Scope Radar: Standard (daily)
+  - Support: Email (priority)
 
----
+- GROWTH — ₹799 / month
+  - Organisations: 25
+  - Projects: 200
+  - Team Members: 75
+  - AI Proposals: 1000 / month
+  - AI Contracts: 250 / month
+  - Recurring Invoices: 100 active
+  - Invoice Generation: 5,000 / month
+  - Storage: 50 GB
+  - Scope Radar: Advanced (near-real-time)
+  - Support: Priority + in-app chat
 
-#### 2. STARTER Plan (₹999/month or ₹9,990/year - Save 17%)
-**Target**: Growing freelancers and small teams
+- PRO — ₹1,999 / month
+  - Organisations: 100
+  - Projects: 1000
+  - Team Members: 250
+  - AI Proposals: 5000 / month
+  - AI Contracts: 2000 / month
+  - Recurring Invoices: Unlimited
+  - Invoice Generation: Unlimited
+  - Storage: 200 GB
+  - Scope Radar: Enterprise (custom rules)
+  - Support: Priority + account manager
 
-**Limits**:
-- **Organisations**: 3
-- **Projects**: 10
-- **Team Members**: 10
-- **AI Proposals**: 50/month
-- **AI Contracts**: 20/month
-- **Recurring Invoices**: 10 active
-- **Scope Radar**: Standard (daily checks)
-- **Invoice Generation**: 100/month
-- **Storage**: 5 GB
-- **Email Notifications**: Advanced
+- ENTERPRISE — Custom (unlimited, SLAs, white-label)
 
-**Features**:
-- ✅ Everything in FREE
-- ✅ AI contract generation
-- ✅ Advanced scope radar
-- ✅ Multiple organisations
-- ✅ Task boards (5 active)
-- ✅ Basic analytics
-- ✅ Email support
-- ✅ Custom invoice templates
-- ❌ Priority support
-- ❌ Custom branding
-- ❌ White-label
+Billing & promos:
+- Yearly plans: 15–20% discount (show exact savings).
+- 14-day Growth trial for new signups (optional).
+- Referral credits and limited promo coupons (admin configurable).
 
----
-
-#### 3. PROFESSIONAL Plan (₹2,499/month or ₹24,990/year - Save 17%)
-**Target**: Established agencies and teams
-
-**Limits**:
-- **Organisations**: 10
-- **Projects**: 50
-- **Team Members**: 50
-- **AI Proposals**: 200/month
-- **AI Contracts**: 100/month
-- **Recurring Invoices**: 50 active
-- **Scope Radar**: Advanced (real-time monitoring)
-- **Invoice Generation**: 500/month
-- **Storage**: 50 GB
-- **Email Notifications**: Premium
-
-**Features**:
-- ✅ Everything in STARTER
-- ✅ Unlimited task boards
-- ✅ Advanced analytics & reporting
-- ✅ Priority email support
-- ✅ Custom branding
-- ✅ API access
-- ✅ Webhooks
-- ✅ Advanced integrations
-- ✅ Team collaboration tools
-- ❌ White-label
-- ❌ Dedicated account manager
-
----
-
-#### 4. ENTERPRISE Plan (Custom Pricing)
-**Target**: Large agencies and enterprises
-
-**Limits**:
-- **Organisations**: Unlimited
-- **Projects**: Unlimited
-- **Team Members**: Unlimited
-- **AI Proposals**: Unlimited
-- **AI Contracts**: Unlimited
-- **Recurring Invoices**: Unlimited
-- **Scope Radar**: Enterprise (custom rules)
-- **Invoice Generation**: Unlimited
-- **Storage**: Unlimited
-- **Email Notifications**: Enterprise
-
-**Features**:
-- ✅ Everything in PROFESSIONAL
-- ✅ White-label solution
-- ✅ Custom domain
-- ✅ Dedicated account manager
-- ✅ Custom integrations
-- ✅ SLA guarantees
-- ✅ Priority phone support
-- ✅ Custom training
-- ✅ On-premise deployment option
-- ✅ Advanced security features
+Rationale:
+- These limits give real value on Free so users can adopt and see AI features' ROI.
+- Quotas are generous but still bound to control operational AI costs.
 
 ---
 
 ## 5. Database Schema Changes
 
-### New Prisma Schema
+Below is the authoritative schema to add/update in `prisma/schema.prisma`. It includes Razorpay models, subscription plans, usage tracking, and simple audit/log models.
 
 ```prisma
-// ==================== RAZORPAY MODELS ====================
+// Add / update these models in prisma/schema.prisma
 
 model RazorpayCustomer {
   id                    String   @id @default(cuid())
@@ -276,46 +153,43 @@ model RazorpayCustomer {
   phone                 String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  
+
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscriptions         RazorpaySubscription[]
   payments              RazorpayPayment[]
-  
+
   @@index([userId])
   @@index([razorpayCustomerId])
 }
 
 model RazorpaySubscription {
   id                        String   @id @default(cuid())
-  userId                    String   @unique
+  userId                    String
   customerId                String
   razorpaySubscriptionId    String   @unique
   razorpayPlanId            String
   status                    SubscriptionStatus
   planTier                  PlanTier
   quantity                  Int      @default(1)
-  
-  // Billing
+
   currentPeriodStart        DateTime
   currentPeriodEnd          DateTime
   cancelAtPeriodEnd         Boolean  @default(false)
   canceledAt                DateTime?
   endedAt                   DateTime?
-  
-  // Razorpay specific
-  totalCount                Int?     // Total billing cycles
+
+  totalCount                Int?
   paidCount                 Int      @default(0)
   remainingCount            Int?
   shortUrl                  String?
-  
-  // Metadata
+
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
-  
+
   customer                  RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageRecords              UsageRecord[]
-  
+
   @@index([userId])
   @@index([customerId])
   @@index([razorpaySubscriptionId])
@@ -328,30 +202,23 @@ model RazorpayPayment {
   customerId            String
   razorpayPaymentId     String   @unique
   razorpayOrderId       String?
-  
-  // Amount
-  amount                Int      // In paise (100 paise = ₹1)
+
+  amount                Int      // in paise
   currency              String   @default("INR")
-  
-  // Status
   status                PaymentStatus
-  method                String?  // card, upi, netbanking, wallet, etc.
-  
-  // Details
+  method                String?
   description           String?
   email                 String?
   contact               String?
-  
-  // Metadata
   invoiceId             String?
   notes                 Json?
-  
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  
+
   customer              RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([customerId])
   @@index([razorpayPaymentId])
@@ -361,19 +228,13 @@ model RazorpayPayment {
 model SubscriptionPlan {
   id                    String   @id @default(cuid())
   razorpayPlanId        String   @unique
-  
-  // Plan details
   name                  String
-  tier                  PlanTier @unique
+  tier                  PlanTier
   description           String?
-  
-  // Pricing
-  amount                Int      // Monthly price in paise
+  amount                Int      // monthly price in paise
   currency              String   @default("INR")
-  period                String   @default("monthly") // monthly, yearly
+  period                String   @default("monthly")
   interval              Int      @default(1)
-  
-  // Limits
   maxOrganisations      Int
   maxProjects           Int
   maxTeamMembers        Int
@@ -381,22 +242,17 @@ model SubscriptionPlan {
   maxAIContracts        Int
   maxRecurringInvoices  Int
   maxInvoices           Int
-  maxStorage            BigInt   // In bytes
-  
-  // Features
-  scopeRadarLevel       String   // basic, standard, advanced, enterprise
-  analyticsLevel        String   // basic, advanced, enterprise
-  supportLevel          String   // email, priority, enterprise
+  maxStorage            BigInt
+  scopeRadarLevel       String
+  analyticsLevel        String
+  supportLevel          String
   customBranding        Boolean  @default(false)
   apiAccess             Boolean  @default(false)
   whiteLabel            Boolean  @default(false)
-  
-  // Status
   active                Boolean  @default(true)
-  
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  
+
   @@index([tier])
   @@index([active])
 }
@@ -405,28 +261,35 @@ model UsageRecord {
   id                    String   @id @default(cuid())
   userId                String
   subscriptionId        String
-  
-  // Feature usage
   featureType           FeatureType
   count                 Int      @default(1)
-  
-  // Period
   periodStart           DateTime
   periodEnd             DateTime
-  
   createdAt             DateTime @default(now())
-  
+
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription          RazorpaySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([subscriptionId])
   @@index([featureType])
   @@index([periodStart])
 }
 
-// ==================== ENUMS ====================
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String?
+  resourceId String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+}
+```
 
+Enums (keep or add as needed):
+
+```prisma
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
@@ -449,6 +312,7 @@ enum PaymentStatus {
 enum PlanTier {
   FREE
   STARTER
+  GROWTH
   PROFESSIONAL
   ENTERPRISE
 }
@@ -468,737 +332,385 @@ enum FeatureType {
 
 ---
 
-## 6. Feature Limitations
+## 6. Feature Limits & Middleware
 
-### Middleware Implementation
+Use feature limit constants that reflect the generous plans. Implement middleware that warns at 80% usage and blocks at 100%.
 
-```typescript
-// src/middleware/subscription.ts
+Example `FEATURE_LIMITS` (place in `src/lib/feature-limits.ts`):
 
-import { prisma } from '@/lib/db';
-import { PlanTier, FeatureType } from '@prisma/client';
-
-interface FeatureLimits {
-  [PlanTier.FREE]: {
-    [key in FeatureType]?: number;
-  };
-  [PlanTier.STARTER]: {
-    [key in FeatureType]?: number;
-  };
-  [PlanTier.PROFESSIONAL]: {
-    [key in FeatureType]?: number;
-  };
-  [PlanTier.ENTERPRISE]: {
-    [key in FeatureType]?: number;
-  };
-}
-
-const FEATURE_LIMITS: FeatureLimits = {
+```ts
+export const FEATURE_LIMITS = {
   FREE: {
-    AI_PROPOSAL: 5,
-    AI_CONTRACT: 0,
-    RECURRING_INVOICE: 2,
-    INVOICE_GENERATED: 10,
-    PROJECT_CREATED: 2,
-    ORGANISATION_CREATED: 1,
-    TEAM_MEMBER_ADDED: 3,
-  },
-  STARTER: {
     AI_PROPOSAL: 50,
-    AI_CONTRACT: 20,
-    RECURRING_INVOICE: 10,
-    INVOICE_GENERATED: 100,
+    AI_CONTRACT: 5,
+    RECURRING_INVOICE: 5,
+    INVOICE_GENERATED: 200,
     PROJECT_CREATED: 10,
     ORGANISATION_CREATED: 3,
     TEAM_MEMBER_ADDED: 10,
   },
-  PROFESSIONAL: {
-    AI_PROPOSAL: 200,
-    AI_CONTRACT: 100,
-    RECURRING_INVOICE: 50,
-    INVOICE_GENERATED: 500,
+  STARTER: {
+    AI_PROPOSAL: 300,
+    AI_CONTRACT: 50,
+    RECURRING_INVOICE: 20,
+    INVOICE_GENERATED: 1000,
     PROJECT_CREATED: 50,
     ORGANISATION_CREATED: 10,
-    TEAM_MEMBER_ADDED: 50,
+    TEAM_MEMBER_ADDED: 25,
   },
-  ENTERPRISE: {
-    AI_PROPOSAL: -1, // Unlimited
-    AI_CONTRACT: -1,
+  GROWTH: {
+    AI_PROPOSAL: 1000,
+    AI_CONTRACT: 250,
+    RECURRING_INVOICE: 100,
+    INVOICE_GENERATED: 5000,
+    PROJECT_CREATED: 200,
+    ORGANISATION_CREATED: 25,
+    TEAM_MEMBER_ADDED: 75,
+  },
+  PROFESSIONAL: {
+    AI_PROPOSAL: 5000,
+    AI_CONTRACT: 2000,
     RECURRING_INVOICE: -1,
     INVOICE_GENERATED: -1,
     PROJECT_CREATED: -1,
     ORGANISATION_CREATED: -1,
     TEAM_MEMBER_ADDED: -1,
   },
+  ENTERPRISE: {
+    AI_PROPOSAL: -1,
+    AI_CONTRACT: -1,
+    RECURRING_INVOICE: -1,
+    INVOICE_GENERATED: -1,
+    PROJECT_CREATED: -1,
+    ORGANISATION_CREATED: -1,
+    TEAM_MEMBER_ADDED: -1,
+  }
 };
+```
 
-export async function checkFeatureLimit(
-  userId: string,
-  featureType: FeatureType
-): Promise<{ allowed: boolean; limit: number; used: number; remaining: number }> {
-  // Get user's subscription
-  const subscription = await prisma.razorpaySubscription.findUnique({
-    where: { userId },
-    select: { planTier: true, currentPeriodStart: true, currentPeriodEnd: true },
-  });
+Example middleware logic summary (`src/middleware/subscription.ts`):
+- On actions, call `checkFeatureLimit(userId, featureType)` which:
+  - Finds user's subscription, or defaults to FREE.
+  - Computes used count from `usageRecord` between period start/end.
+  - Returns allowed/used/limit/remaining.
+- At 80% usage, return a soft warning (UI shows upgrade CTA but still allow action).
+- At 100%, block the action and return an upgrade-required response.
+- For AI-heavy operations, show cost estimate and ask for confirmation when approaching monthly AI spend cap.
 
-  if (!subscription) {
-    // Default to FREE tier
-    const limit = FEATURE_LIMITS.FREE[featureType] || 0;
-    const used = await getUsageCount(userId, featureType, new Date(), new Date());
-    return {
-      allowed: used < limit,
-      limit,
-      used,
-      remaining: Math.max(0, limit - used),
-    };
-  }
+---
 
-  const limit = FEATURE_LIMITS[subscription.planTier][featureType] || 0;
-  
-  // Unlimited for enterprise
-  if (limit === -1) {
-    return { allowed: true, limit: -1, used: 0, remaining: -1 };
-  }
+## 7. Seed & Backfill Scripts
 
-  const used = await getUsageCount(
-    userId,
-    featureType,
-    subscription.currentPeriodStart,
-    subscription.currentPeriodEnd
-  );
+Add a seed script (e.g., `prisma/seed-plans.ts` or `scripts/seed-plans.ts`) to populate `SubscriptionPlan` entries.
 
-  return {
-    allowed: used < limit,
-    limit,
-    used,
-    remaining: Math.max(0, limit - used),
-  };
-}
+Example seed script:
 
-async function getUsageCount(
-  userId: string,
-  featureType: FeatureType,
-  periodStart: Date,
-  periodEnd: Date
-): Promise<number> {
-  const result = await prisma.usageRecord.aggregate({
-    where: {
-      userId,
-      featureType,
-      periodStart: { gte: periodStart },
-      periodEnd: { lte: periodEnd },
+```ts
+// prisma/seed-plans.ts
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  const plans = [
+    {
+      razorpayPlanId: 'free-plan',
+      name: 'FREE',
+      tier: 'FREE',
+      description: 'Generous Free tier for freelancers',
+      amount: 0,
+      currency: 'INR',
+      period: 'monthly',
+      interval: 1,
+      maxOrganisations: 3,
+      maxProjects: 10,
+      maxTeamMembers: 10,
+      maxAIProposals: 50,
+      maxAIContracts: 5,
+      maxRecurringInvoices: 5,
+      maxInvoices: 200,
+      maxStorage: BigInt(1 * 1024 * 1024 * 1024), // 1GB
+      scopeRadarLevel: 'basic',
+      analyticsLevel: 'basic',
+      supportLevel: 'community',
+      customBranding: false,
+      apiAccess: false,
+      whiteLabel: false,
     },
-    _sum: { count: true },
-  });
+    {
+      razorpayPlanId: 'starter-plan',
+      name: 'STARTER',
+      tier: 'STARTER',
+      description: 'Affordable plan for growing freelancers',
+      amount: 29900, // ₹299.00 in paise
+      currency: 'INR',
+      period: 'monthly',
+      interval: 1,
+      maxOrganisations: 10,
+      maxProjects: 50,
+      maxTeamMembers: 25,
+      maxAIProposals: 300,
+      maxAIContracts: 50,
+      maxRecurringInvoices: 20,
+      maxInvoices: 1000,
+      maxStorage: BigInt(10 * 1024 * 1024 * 1024), // 10GB
+      scopeRadarLevel: 'standard',
+      analyticsLevel: 'basic',
+      supportLevel: 'email',
+      customBranding: false,
+      apiAccess: false,
+      whiteLabel: false,
+    },
+    // Add GROWTH, PRO, ENTERPRISE entries similarly...
+  ];
 
-  return result._sum.count || 0;
-}
-
-export async function trackUsage(
-  userId: string,
-  featureType: FeatureType,
-  count: number = 1
-): Promise<void> {
-  const subscription = await prisma.razorpaySubscription.findUnique({
-    where: { userId },
-    select: { id: true, currentPeriodStart: true, currentPeriodEnd: true },
-  });
-
-  if (!subscription) {
-    throw new Error('No active subscription found');
+  for (const p of plans) {
+    await prisma.subscriptionPlan.upsert({
+      where: { razorpayPlanId: p.razorpayPlanId },
+      create: p,
+      update: p,
+    });
   }
 
-  await prisma.usageRecord.create({
+  console.log('Subscription plans seeded');
+}
+
+main()
+  .catch(e => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });
+```
+
+Backfill existing users to FREE plan script (example `scripts/backfill-free.ts`):
+
+```ts
+// scripts/backfill-free.ts
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  const freePlan = await prisma.subscriptionPlan.findUnique({ where: { razorpayPlanId: 'free-plan' } });
+  if (!freePlan) throw new Error('Free plan missing');
+
+  const users = await prisma.user.findMany({
+    where: { /* optionally filter */ }
+  });
+
+  for (const u of users) {
+    // Skip if user already has subscription
+    const existing = await prisma.razorpaySubscription.findUnique({ where: { userId: u.id } });
+    if (existing) continue;
+
+    await prisma.razorpaySubscription.create({
+      data: {
+        userId: u.id,
+        customerId: '', // fill after Razorpay customer creation if needed
+        razorpaySubscriptionId: `manual-${Date.now()}-${u.id}`,
+        razorpayPlanId: freePlan.razorpayPlanId,
+        status: 'TRIALING',
+        planTier: 'FREE',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+        totalCount: 0,
+      }
+    });
+  }
+
+  console.log('Backfilled users to FREE trial subscriptions');
+}
+
+main().catch(e => { console.error(e); process.exit(1); });
+```
+
+Admin script to manually set a plan for a user:
+
+```ts
+// scripts/set-plan.ts
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function setPlan(userId: string, razorpayPlanId: string) {
+  const plan = await prisma.subscriptionPlan.findUnique({ where: { razorpayPlanId } });
+  if (!plan) throw new Error('Plan not found');
+
+  await prisma.razorpaySubscription.create({
     data: {
       userId,
-      subscriptionId: subscription.id,
-      featureType,
-      count,
-      periodStart: subscription.currentPeriodStart,
-      periodEnd: subscription.currentPeriodEnd,
+      customerId: null,
+      razorpaySubscriptionId: `manual-${Date.now()}`,
+      razorpayPlanId: plan.razorpayPlanId,
+      status: 'ACTIVE',
+      planTier: plan.tier,
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+      totalCount: 0,
     },
   });
-}
-```
 
-### Feature Gates
-
-```typescript
-// src/lib/feature-gates.ts
-
-import { checkFeatureLimit, trackUsage } from '@/middleware/subscription';
-import { FeatureType } from '@prisma/client';
-
-export async function canUseAIProposal(userId: string): Promise<{
-  allowed: boolean;
-  message?: string;
-  upgradeRequired?: boolean;
-}> {
-  const check = await checkFeatureLimit(userId, FeatureType.AI_PROPOSAL);
-  
-  if (!check.allowed) {
-    return {
-      allowed: false,
-      message: `You've reached your AI proposal limit (${check.limit}/month). Upgrade to generate more!`,
-      upgradeRequired: true,
-    };
-  }
-
-  return { allowed: true };
+  console.log(`Plan ${razorpayPlanId} assigned to user ${userId}`);
 }
 
-export async function canUseAIContract(userId: string): Promise<{
-  allowed: boolean;
-  message?: string;
-  upgradeRequired?: boolean;
-}> {
-  const check = await checkFeatureLimit(userId, FeatureType.AI_CONTRACT);
-  
-  if (check.limit === 0) {
-    return {
-      allowed: false,
-      message: 'AI contract generation is not available in your plan. Upgrade to STARTER or higher!',
-      upgradeRequired: true,
-    };
-  }
-
-  if (!check.allowed) {
-    return {
-      allowed: false,
-      message: `You've reached your AI contract limit (${check.limit}/month). Upgrade for more!`,
-      upgradeRequired: true,
-    };
-  }
-
-  return { allowed: true };
-}
-
-export async function canCreateRecurringInvoice(userId: string): Promise<{
-  allowed: boolean;
-  message?: string;
-  upgradeRequired?: boolean;
-}> {
-  const check = await checkFeatureLimit(userId, FeatureType.RECURRING_INVOICE);
-  
-  if (!check.allowed) {
-    return {
-      allowed: false,
-      message: `You've reached your recurring invoice limit (${check.limit} active). Upgrade for more!`,
-      upgradeRequired: true,
-    };
-  }
-
-  return { allowed: true };
-}
-
-export async function useScopeRadar(userId: string): Promise<{
-  allowed: boolean;
-  level: 'basic' | 'standard' | 'advanced' | 'enterprise';
-  message?: string;
-}> {
-  // Implement scope radar level check
-  const subscription = await getUserSubscription(userId);
-  
-  if (!subscription) {
-    return { allowed: true, level: 'basic' };
-  }
-
-  const plan = await getSubscriptionPlan(subscription.razorpayPlanId);
-  
-  return {
-    allowed: true,
-    level: plan.scopeRadarLevel as any,
-  };
-}
+setPlan(process.argv[2], process.argv[3]).catch(e => { console.error(e); process.exit(1); });
 ```
 
 ---
 
-## 7. Implementation Phases
+## 8. AI Cost Controls & Safety
 
-### Phase 1: Database Migration (Days 1-3)
+AI features are valuable but costly; implement protections:
+- Per-user monthly AI spend cap (e.g., FREE: ₹200/month equivalent) and token-based quotas.
+- Map LLM usage to estimated cost (tokens * model unit cost); record in `UsageRecord` and an `AiSpend` log if necessary.
+- Use cheaper models for drafts/summaries; reserve higher-cost models for final exports (contracts).
+- Cache identical prompts and reuse generated content when inputs are the same.
+- Soft-confirm modal for expensive operations when near cap; allow admin override/top-up credits.
 
-**Tasks**:
-1. Create new Prisma schema with Razorpay models
-2. Write migration script to backup existing Stripe data
-3. Run `prisma migrate dev` to create new tables
-4. Seed initial subscription plans
-5. Test database connections
-
-**Deliverables**:
-- Updated `schema.prisma`
-- Migration scripts in `/prisma/migrations`
-- Seed script for plans
-- Database backup
+Suggested AI spend tracking model:
+- Track estimated cost per API call in `usageRecord` metadata (e.g., tokenCount, model, estimatedCostPaise).
+- Add `AiCredits` table if you want to top-up or gift credits.
 
 ---
 
-### Phase 2: Razorpay SDK Setup (Days 4-7)
+## 9. Implementation Phases & Rollout (Staged, safe)
 
-**Tasks**:
-1. Install Razorpay Node SDK: `npm install razorpay`
-2. Create Razorpay client wrapper
-3. Set up environment variables
-4. Create helper functions for common operations
-5. Test API connectivity
+Phase 0 — Staging & Preparation
+- Add schema changes & run migrations on staging.
+- Seed subscription plans.
+- Implement feature flag `feature_new_pricing`.
 
-**Code Example**:
-```typescript
-// src/lib/razorpay.ts
-import Razorpay from 'razorpay';
+Phase 1 — Middleware & Seeds
+- Add `FEATURE_LIMITS`, middleware checks, and seed scripts.
+- Backfill existing users onto FREE trial/subscription.
 
-export const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+Phase 2 — Razorpay Integration
+- Replace Stripe flows with Razorpay Payment Links & Route for India.
+- Implement webhook handlers and signature validation.
+- Create admin tools to link Razorpay customers for existing users.
 
-export async function createCustomer(data: {
-  name: string;
-  email: string;
-  contact?: string;
-}) {
-  return await razorpay.customers.create(data);
-}
+Phase 3 — UI & UX
+- Display plan info, usage metrics, and 80% warnings.
+- Implement upgrade modals and billing page.
 
-export async function createSubscription(data: {
-  plan_id: string;
-  customer_id: string;
-  total_count: number;
-  quantity?: number;
-}) {
-  return await razorpay.subscriptions.create(data);
-}
-```
+Phase 4 — Soft Launch (10% of users)
+- Enable the new system for a small cohort behind feature flag.
+- Monitor AI costs, webhook stability, and user feedback.
+
+Phase 5 — Full Rollout
+- Enable for all users after 7–14 days of close monitoring.
+- Email users about the generous free tier and upgrade options.
+
+Rollback plan:
+- Deploy behind feature flag; ability to flip off to revert to legacy behavior.
+- Keep previous migrations and data backups.
 
 ---
 
-### Phase 3: Payment Flow (Days 8-12)
+## 10. API Integration (Examples & endpoints)
 
-**Tasks**:
-1. Create checkout page UI
-2. Implement plan selection
-3. Create Razorpay order
-4. Handle payment success/failure
-5. Update subscription status
-6. Send confirmation emails
+Key endpoints to implement (Next.js App Router style):
+- POST `/api/razorpay/create-order` — create Razorpay order / handle checkout
+- POST `/api/razorpay/subscription/create` — create subscription; create Razorpay customer if needed
+- POST `/api/razorpay/webhooks` — handle webhook events (verify signature)
+- POST `/api/subscriptions/assign` — admin endpoint to assign plans manually
+- GET `/api/usage/:userId` — return usage summary and thresholds
 
-**API Routes**:
-- `POST /api/razorpay/create-order` - Create payment order
-- `POST /api/razorpay/verify-payment` - Verify payment signature
-- `POST /api/razorpay/subscription/create` - Create subscription
-- `POST /api/razorpay/subscription/cancel` - Cancel subscription
-- `POST /api/razorpay/webhooks` - Handle webhooks
+Security:
+- Verify `x-razorpay-signature` header for webhooks.
+- Keep Razorpay keys server-side only.
+
+Sample: validate webhook signature using Razorpay utils (server side). See Razorpay docs for exact snippet and secure validation.
 
 ---
 
-### Phase 4: Feature Gates Implementation (Days 13-17)
+## 11. Admin Dashboard
 
-**Tasks**:
-1. Implement subscription middleware
-2. Add feature checks to AI proposal
-3. Add feature checks to AI contracts
-4. Add feature checks to recurring invoices
-5. Add feature checks to scope radar
-6. Create upgrade prompts/modals
-7. Track usage for all features
+Admin pages to add under `/admin`:
+- `/admin/dashboard` — revenue & MRR graphs
+- `/admin/subscriptions` — subscriptions list + filters
+- `/admin/plans` — manage plan metadata & limits
+- `/admin/users` — user management, plan overrides, top-ups
+- `/admin/usage` — per-feature usage analytics & limit breaches
+- `/admin/payments` — payment history & retry/payout controls
+- `/admin/settings` — Razorpay config & webhook setup
 
----
-
-### Phase 5: Admin Dashboard (Days 18-22)
-
-**Features**:
-- Subscription overview (active, canceled, past due)
-- User subscription management
-- Plan management (create, edit, deactivate)
-- Usage analytics
-- Revenue reports
-- Manual subscription controls
-- Refund management
+Admin capabilities:
+- Manually assign plans, top-up AI credits, refund payments, and disable accounts.
+- Export usage and revenue CSVs.
 
 ---
 
-### Phase 6: Testing (Days 23-25)
+## 12. Testing & Monitoring Strategy
 
-**Test Cases**:
-- Payment flow (success, failure, timeout)
-- Webhook handling
-- Feature limits enforcement
-- Usage tracking accuracy
-- Subscription lifecycle (create, renew, cancel)
-- Upgrade/downgrade flows
-- Refund processing
+Testing:
+- Unit tests:
+  - `checkFeatureLimit()` logic (edge cases: unlimited, -1 sentinel).
+  - `trackUsage()` creates records with correct periods.
+  - Webhook signature & parsing.
+- Integration tests:
+  - Subscription lifecycle (create → webhook activated → charge).
+  - Usage enforcement (simulate usage until limit and ensure expected behavior).
+- E2E (Playwright):
+  - Signup → create orgs/projects → generate AI proposals until warnings and blocks.
+  - Checkout (Razorpay test mode) and webhook simulation.
 
----
-
-## 8. API Integration
-
-### Razorpay API Routes
-
-#### Create Subscription Order
-```typescript
-// app/api/razorpay/create-order/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { razorpay } from '@/lib/razorpay';
-import { createClient } from '@/lib/supabase/server';
-import { prisma } from '@/lib/db';
-
-export async function POST(req: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { planId } = await req.json();
-    
-    // Get plan details
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
-    });
-    
-    if (!plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
-    }
-
-    // Get or create Razorpay customer
-    let customer = await prisma.razorpayCustomer.findUnique({
-      where: { userId: user.id },
-    });
-
-    if (!customer) {
-      const razorpayCustomer = await razorpay.customers.create({
-        name: user.user_metadata.name || user.email,
-        email: user.email!,
-        contact: user.user_metadata.phone,
-      });
-
-      customer = await prisma.razorpayCustomer.create({
-        data: {
-          userId: user.id,
-          razorpayCustomerId: razorpayCustomer.id,
-          email: user.email!,
-          name: user.user_metadata.name,
-          phone: user.user_metadata.phone,
-        },
-      });
-    }
-
-    // Create subscription
-    const subscription = await razorpay.subscriptions.create({
-      plan_id: plan.razorpayPlanId,
-      customer_id: customer.razorpayCustomerId,
-      total_count: 12, // 12 months
-      quantity: 1,
-    });
-
-    return NextResponse.json({
-      subscriptionId: subscription.id,
-      customerId: customer.razorpayCustomerId,
-      planId: plan.id,
-      amount: plan.amount,
-      currency: plan.currency,
-    });
-  } catch (error: any) {
-    console.error('Create order error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create order' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-#### Webhook Handler
-```typescript
-// app/api/razorpay/webhooks/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { validateWebhookSignature } from 'razorpay/dist/utils/razorpay-utils';
-import { prisma } from '@/lib/db';
-import { SubscriptionStatus } from '@prisma/client';
-
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.text();
-    const signature = req.headers.get('x-razorpay-signature');
-
-    if (!signature) {
-      return NextResponse.json({ error: 'No signature' }, { status: 400 });
-    }
-
-    // Verify webhook signature
-    const isValid = validateWebhookSignature(
-      body,
-      signature,
-      process.env.RAZORPAY_WEBHOOK_SECRET!
-    );
-
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-    }
-
-    const event = JSON.parse(body);
-
-    // Handle different event types
-    switch (event.event) {
-      case 'subscription.activated':
-        await handleSubscriptionActivated(event.payload.subscription.entity);
-        break;
-      
-      case 'subscription.charged':
-        await handleSubscriptionCharged(event.payload.payment.entity);
-        break;
-      
-      case 'subscription.cancelled':
-        await handleSubscriptionCancelled(event.payload.subscription.entity);
-        break;
-      
-      case 'subscription.completed':
-        await handleSubscriptionCompleted(event.payload.subscription.entity);
-        break;
-      
-      case 'payment.failed':
-        await handlePaymentFailed(event.payload.payment.entity);
-        break;
-    }
-
-    return NextResponse.json({ received: true });
-  } catch (error: any) {
-    console.error('Webhook error:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-async function handleSubscriptionActivated(subscription: any) {
-  const customer = await prisma.razorpayCustomer.findUnique({
-    where: { razorpayCustomerId: subscription.customer_id },
-  });
-
-  if (!customer) return;
-
-  await prisma.razorpaySubscription.upsert({
-    where: { razorpaySubscriptionId: subscription.id },
-    create: {
-      userId: customer.userId,
-      customerId: customer.id,
-      razorpaySubscriptionId: subscription.id,
-      razorpayPlanId: subscription.plan_id,
-      status: SubscriptionStatus.ACTIVE,
-      planTier: getPlanTierFromPlanId(subscription.plan_id),
-      currentPeriodStart: new Date(subscription.current_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_end * 1000),
-      totalCount: subscription.total_count,
-      paidCount: subscription.paid_count,
-      remainingCount: subscription.remaining_count,
-    },
-    update: {
-      status: SubscriptionStatus.ACTIVE,
-      currentPeriodStart: new Date(subscription.current_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_end * 1000),
-      paidCount: subscription.paid_count,
-      remainingCount: subscription.remaining_count,
-    },
-  });
-}
-```
+Monitoring & metrics:
+- Events: `feature_used`, `feature_limit_warn`, `plan_changed`, `ai_spend_alert`.
+- Track: AI spend per user/day, free->paid conversion, MRR, webhook failures, payment success rates.
+- Alerts:
+  - Daily AI spend > threshold
+  - Webhook failure rate spikes
+  - Payment failures > threshold
 
 ---
 
-## 9. Admin Dashboard
+## 13. Security Considerations
 
-### Admin Routes Structure
-
-```
-/admin
-  /dashboard          - Overview (revenue, active subs, etc.)
-  /subscriptions      - All subscriptions list
-  /plans              - Manage subscription plans
-  /users              - User management with subscription status
-  /usage              - Usage analytics per user/feature
-  /payments           - Payment history
-  /settings           - Razorpay settings, webhook config
-```
-
-### Key Admin Features
-
-1. **Subscription Management**
-   - View all subscriptions
-   - Filter by status, plan, date
-   - Manual activate/cancel/pause
-   - Extend subscription periods
-   - Apply discounts/coupons
-
-2. **Plan Management**
-   - Create new plans
-   - Edit existing plans
-   - Activate/deactivate plans
-   - Set custom limits per plan
-   - Pricing management
-
-3. **Usage Analytics**
-   - Feature usage by user
-   - Popular features
-   - Limit breach tracking
-   - Usage trends
-   - Export reports
-
-4. **Revenue Dashboard**
-   - MRR (Monthly Recurring Revenue)
-   - ARR (Annual Recurring Revenue)
-   - Churn rate
-   - Upgrade/downgrade trends
-   - Payment success/failure rates
+- Always verify webhook signatures.
+- Do not store card details—use Razorpay-hosted pages.
+- Encrypt sensitive fields at rest (PAN/bank details only if storing for Route onboarding; prefer storing Razorpay IDs).
+- Implement rate limiting and abuse detection for AI endpoints.
+- Audit logs for billing operations & admin actions.
 
 ---
 
-## 10. Testing Strategy
+## 14. Next Steps & Checklist
 
-### Unit Tests
-- Feature limit checks
-- Usage tracking
-- Payment verification
-- Webhook signature validation
+Backend
+- [ ] Update Prisma schema and create migrations (staging first).
+- [ ] Seed subscription plans using the seed script.
+- [ ] Implement `FEATURE_LIMITS` and middleware `checkFeatureLimit`.
+- [ ] Implement Razorpay wrappers and webhook handlers.
+- [ ] Add usage tracking on all AI features and create `UsageRecord` entries.
 
-### Integration Tests
-- Full payment flow
-- Subscription lifecycle
-- Webhook handling
-- Admin operations
+Frontend
+- [ ] Show plan & usage in user settings and project pages.
+- [ ] Add upgrade modals and soft warning UX.
+- [ ] Implement admin views for plan overrides and top-ups.
 
-### Test Environment
-- Razorpay Test Mode
-- Test cards: `4111 1111 1111 1111`
-- Test UPI: `success@razorpay`
-- Test webhook events
+Operations
+- [ ] Create staging environment & test Razorpay integration in test mode.
+- [ ] Run backfill script to assign FREE plan to existing users.
+- [ ] Monitor AI usage and set alerts for cost spikes.
 
-### Load Tests
-- Concurrent payment processing
-- Webhook handling under load
-- Database performance
+Communications
+- [ ] Email existing users announcing the generous free tier and upgrade options.
+- [ ] Add in-app banners for trial & promotional credits.
 
 ---
 
-## Implementation Checklist
+## Appendix: Useful Code Snippets & Notes
 
-### Backend
-- [ ] Remove Stripe models from schema
-- [ ] Add Razorpay models to schema
-- [ ] Run database migrations
-- [ ] Install Razorpay SDK
-- [ ] Create Razorpay client wrapper
-- [ ] Implement subscription middleware
-- [ ] Create feature gate functions
-- [ ] Add usage tracking
-- [ ] Build webhook handler
-- [ ] Create admin API routes
-
-### Frontend
-- [ ] Remove Stripe components
-- [ ] Create plan selection page
-- [ ] Build Razorpay checkout
-- [ ] Add upgrade prompts
-- [ ] Create subscription settings page
-- [ ] Build admin dashboard
-- [ ] Add usage indicators
-- [ ] Create limit warning modals
-
-### AI Features Integration
-- [ ] AI Proposal: Add feature gate
-- [ ] AI Proposal: Track usage
-- [ ] AI Proposal: Add upgrade prompt
-- [ ] AI Contract: Add feature gate
-- [ ] AI Contract: Track usage
-- [ ] AI Contract: Add upgrade prompt
-- [ ] Recurring Invoice: Add limit check
-- [ ] Recurring Invoice: Track usage
-- [ ] Scope Radar: Implement tier levels
-- [ ] Scope Radar: Track checks
-
-### Testing
-- [ ] Unit tests for limits
-- [ ] Integration tests for payments
-- [ ] Webhook testing
-- [ ] Load testing
-- [ ] Security testing
-- [ ] User acceptance testing
-
-### Documentation
-- [ ] API documentation
-- [ ] User guide
-- [ ] Admin guide
-- [ ] Migration guide
-- [ ] Troubleshooting guide
+- Seed script: (see section 7)
+- Backfill: (see section 7)
+- Admin CLI: (see section 7)
+- Middleware pattern: `checkFeatureLimit(userId, FeatureType) -> returns {allowed, used, limit, remaining}`
+- AI spend mapping: store `estimatedCostPaise` per usage record for billing & alerts.
 
 ---
 
-## Security Considerations
+## Final Notes
 
-1. **Webhook Signature Verification**: Always verify Razorpay webhook signatures
-2. **Environment Variables**: Store keys securely, never commit to git
-3. **Rate Limiting**: Implement rate limits on payment endpoints
-4. **Audit Logging**: Log all subscription changes and admin actions
-5. **PCI Compliance**: Never store card details, use Razorpay's hosted pages
-6. **Access Control**: Restrict admin routes to authorized users only
+This document updates the subscription system to be more generous and India-friendly while keeping operational cost control measures in place. It provides seed + backfill scripts, middleware patterns, AI-spend protections, a safe rollout plan, and admin tooling recommendations.
 
----
+Use the staging environment to validate each step and enable the new pricing behind a feature flag for a controlled rollout.
 
-## Support & Maintenance
-
-1. **Monitoring**: Set up alerts for failed payments, webhook errors
-2. **Logs**: Maintain detailed logs for debugging
-3. **Backups**: Regular database backups before major changes
-4. **Updates**: Keep Razorpay SDK updated
-5. **Documentation**: Keep admin documentation current
-
----
-
-## Estimated Timeline
-
-**Total: 4-5 weeks**
-
-- Week 1: Database migration + Razorpay setup
-- Week 2: Payment flows + Feature gates
-- Week 3: AI feature integration + Admin dashboard
-- Week 4: Testing + Bug fixes
-- Week 5: Deployment + Monitoring
-
----
-
-## Budget Estimate
-
-- **Development**: 4-5 weeks
-- **Razorpay Transaction Fees**: 2% per transaction
-- **Testing Budget**: ₹10,000 for test transactions
-- **Contingency**: 20% buffer
-
----
-
-## Success Metrics
-
-- Payment success rate > 95%
-- Webhook delivery success > 99%
-- Feature limit enforcement accuracy: 100%
-- Admin dashboard uptime > 99.9%
-- User upgrade conversion rate > 5%
-
----
-
-## Next Steps
-
-1. Review and approve this documentation
-2. Set up Razorpay account (if not done)
-3. Create test environment
-4. Begin Phase 1: Database migration
-5. Schedule regular check-ins
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: November 13, 2025  
-**Author**: Development Team  
-**Status**: Ready for Implementation
+**Document Version**: 1.1  
+**Last Updated**: 2025-11-13  
+**Author**: Nesternity Development Team

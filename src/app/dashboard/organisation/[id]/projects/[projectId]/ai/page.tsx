@@ -176,7 +176,7 @@ export default function AIFeaturesPage() {
             <div>
               <h4 className="font-semibold mb-2">1. Start with Proposals</h4>
               <p className="text-sm text-muted-foreground mb-3">
-                Create a client and generate your first AI proposal to see the magic in action.
+                Generate your first AI proposal to see the magic in action.
               </p>
               <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals/new`}>
                 <Button size="sm">

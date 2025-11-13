@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +60,10 @@ interface Board {
 }
 
 export default function IssuesPage() {
+  const params = useParams()
+  const organisationId = params.id as string
+  const projectId = params.projectId as string
+  
   const [issues, setIssues] = useState<Issue[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [boards, setBoards] = useState<Board[]>([])
@@ -101,6 +106,8 @@ export default function IssuesPage() {
     try {
       const headers = await getAuthHeaders()
       const params = new URLSearchParams()
+      params.append('organisationId', organisationId)
+      params.append('projectId', projectId)
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (priorityFilter !== 'all') params.append('priority', priorityFilter)
       if (searchQuery) params.append('search', searchQuery)
@@ -124,7 +131,9 @@ export default function IssuesPage() {
   const fetchProjects = async () => {
     try {
       const headers = await getAuthHeaders()
-      const response = await fetch('/api/projects', { headers })
+      const params = new URLSearchParams()
+      params.append('organisationId', organisationId)
+      const response = await fetch(`/api/projects?${params}`, { headers })
       if (response.ok) {
         const data = await response.json()
         setProjects(data)
@@ -139,7 +148,9 @@ export default function IssuesPage() {
   const fetchBoards = async () => {
     try {
       const headers = await getAuthHeaders()
-      const response = await fetch('/api/boards/with-clients', { headers })
+      const params = new URLSearchParams()
+      params.append('organisationId', organisationId)
+      const response = await fetch(`/api/boards/with-clients?${params}`, { headers })
       if (response.ok) {
         const data = await response.json()
         setBoards(data)
@@ -155,7 +166,9 @@ export default function IssuesPage() {
   const fetchTeamMembers = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/teams', { headers });
+      const params = new URLSearchParams();
+      params.append('organisationId', organisationId);
+      const response = await fetch(`/api/teams?${params}`, { headers });
       if (response.ok) {
         const data = await response.json();
         // Flatten all members from all teams, deduplicate by user id
@@ -220,6 +233,7 @@ export default function IssuesPage() {
         headers,
         body: JSON.stringify({
           ...formData,
+          organisationId,
           projectId: formData.projectId === 'none' ? null : formData.projectId || null,
           boardId: formData.boardId === 'none' ? null : formData.boardId || null,
           assignedTo: formData.assignedTo || null

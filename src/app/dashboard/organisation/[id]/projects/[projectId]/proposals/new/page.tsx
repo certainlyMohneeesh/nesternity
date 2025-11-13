@@ -2,8 +2,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
 import { ProposalEditor } from '@/components/ai/ProposalEditor';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,7 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { UserPlus, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 export const metadata = {
   title: 'AI Proposal Generator | Nesternity',
@@ -33,10 +31,25 @@ export default async function NewProposalPage({
     redirect(`/auth/login?returnUrl=/dashboard/organisation/${orgId}/projects/${projectId}/proposals/new`);
   }
 
-  // Fetch user's clients
+  // Fetch organization details
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: orgId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+  });
+
+  if (!organisation) {
+    redirect('/dashboard');
+  }
+
+  // Fetch user's clients scoped to this organisation
   const clients = await prisma.client.findMany({
     where: {
       createdBy: user.id,
+      organisationId: orgId,  // Filter by current organisation
     },
     select: {
       id: true,
@@ -48,6 +61,28 @@ export default async function NewProposalPage({
       name: 'asc',
     },
   });
+
+  // If no clients exist, create a default one for the organisation
+  let effectiveClients = clients;
+  if (clients.length === 0) {
+    const defaultClient = await prisma.client.create({
+      data: {
+        name: organisation.name,
+        email: organisation.email,
+        company: organisation.name,
+        createdBy: user.id,
+        organisationId: orgId,
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        company: true,
+      },
+    });
+    effectiveClients = [defaultClient];
+  }
 
   return (
     <div className="space-y-6">
@@ -79,23 +114,8 @@ export default async function NewProposalPage({
         </p>
       </div>
 
-      {clients.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed p-12 text-center bg-muted/30">
-          <UserPlus className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-semibold mb-2">No clients found</h3>
-          <p className="mb-6 text-muted-foreground max-w-sm mx-auto">
-            You need to create at least one client before generating proposals.
-          </p>
-          <Link href="/dashboard/organisation?tab=clients">
-            <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Client
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <ProposalEditor clients={clients} orgId={orgId} projectId={projectId} />
-      )}
+      {/* Always show ProposalEditor since we auto-create client if needed */}
+      <ProposalEditor clients={effectiveClients} orgId={orgId} projectId={projectId} />
     </div>
   );
 }
