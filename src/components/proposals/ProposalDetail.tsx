@@ -92,6 +92,8 @@ type Proposal = {
 
 type Props = {
   proposal: Proposal;
+  orgId: string;
+  projectId: string;
 };
 
 const statusColors = {
@@ -108,7 +110,7 @@ const statusLabels = {
   REJECTED: "Rejected",
 };
 
-export function ProposalDetail({ proposal: initialProposal }: Props) {
+export function ProposalDetail({ proposal: initialProposal, orgId, projectId }: Props) {
   const router = useRouter();
   const [proposal, setProposal] = useState(initialProposal);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -272,7 +274,7 @@ export function ProposalDetail({ proposal: initialProposal }: Props) {
             {proposal.status === "DRAFT" && (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <a href={`/dashboard/proposals/${proposal.id}/edit`}>
+                  <a href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals/${proposal.id}/edit`}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </a>

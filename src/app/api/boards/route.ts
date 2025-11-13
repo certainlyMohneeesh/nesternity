@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get teamId from query params
+    // Get teamId and organisationId from query params
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('teamId');
+    const organisationId = searchParams.get('organisationId');
 
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
@@ -47,12 +48,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Build where clause with optional organisationId filter
+    const whereClause: any = {
+      teamId,
+      archived: false
+    };
+
+    if (organisationId) {
+      whereClause.organisationId = organisationId;
+    }
+
     // Get boards with lists and task counts
     const boards = await db.board.findMany({
-      where: {
-        teamId,
-        archived: false
-      },
+      where: whereClause,
       include: {
         lists: {
           where: { archived: false },
@@ -95,7 +103,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, type, teamId } = await request.json();
+    const { name, description, type, teamId, organisationId, projectId } = await request.json();
 
     if (!name || !teamId) {
       return NextResponse.json({ error: 'Name and team ID are required' }, { status: 400 });
@@ -121,6 +129,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // Validate organisationId if provided
+    if (organisationId) {
+      const organisation = await db.organisation.findUnique({
+        where: { id: organisationId }
+      });
+      
+      if (!organisation) {
+        return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+      }
+    }
+
     // Get the next position for the board
     const lastBoard = await db.board.findFirst({
       where: { teamId },
@@ -137,7 +156,9 @@ export async function POST(request: NextRequest) {
         type: type || 'KANBAN',
         teamId,
         createdBy: user.id,
-        position
+        position,
+        organisationId: organisationId || null,
+        projectId: projectId || null,
       },
       include: {
         lists: {

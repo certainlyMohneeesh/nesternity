@@ -84,9 +84,11 @@ type Props = {
   proposal: Proposal;
   clients: Client[];
   projects: Project[];
+  orgId: string;
+  projectId: string;
 };
 
-export function ProposalEditForm({ proposal, clients, projects }: Props) {
+export function ProposalEditForm({ proposal, clients, projects, orgId, projectId: currentProjectId }: Props) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -275,7 +277,7 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
       }
 
       toast.success("Proposal updated successfully! 🎉");
-      router.push(`/dashboard/proposals/${proposal.id}`);
+      router.push(`/dashboard/organisation/${orgId}/projects/${currentProjectId}/proposals/${proposal.id}`);
       router.refresh();
     } catch (error) {
       console.error("Save error:", error);
@@ -288,7 +290,7 @@ export function ProposalEditForm({ proposal, clients, projects }: Props) {
   };
 
   const handleCancel = () => {
-    router.push(`/dashboard/proposals/${proposal.id}`);
+    router.push(`/dashboard/organisation/${orgId}/projects/${currentProjectId}/proposals/${proposal.id}`);
   };
 
   return (

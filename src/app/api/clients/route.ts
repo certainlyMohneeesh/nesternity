@@ -19,10 +19,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const organisationId = searchParams.get('organisationId');
+
+    const where: any = {
+      createdBy: user.id,
+    };
+
+    if (organisationId) {
+      where.organisationId = organisationId;
+    }
+
     const clients = await prisma.client.findMany({
-      where: {
-        createdBy: user.id,
-      },
+      where,
       orderBy: {
         createdAt: 'desc',
       },
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, phone, company, address, notes, budget, currency, status } = body;
+    const { name, email, phone, company, address, notes, budget, currency, status, organisationId } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -78,6 +87,7 @@ export async function POST(req: NextRequest) {
         budget,
         currency, 
         status: status || 'PROSPECT',
+        organisationId,
         createdBy: user.id,
       },
     });

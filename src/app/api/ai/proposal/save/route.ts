@@ -108,14 +108,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('💾 Saving proposal for client:', client.name);
-
     // 6. Create proposal in database
+    // Get organisationId from project or client
+    let organisationId = null;
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { organisationId: true }
+      });
+      organisationId = project?.organisationId;
+    } else if (client.organisationId) {
+      organisationId = client.organisationId;
+    }
+
     // @ts-ignore - Prisma model exists at runtime
     const proposal = await prisma.proposal.create({
       data: {
         clientId,
         projectId,
+        organisationId,
         title,
         brief,
         deliverables,
@@ -194,15 +205,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('clientId');
     const projectId = searchParams.get('projectId');
+    const organisationId = searchParams.get('organisationId');
 
     // 3. Build query
     const where: {
       createdBy: string;
       clientId?: string;
       projectId?: string;
+      organisationId?: string;
     } = {
       createdBy: user.id,
     };
+
+    if (organisationId) {
+      where.organisationId = organisationId;
+    }
 
     if (clientId) {
       where.clientId = clientId;

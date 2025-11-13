@@ -1,6 +1,6 @@
 generator client {
-  provider        = "prisma-client-js"
-  binaryTargets   = ["native", "rhel-openssl-1.0.x", "linux-musl"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
 datasource db {
@@ -24,6 +24,9 @@ model User {
   issueComments    IssueComment[]   @relation("IssueCommentAuthor")
   assignedIssues   Issue[]          @relation("IssueAssignee")
   createdIssues    Issue[]          @relation("IssueCreator")
+  notifications    Notification[]   @relation("UserNotifications")
+  organisations    Organisation[]   @relation("UserOrganisations")
+  paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
   subscription     Subscription?    @relation("UserSubscription")
   taskActivities   TaskActivity[]   @relation("TaskActivityUser")
   taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
@@ -33,8 +36,6 @@ model User {
   invites          TeamInvite[]     @relation("InvitedBy")
   teamMembers      TeamMember[]
   ownedTeams       Team[]           @relation("TeamOwner")
-  paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
-  notifications    Notification[]   @relation("UserNotifications")
 
   @@index([createdAt(sort: Desc)], map: "idx_users_created_at_desc")
   @@index([email], map: "idx_users_email")
@@ -55,77 +56,113 @@ model Subscription {
 }
 
 model Client {
-  id            String       @id @default(cuid())
-  name          String
-  email         String
-  phone         String?
-  company       String?
-  address       String?
-  notes         String?
-  budget        Float?       // Added budget field for client budget management
-  currency      String?      // Added currency field for client budget
-  status        ClientStatus @default(PROSPECT)
-  createdBy     String       @map("created_by")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  createdByUser User         @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
-  invoices      Invoice[]
-  projects      Project[]    @relation("ClientProjects")
-  proposals     Proposal[]   @relation("ClientProposals")
-  estimations   Estimation[] @relation("ClientEstimations")
-  updates       UpdateDraft[] @relation("ClientUpdates")
+  id             String        @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  company        String?
+  address        String?
+  notes          String?
+  budget         Float?
+  currency       String?
+  status         ClientStatus  @default(PROSPECT)
+  createdBy      String        @map("created_by")
+  organisationId String?       @map("organisation_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  createdByUser  User          @relation("UserClients", fields: [createdBy], references: [id], onDelete: Cascade)
+  organisation   Organisation? @relation("OrganisationClients", fields: [organisationId], references: [id], onDelete: Cascade)
+  estimations    Estimation[]  @relation("ClientEstimations")
+  invoices       Invoice[]
+  projects       Project[]     @relation("ClientProjects")
+  proposals      Proposal[]    @relation("ClientProposals")
+  updates        UpdateDraft[] @relation("ClientUpdates")
 
   @@index([createdAt(sort: Desc)], map: "idx_clients_created_at_desc")
   @@index([createdBy], map: "idx_clients_created_by")
+  @@index([organisationId], map: "idx_clients_organisation_id")
+  @@index([organisationId, status, createdAt(sort: Desc)], map: "idx_clients_org_status_created")
   @@map("clients")
 }
 
+model Organisation {
+  id          String             @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  budget      Float?
+  currency    String?            @default("INR")
+  status      OrganisationStatus @default(ACTIVE)
+  type        OrganisationType   @default(OWNER)
+  notes       String?
+  logoUrl     String?            @map("logo_url")
+  website     String?
+  address     String?
+  city        String?
+  state       String?
+  country     String?            @default("India")
+  pincode     String?
+  ownerId     String             @map("owner_id")
+  maxProjects Int                @default(5) @map("max_projects")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  owner       User               @relation("UserOrganisations", fields: [ownerId], references: [id], onDelete: Cascade)
+  projects    Project[]          @relation("OrganisationProjects")
+  teams       Team[]             @relation("OrganisationTeams")
+  boards      Board[]            @relation("OrganisationBoards")
+  clients     Client[]           @relation("OrganisationClients")
+  invoices    Invoice[]          @relation("OrganisationInvoices")
+  proposals   Proposal[]         @relation("OrganisationProposals")
+  issues      Issue[]            @relation("OrganisationIssues")
+
+  @@index([ownerId], map: "idx_organisations_owner_id")
+  @@index([type], map: "idx_organisations_type")
+  @@index([status], map: "idx_organisations_status")
+  @@index([ownerId, type], map: "idx_organisations_owner_type")
+  @@index([createdAt(sort: Desc)], map: "idx_organisations_created_at_desc")
+  @@map("organisations")
+}
+
 model Invoice {
-  id                String             @id @default(cuid())
-  invoiceNumber     String             @unique
-  clientId          String             @map("client_id")
-  issuedById        String             @map("issued_by_id")
-  dueDate           DateTime           @map("due_date")
-  issuedDate        DateTime           @default(now()) @map("issued_date")
-  status            InvoiceStatus      @default(PENDING)
-  paymentMethod     PaymentMethod?
-  notes             String?
-  taxRate           Float?             @map("tax_rate")
-  discount          Float?             @default(0)
-  currency          String             @default("INR")
-  pdfUrl            String?            @map("pdf_url")
-  
-  // Recurring Invoice Fields
-  isRecurring       Boolean            @default(false) @map("is_recurring")
-  recurrence        InvoiceRecurrence?
-  nextIssueDate     DateTime?          @map("next_issue_date")
-  lastSentDate      DateTime?          @map("last_sent_date")
-  reminderSent      Boolean            @default(false) @map("reminder_sent")
-  
-  // Recurring Invoice Automation
-  autoSendEnabled   Boolean            @default(false) @map("auto_send_enabled") // AI-powered auto-send
-  sendDayOfPeriod   Int?               @map("send_day_of_period") // Day of month/week to send (1-31 for monthly, 1-7 for weekly)
-  recipientEmails   String[]           @default([]) @map("recipient_emails") // Additional CC emails
-  autoGenerateEnabled Boolean          @default(true) @map("auto_generate_enabled") // Auto-create next invoice
-  maxOccurrences    Int?               @map("max_occurrences") // Stop after X occurrences (null = infinite)
-  occurrenceCount   Int                @default(0) @map("occurrence_count") // Track how many generated
-  parentInvoiceId   String?            @map("parent_invoice_id") // Reference to template invoice
-  
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  enablePaymentLink Boolean            @default(false) @map("enable_payment_link")
-  eSignatureUrl     String?            @map("e_signature_url")
-  watermarkText     String?            @map("watermark_text")
-  
-  // Razorpay payment link fields
-  razorpayPaymentLinkId String?        @map("razorpay_payment_link_id")
-  razorpayPaymentLinkUrl String?       @map("razorpay_payment_link_url")
-  razorpayPaymentLinkStatus String?    @map("razorpay_payment_link_status")
-  razorpayPaymentId String?            @map("razorpay_payment_id")
-  razorpayOrderId   String?            @map("razorpay_order_id")
-  
-  items             InvoiceItem[]
-  client            Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  issuedBy          User               @relation("IssuedBy", fields: [issuedById], references: [id])
+  id                        String             @id @default(cuid())
+  invoiceNumber             String             @unique
+  clientId                  String             @map("client_id")
+  issuedById                String             @map("issued_by_id")
+  organisationId            String?            @map("organisation_id")
+  dueDate                   DateTime           @map("due_date")
+  issuedDate                DateTime           @default(now()) @map("issued_date")
+  status                    InvoiceStatus      @default(PENDING)
+  paymentMethod             PaymentMethod?
+  notes                     String?
+  taxRate                   Float?             @map("tax_rate")
+  discount                  Float?             @default(0)
+  currency                  String             @default("INR")
+  pdfUrl                    String?            @map("pdf_url")
+  isRecurring               Boolean            @default(false) @map("is_recurring")
+  recurrence                InvoiceRecurrence?
+  nextIssueDate             DateTime?          @map("next_issue_date")
+  lastSentDate              DateTime?          @map("last_sent_date")
+  reminderSent              Boolean            @default(false) @map("reminder_sent")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+  enablePaymentLink         Boolean            @default(false) @map("enable_payment_link")
+  eSignatureUrl             String?            @map("e_signature_url")
+  watermarkText             String?            @map("watermark_text")
+  razorpayPaymentLinkId     String?            @map("razorpay_payment_link_id")
+  razorpayPaymentLinkUrl    String?            @map("razorpay_payment_link_url")
+  razorpayPaymentLinkStatus String?            @map("razorpay_payment_link_status")
+  razorpayPaymentId         String?            @map("razorpay_payment_id")
+  razorpayOrderId           String?            @map("razorpay_order_id")
+  autoGenerateEnabled       Boolean            @default(true) @map("auto_generate_enabled")
+  autoSendEnabled           Boolean            @default(false) @map("auto_send_enabled")
+  maxOccurrences            Int?               @map("max_occurrences")
+  occurrenceCount           Int                @default(0) @map("occurrence_count")
+  parentInvoiceId           String?            @map("parent_invoice_id")
+  recipientEmails           String[]           @default([]) @map("recipient_emails")
+  sendDayOfPeriod           Int?               @map("send_day_of_period")
+  items                     InvoiceItem[]
+  client                    Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  issuedBy                  User               @relation("IssuedBy", fields: [issuedById], references: [id])
+  organisation              Organisation?      @relation("OrganisationInvoices", fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([clientId], map: "idx_invoices_client_id")
   @@index([clientId, status, dueDate], map: "idx_invoices_client_status")
@@ -137,6 +174,8 @@ model Invoice {
   @@index([razorpayPaymentLinkId], map: "idx_invoices_razorpay_link_id")
   @@index([isRecurring, nextIssueDate], map: "idx_invoices_recurring_next")
   @@index([parentInvoiceId], map: "idx_invoices_parent_id")
+  @@index([organisationId], map: "idx_invoices_organisation_id")
+  @@index([organisationId, status, issuedDate(sort: Desc)], map: "idx_invoices_org_status_date")
   @@map("invoices")
 }
 
@@ -155,21 +194,24 @@ model InvoiceItem {
 }
 
 model Team {
-  id          String       @id @default(cuid())
-  name        String
-  description String?
-  createdBy   String       @map("created_by")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  activities  Activity[]
-  boards      Board[]
-  projects    Project[]    @relation("TeamProjects")
-  invites     TeamInvite[]
-  members     TeamMember[]
-  owner       User         @relation("TeamOwner", fields: [createdBy], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  createdBy      String       @map("created_by")
+  organisationId String?      @map("organisation_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  activities     Activity[]
+  boards         Board[]
+  projects       Project[]    @relation("TeamProjects")
+  invites        TeamInvite[]
+  members        TeamMember[]
+  owner          User         @relation("TeamOwner", fields: [createdBy], references: [id], onDelete: Cascade)
+  organisation   Organisation? @relation("OrganisationTeams", fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([createdAt(sort: Desc)], map: "idx_teams_created_at_desc")
   @@index([createdBy], map: "idx_teams_created_by")
+  @@index([organisationId], map: "idx_teams_organisation_id")
   @@map("teams")
 }
 
@@ -245,28 +287,32 @@ model Notification {
 }
 
 model Board {
-  id          String          @id @default(cuid())
-  name        String
-  type        BoardType       @default(KANBAN)
-  teamId      String          @map("team_id")
-  createdBy   String          @map("created_by")
-  settings    Json?
-  position    Int             @default(0)
-  archived    Boolean         @default(false)
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  projectId   String?         @map("project_id")
-  description String?
-  activities  BoardActivity[]
-  lists       BoardList[]
-  project     Project?        @relation("ProjectBoards", fields: [projectId], references: [id])
-  team        Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  issues      Issue[]         @relation("BoardIssues")
-  tasks       Task[]
+  id             String          @id @default(cuid())
+  name           String
+  type           BoardType       @default(KANBAN)
+  teamId         String          @map("team_id")
+  createdBy      String          @map("created_by")
+  organisationId String?         @map("organisation_id")
+  settings       Json?
+  position       Int             @default(0)
+  archived       Boolean         @default(false)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  projectId      String?         @map("project_id")
+  description    String?
+  activities     BoardActivity[]
+  lists          BoardList[]
+  project        Project?        @relation("ProjectBoards", fields: [projectId], references: [id])
+  team           Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  organisation   Organisation?   @relation("OrganisationBoards", fields: [organisationId], references: [id], onDelete: Cascade)
+  issues         Issue[]         @relation("BoardIssues")
+  tasks          Task[]
 
   @@index([projectId], map: "idx_boards_project_id")
   @@index([teamId], map: "idx_boards_team_id")
   @@index([teamId, position], map: "idx_boards_team_position")
+  @@index([organisationId], map: "idx_boards_organisation_id")
+  @@index([organisationId, teamId], map: "idx_boards_org_team")
   @@map("boards")
 }
 
@@ -380,53 +426,59 @@ model TaskActivity {
 }
 
 model Project {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  clientId    String?       @map("client_id")
-  teamId      String        @map("team_id")
-  startDate   DateTime?
-  endDate     DateTime?
-  status      ProjectStatus @default(PLANNING)
-  goal        Int?          // Total number of tasks (goal)
-  completedTasks Int?       // Number of completed tasks
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  boards      Board[]       @relation("ProjectBoards")
-  issues      Issue[]
-  client      Client?       @relation("ClientProjects", fields: [clientId], references: [id])
-  team        Team          @relation("TeamProjects", fields: [teamId], references: [id])
-  proposals   Proposal[]    @relation("ProjectProposals")
-  estimations Estimation[]  @relation("ProjectEstimations")
-  updates     UpdateDraft[] @relation("ProjectUpdates")
-  scopeRadar  ScopeRadar[]  @relation("ProjectScopeRadar")
+  id             String        @id @default(cuid())
+  name           String
+  description    String?
+  clientId       String?       @map("client_id")
+  teamId         String        @map("team_id")
+  status         ProjectStatus @default(PLANNING)
+  goal           Int?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  completedTasks Int?          @map("completed_tasks")
+  endDate        DateTime?     @map("end_date")
+  organisationId String?       @map("organisation_id")
+  startDate      DateTime?     @map("start_date")
+  boards         Board[]       @relation("ProjectBoards")
+  estimations    Estimation[]  @relation("ProjectEstimations")
+  issues         Issue[]
+  client         Client?       @relation("ClientProjects", fields: [clientId], references: [id])
+  organisation   Organisation? @relation("OrganisationProjects", fields: [organisationId], references: [id], onDelete: Cascade)
+  team           Team          @relation("TeamProjects", fields: [teamId], references: [id])
+  proposals      Proposal[]    @relation("ProjectProposals")
+  scopeRadar     ScopeRadar[]  @relation("ProjectScopeRadar")
+  updates        UpdateDraft[] @relation("ProjectUpdates")
 
   @@index([clientId], map: "idx_projects_client_id")
+  @@index([organisationId], map: "idx_projects_organisation_id")
   @@index([status], map: "idx_projects_status")
   @@index([teamId], map: "idx_projects_team_id")
   @@index([teamId, status, createdAt(sort: Desc)], map: "idx_projects_team_status")
+  @@index([organisationId, status], map: "idx_projects_org_status")
   @@map("projects")
 }
 
 model Issue {
-  id          String         @id @default(cuid())
-  title       String
-  description String
-  status      IssueStatus    @default(OPEN)
-  priority    IssuePriority  @default(MEDIUM)
-  projectId   String?        @map("project_id")
-  boardId     String?        @map("board_id")
-  taskId      String?        @map("task_id")
-  assignedTo  String?        @map("assigned_to")
-  createdBy   String         @map("created_by")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  comments    IssueComment[]
-  assignee    User?          @relation("IssueAssignee", fields: [assignedTo], references: [id])
-  board       Board?         @relation("BoardIssues", fields: [boardId], references: [id])
-  creator     User           @relation("IssueCreator", fields: [createdBy], references: [id])
-  project     Project?       @relation(fields: [projectId], references: [id])
-  task        Task?          @relation("TaskIssues", fields: [taskId], references: [id])
+  id             String         @id @default(cuid())
+  title          String
+  description    String
+  status         IssueStatus    @default(OPEN)
+  priority       IssuePriority  @default(MEDIUM)
+  projectId      String?        @map("project_id")
+  boardId        String?        @map("board_id")
+  taskId         String?        @map("task_id")
+  assignedTo     String?        @map("assigned_to")
+  createdBy      String         @map("created_by")
+  organisationId String?        @map("organisation_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  comments       IssueComment[]
+  assignee       User?          @relation("IssueAssignee", fields: [assignedTo], references: [id])
+  board          Board?         @relation("BoardIssues", fields: [boardId], references: [id])
+  creator        User           @relation("IssueCreator", fields: [createdBy], references: [id])
+  project        Project?       @relation(fields: [projectId], references: [id])
+  task           Task?          @relation("TaskIssues", fields: [taskId], references: [id])
+  organisation   Organisation?  @relation("OrganisationIssues", fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([assignedTo], map: "idx_issues_assigned_to")
   @@index([assignedTo, status, priority], map: "idx_issues_assignee_status")
@@ -435,6 +487,8 @@ model Issue {
   @@index([priority], map: "idx_issues_priority")
   @@index([projectId], map: "idx_issues_project_id")
   @@index([status], map: "idx_issues_status")
+  @@index([organisationId], map: "idx_issues_organisation_id")
+  @@index([organisationId, status, priority], map: "idx_issues_org_status_priority")
   @@map("issues")
 }
 
@@ -451,56 +505,223 @@ model IssueComment {
 }
 
 model PaymentSettings {
-  id                  String   @id @default(cuid())
-  userId              String   @unique @map("user_id")
-  
-  // Razorpay Route (Linked Account) - New Model
-  razorpayAccountId   String?  @unique @map("razorpay_account_id") // Razorpay linked account ID
-  accountStatus       AccountStatus @default(PENDING) @map("account_status") // pending, active, suspended, needs_clarification
-  
-  // Bank Account Details (Required for Razorpay Route)
-  accountHolderName   String?  @map("account_holder_name")
-  accountNumber       String?  @map("account_number")
-  ifscCode            String?  @map("ifsc_code")
-  bankName            String?  @map("bank_name")
-  branchName          String?  @map("branch_name")
-  accountType         AccountType? @map("account_type") // SAVINGS or CURRENT
-  
-  // KYC Details (Required by Razorpay Route)
-  panNumber           String?  @map("pan_number")
-  businessName        String?  @map("business_name")
-  gstNumber           String?  @map("gst_number")
-  
-  // Contact Details
-  contactEmail        String?  @map("contact_email")
-  contactPhone        String?  @map("contact_phone")
-  
-  // Address (Required for KYC)
-  businessAddress     String?  @map("business_address")
-  city                String?
-  state               String?
-  pincode             String?
-  country             String?  @default("India")
-  
-  // Platform Commission Settings
-  enableCommission    Boolean  @default(true) @map("enable_commission") // Platform can charge commission
-  commissionPercent   Float?   @default(5.0) @map("commission_percent") // Default 5%
-  
-  // Settlement Configuration
-  settlementSchedule  SettlementSchedule @default(INSTANT) @map("settlement_schedule")
-  
-  // Status & Metadata
-  accountActive       Boolean  @default(false) @map("account_active") // Is account ready for payments
-  verificationNotes   String?  @map("verification_notes") // Notes from Razorpay verification
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  
-  user                User     @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+  id                 String             @id @default(cuid())
+  userId             String             @unique @map("user_id")
+  razorpayAccountId  String?            @unique @map("razorpay_account_id")
+  accountStatus      AccountStatus      @default(PENDING) @map("account_status")
+  accountHolderName  String?            @map("account_holder_name")
+  accountNumber      String?            @map("account_number")
+  ifscCode           String?            @map("ifsc_code")
+  bankName           String?            @map("bank_name")
+  branchName         String?            @map("branch_name")
+  accountType        AccountType?       @map("account_type")
+  panNumber          String?            @map("pan_number")
+  businessName       String?            @map("business_name")
+  gstNumber          String?            @map("gst_number")
+  contactEmail       String?            @map("contact_email")
+  contactPhone       String?            @map("contact_phone")
+  businessAddress    String?            @map("business_address")
+  city               String?
+  state              String?
+  pincode            String?
+  country            String?            @default("India")
+  enableCommission   Boolean            @default(true) @map("enable_commission")
+  commissionPercent  Float?             @default(5.0) @map("commission_percent")
+  settlementSchedule SettlementSchedule @default(INSTANT) @map("settlement_schedule")
+  accountActive      Boolean            @default(false) @map("account_active")
+  verificationNotes  String?            @map("verification_notes")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  user               User               @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "idx_payment_settings_user_id")
   @@index([razorpayAccountId], map: "idx_payment_settings_razorpay_account")
   @@index([accountStatus], map: "idx_payment_settings_status")
   @@map("payment_settings")
+}
+
+model Proposal {
+  id               String         @id @default(cuid())
+  clientId         String         @map("client_id")
+  projectId        String?        @map("project_id")
+  organisationId   String?        @map("organisation_id")
+  title            String
+  brief            String
+  deliverables     Json
+  timeline         Json
+  pricing          Float
+  currency         String         @default("INR")
+  paymentTerms     String?        @map("payment_terms")
+  status           ProposalStatus @default(DRAFT)
+  isChangeOrder    Boolean        @default(false) @map("is_change_order")
+  parentProposalId String?        @map("parent_proposal_id")
+  changeReason     String?        @map("change_reason")
+  pdfUrl           String?        @map("pdf_url")
+  eSignatureUrl    String?        @map("e_signature_url")
+  signedAt         DateTime?      @map("signed_at")
+  signedByName     String?        @map("signed_by_name")
+  generatedByAI    Boolean        @default(true) @map("generated_by_ai")
+  aiPrompt         String?        @map("ai_prompt")
+  aiModel          String?        @map("ai_model")
+  createdBy        String         @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  acceptedAt       DateTime?      @map("accepted_at")
+  expiresAt        DateTime?      @map("expires_at")
+  rejectedAt       DateTime?      @map("rejected_at")
+  sectionBlocks    Json?          @map("section_blocks")
+  sentAt           DateTime?      @map("sent_at")
+  sentTo           String?        @map("sent_to")
+  templateId       String?        @map("template_id")
+  accessToken      String?        @unique @map("access_token")
+  lastViewedAt     DateTime?      @map("last_viewed_at")
+  tokenExpiresAt   DateTime?      @map("token_expires_at")
+  viewCount        Int            @default(0) @map("view_count")
+  client           Client         @relation("ClientProposals", fields: [clientId], references: [id], onDelete: Cascade)
+  project          Project?       @relation("ProjectProposals", fields: [projectId], references: [id])
+  organisation     Organisation?  @relation("OrganisationProposals", fields: [organisationId], references: [id], onDelete: Cascade)
+  signatures       Signature[]    @relation("ProposalSignatures")
+
+  @@index([clientId], map: "idx_proposals_client_id")
+  @@index([projectId], map: "idx_proposals_project_id")
+  @@index([status], map: "idx_proposals_status")
+  @@index([createdAt(sort: Desc)], map: "idx_proposals_created_at")
+  @@index([organisationId], map: "idx_proposals_organisation_id")
+  @@index([organisationId, status, createdAt(sort: Desc)], map: "idx_proposals_org_status_created")
+  @@map("proposals")
+}
+
+model Estimation {
+  id                   String   @id @default(cuid())
+  clientId             String?  @map("client_id")
+  projectId            String?  @map("project_id")
+  title                String
+  description          String?
+  estimatedHours       Float    @map("estimated_hours")
+  estimatedCost        Float    @map("estimated_cost")
+  currency             String   @default("INR")
+  confidence           Float?
+  rationale            String
+  suggestedPackages    Json?    @map("suggested_packages")
+  riskFactors          Json?    @map("risk_factors")
+  assumptions          Json?
+  similarProjectsCount Int?     @default(0) @map("similar_projects_count")
+  historicalAccuracy   Float?   @map("historical_accuracy")
+  aiModel              String?  @map("ai_model")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  client               Client?  @relation("ClientEstimations", fields: [clientId], references: [id], onDelete: Cascade)
+  project              Project? @relation("ProjectEstimations", fields: [projectId], references: [id])
+
+  @@index([clientId], map: "idx_estimations_client_id")
+  @@index([projectId], map: "idx_estimations_project_id")
+  @@index([createdAt(sort: Desc)], map: "idx_estimations_created_at")
+  @@map("estimations")
+}
+
+model BudgetEstimation {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  title            String
+  brief            String
+  deliverables     Json
+  timeline         Json
+  estimatedBudget  Float    @map("estimated_budget")
+  actualBudget     Float?   @map("actual_budget")
+  confidence       String
+  breakdown        Json
+  rationale        String
+  currency         String   @default("INR")
+  deliverableCount Int      @map("deliverable_count")
+  timelineWeeks    Float    @map("timeline_weeks")
+  accuracy         Float?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId], map: "idx_budget_estimations_user_id")
+  @@index([createdAt(sort: Desc)], map: "idx_budget_estimations_created_at")
+  @@index([accuracy], map: "idx_budget_estimations_accuracy")
+  @@map("budget_estimations")
+}
+
+model UpdateDraft {
+  id              String       @id @default(cuid())
+  weekStart       DateTime     @map("week_start")
+  clientId        String       @map("client_id")
+  projectId       String?      @map("project_id")
+  summary         String
+  accomplishments Json
+  blockers        Json?
+  nextSteps       Json         @map("next_steps")
+  metrics         Json?
+  status          UpdateStatus @default(DRAFT)
+  sentAt          DateTime?    @map("sent_at")
+  sentTo          String?      @map("sent_to")
+  generatedByAI   Boolean      @default(true) @map("generated_by_ai")
+  aiModel         String?      @map("ai_model")
+  createdBy       String       @map("created_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  client          Client       @relation("ClientUpdates", fields: [clientId], references: [id], onDelete: Cascade)
+  project         Project?     @relation("ProjectUpdates", fields: [projectId], references: [id])
+
+  @@index([clientId], map: "idx_updates_client_id")
+  @@index([projectId], map: "idx_updates_project_id")
+  @@index([weekStart], map: "idx_updates_week_start")
+  @@index([status], map: "idx_updates_status")
+  @@map("update_drafts")
+}
+
+model ScopeRadar {
+  id                   String    @id @default(cuid())
+  projectId            String    @map("project_id")
+  creepRisk            Float     @map("creep_risk")
+  revisionCount        Int       @default(0) @map("revision_count")
+  outOfScopeCount      Int       @default(0) @map("out_of_scope_count")
+  flaggedItems         Json      @map("flagged_items")
+  patterns             Json?
+  recommendations      Json?
+  changeOrderDraft     String?   @map("change_order_draft")
+  estimatedImpact      Json?     @map("estimated_impact")
+  acknowledged         Boolean   @default(false)
+  acknowledgedAt       DateTime? @map("acknowledged_at")
+  aiModel              String?   @map("ai_model")
+  flaggedAt            DateTime  @default(now()) @map("flagged_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  budgetOverrun        Float?    @map("budget_overrun")
+  budgetOverrunPercent Float?    @map("budget_overrun_percent")
+  clientEmailDraft     String?   @map("client_email_draft")
+  currentEstimate      Float?    @map("current_estimate")
+  emailSent            Boolean   @default(false) @map("email_sent")
+  emailSentAt          DateTime? @map("email_sent_at")
+  originalBudget       Float?    @map("original_budget")
+  project              Project   @relation("ProjectScopeRadar", fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], map: "idx_scope_radar_project_id")
+  @@index([creepRisk], map: "idx_scope_radar_risk")
+  @@index([flaggedAt(sort: Desc)], map: "idx_scope_radar_flagged_at")
+  @@index([budgetOverrun], map: "idx_scope_radar_budget_overrun")
+  @@index([emailSent], map: "idx_scope_radar_email_sent")
+  @@map("scope_radar")
+}
+
+model Signature {
+  id            String   @id @default(cuid())
+  proposalId    String   @map("proposal_id")
+  signerName    String   @map("signer_name")
+  signerEmail   String   @map("signer_email")
+  signerTitle   String?  @map("signer_title")
+  signatureBlob String   @map("signature_blob")
+  signatureType String   @default("draw") @map("signature_type")
+  signedAt      DateTime @default(now()) @map("signed_at")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  proposal      Proposal @relation("ProposalSignatures", fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId], map: "idx_signatures_proposal_id")
+  @@index([signedAt(sort: Desc)], map: "idx_signatures_signed_at")
+  @@map("signatures")
 }
 
 enum BoardType {
@@ -572,12 +793,11 @@ enum ClientStatus {
   PROSPECT
 }
 
-// Razorpay Route Enums
 enum AccountStatus {
-  PENDING           // Account creation initiated, awaiting verification
-  ACTIVE            // Account verified and active
-  SUSPENDED         // Account suspended by Razorpay
-  NEEDS_CLARIFICATION // Additional info required
+  PENDING
+  ACTIVE
+  SUSPENDED
+  NEEDS_CLARIFICATION
 }
 
 enum AccountType {
@@ -586,257 +806,11 @@ enum AccountType {
 }
 
 enum SettlementSchedule {
-  INSTANT           // Immediate transfer after payment
-  DAILY             // Daily settlement
-  WEEKLY            // Weekly settlement
-  MONTHLY           // Monthly settlement
+  INSTANT
+  DAILY
+  WEEKLY
+  MONTHLY
 }
-
-// AI Features Models
-
-model Proposal {
-  id              String         @id @default(cuid())
-  clientId        String         @map("client_id")
-  projectId       String?        @map("project_id")
-  title           String
-  brief           String         // Client brief/requirements
-  deliverables    Json           // Array of deliverables with descriptions
-  timeline        Json           // Timeline breakdown
-  pricing         Float
-  currency        String         @default("INR")
-  paymentTerms    String?        @map("payment_terms")
-  status          ProposalStatus @default(DRAFT)
-  
-  // Change Order Support
-  isChangeOrder   Boolean        @default(false) @map("is_change_order")
-  parentProposalId String?       @map("parent_proposal_id")
-  changeReason    String?        @map("change_reason")
-  
-  // PDF & E-Signature
-  pdfUrl          String?        @map("pdf_url")
-  eSignatureUrl   String?        @map("e_signature_url")
-  signedAt        DateTime?      @map("signed_at")
-  signedByName    String?        @map("signed_by_name")
-  
-  // Email Tracking
-  sentAt          DateTime?      @map("sent_at")
-  sentTo          String?        @map("sent_to")
-  
-  // Security & Access Control
-  accessToken     String?        @unique @map("access_token") // Secure token for public access
-  tokenExpiresAt  DateTime?      @map("token_expires_at") // Token expiration
-  viewCount       Int            @default(0) @map("view_count") // Track page views
-  lastViewedAt    DateTime?      @map("last_viewed_at") // Last time viewed
-  
-  // Acceptance Tracking
-  acceptedAt      DateTime?      @map("accepted_at")
-  rejectedAt      DateTime?      @map("rejected_at")
-  
-  // Expiration & Template
-  expiresAt       DateTime?      @map("expires_at")
-  sectionBlocks   Json?          @map("section_blocks") // Structured sections
-  templateId      String?        @map("template_id")
-  
-  // AI Metadata
-  generatedByAI   Boolean        @default(true) @map("generated_by_ai")
-  aiPrompt        String?        @map("ai_prompt")
-  aiModel         String?        @map("ai_model")
-  
-  createdBy       String         @map("created_by")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  
-  client          Client         @relation("ClientProposals", fields: [clientId], references: [id], onDelete: Cascade)
-  project         Project?       @relation("ProjectProposals", fields: [projectId], references: [id])
-  signatures      Signature[]    @relation("ProposalSignatures")
-  
-  @@index([clientId], map: "idx_proposals_client_id")
-  @@index([projectId], map: "idx_proposals_project_id")
-  @@index([status], map: "idx_proposals_status")
-  @@index([createdAt(sort: Desc)], map: "idx_proposals_created_at")
-  @@map("proposals")
-}
-
-model Estimation {
-  id                  String   @id @default(cuid())
-  clientId            String?  @map("client_id")
-  projectId           String?  @map("project_id")
-  title               String
-  description         String?
-  
-  // Estimation Results
-  estimatedHours      Float    @map("estimated_hours")
-  estimatedCost       Float    @map("estimated_cost")
-  currency            String   @default("INR")
-  confidence          Float?   // 0-1 confidence score
-  
-  // AI Analysis
-  rationale           String   // AI's reasoning for the estimate
-  suggestedPackages   Json?    @map("suggested_packages") // Array of package options
-  riskFactors         Json?    @map("risk_factors") // Identified risks
-  assumptions         Json?    // Assumptions made
-  
-  // Historical Data Used
-  similarProjectsCount Int?    @default(0) @map("similar_projects_count")
-  historicalAccuracy   Float?  @map("historical_accuracy")
-  
-  // AI Metadata
-  aiModel             String?  @map("ai_model")
-  
-  createdBy           String   @map("created_by")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  
-  client              Client?  @relation("ClientEstimations", fields: [clientId], references: [id], onDelete: Cascade)
-  project             Project? @relation("ProjectEstimations", fields: [projectId], references: [id])
-  
-  @@index([clientId], map: "idx_estimations_client_id")
-  @@index([projectId], map: "idx_estimations_project_id")
-  @@index([createdAt(sort: Desc)], map: "idx_estimations_created_at")
-  @@map("estimations")
-}
-
-model BudgetEstimation {
-  id                 String   @id @default(cuid())
-  userId             String   @map("user_id")
-  title              String
-  brief              String
-  deliverables       Json     // Array of deliverable objects
-  timeline           Json     // Array of timeline/milestone objects
-  
-  // Estimation Results
-  estimatedBudget    Float    @map("estimated_budget")
-  actualBudget       Float?   @map("actual_budget") // Set when proposal is finalized
-  confidence         String   // 'low', 'medium', 'high'
-  breakdown          Json     // Array of cost breakdown items
-  rationale          String   // AI's reasoning
-  currency           String   @default("INR")
-  
-  // Metadata for learning
-  deliverableCount   Int      @map("deliverable_count")
-  timelineWeeks      Float    @map("timeline_weeks")
-  accuracy           Float?   // Calculated as (1 - abs(estimated - actual) / actual) * 100
-  
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  
-  @@index([userId], map: "idx_budget_estimations_user_id")
-  @@index([createdAt(sort: Desc)], map: "idx_budget_estimations_created_at")
-  @@index([accuracy], map: "idx_budget_estimations_accuracy")
-  @@map("budget_estimations")
-}
-
-model UpdateDraft {
-  id              String       @id @default(cuid())
-  weekStart       DateTime     @map("week_start") // Start of the week
-  clientId        String       @map("client_id")
-  projectId       String?      @map("project_id")
-  
-  // Update Content
-  summary         String       // AI-generated summary
-  accomplishments Json         // Array of accomplishments with details
-  blockers        Json?        // Current blockers
-  nextSteps       Json         @map("next_steps") // Planned next steps
-  metrics         Json?        // Progress metrics (tasks completed, hours, etc.)
-  
-  // Status
-  status          UpdateStatus @default(DRAFT)
-  sentAt          DateTime?    @map("sent_at")
-  sentTo          String?      @map("sent_to") // Email sent to
-  
-  // AI Metadata
-  generatedByAI   Boolean      @default(true) @map("generated_by_ai")
-  aiModel         String?      @map("ai_model")
-  
-  createdBy       String       @map("created_by")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  
-  client          Client       @relation("ClientUpdates", fields: [clientId], references: [id], onDelete: Cascade)
-  project         Project?     @relation("ProjectUpdates", fields: [projectId], references: [id])
-  
-  @@index([clientId], map: "idx_updates_client_id")
-  @@index([projectId], map: "idx_updates_project_id")
-  @@index([weekStart], map: "idx_updates_week_start")
-  @@index([status], map: "idx_updates_status")
-  @@map("update_drafts")
-}
-
-model ScopeRadar {
-  id                String    @id @default(cuid())
-  projectId         String    @map("project_id")
-  
-  // Scope Creep Analysis
-  creepRisk         Float     @map("creep_risk") // 0-1 risk score
-  revisionCount     Int       @default(0) @map("revision_count")
-  outOfScopeCount   Int       @default(0) @map("out_of_scope_count")
-  
-  // Budget Monitoring
-  originalBudget    Float?    @map("original_budget") // From proposal/client budget
-  currentEstimate   Float?    @map("current_estimate") // Current cost estimate
-  budgetOverrun     Float?    @map("budget_overrun") // Amount over budget
-  budgetOverrunPercent Float? @map("budget_overrun_percent") // Percentage over
-  
-  // Detection Details
-  flaggedItems      Json      @map("flagged_items") // Items detected as scope creep
-  patterns          Json?     // Detected patterns
-  recommendations   Json?     // AI recommendations
-  
-  // Change Order Draft
-  changeOrderDraft  String?   @map("change_order_draft") // AI-drafted change order email
-  estimatedImpact   Json?     @map("estimated_impact") // Time/cost impact
-  
-  // Client Communication
-  clientEmailDraft  String?   @map("client_email_draft") // AI-drafted scope warning email
-  emailSent         Boolean   @default(false) @map("email_sent")
-  emailSentAt       DateTime? @map("email_sent_at")
-  
-  // Status
-  acknowledged      Boolean   @default(false)
-  acknowledgedAt    DateTime? @map("acknowledged_at")
-  
-  // AI Metadata
-  aiModel           String?   @map("ai_model")
-  
-  flaggedAt         DateTime  @default(now()) @map("flagged_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
-  project           Project   @relation("ProjectScopeRadar", fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@index([projectId], map: "idx_scope_radar_project_id")
-  @@index([creepRisk], map: "idx_scope_radar_risk")
-  @@index([flaggedAt(sort: Desc)], map: "idx_scope_radar_flagged_at")
-  @@index([budgetOverrun], map: "idx_scope_radar_budget_overrun")
-  @@index([emailSent], map: "idx_scope_radar_email_sent")
-  @@map("scope_radar")
-}
-
-model Signature {
-  id            String    @id @default(cuid())
-  proposalId    String    @map("proposal_id")
-  
-  // Signer Information
-  signerName    String    @map("signer_name")
-  signerEmail   String    @map("signer_email")
-  signerTitle   String?   @map("signer_title") // Job title
-  
-  // Signature Data
-  signatureBlob String    @map("signature_blob") @db.Text // Base64 encoded signature image
-  signatureType String    @default("draw") @map("signature_type") // "draw" or "type"
-  
-  // Metadata
-  signedAt      DateTime  @default(now()) @map("signed_at")
-  ipAddress     String?   @map("ip_address")
-  userAgent     String?   @map("user_agent")
-  
-  proposal      Proposal  @relation("ProposalSignatures", fields: [proposalId], references: [id], onDelete: Cascade)
-  
-  @@index([proposalId], map: "idx_signatures_proposal_id")
-  @@index([signedAt(sort: Desc)], map: "idx_signatures_signed_at")
-  @@map("signatures")
-}
-
-// AI Enums
 
 enum ProposalStatus {
   DRAFT
@@ -852,4 +826,15 @@ enum UpdateStatus {
   SCHEDULED
   SENT
   DELIVERED
+}
+
+enum OrganisationType {
+  OWNER
+  CLIENT
+}
+
+enum OrganisationStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
 }

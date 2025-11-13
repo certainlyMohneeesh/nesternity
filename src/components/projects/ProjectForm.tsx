@@ -12,12 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClient, getSessionToken } from '@/lib/supabase/client-session';
 
 interface Client {
   id: string;
@@ -100,12 +95,12 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
 
   const fetchClients = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      const token = await getSessionToken();
+      if (!token) return;
 
       const response = await fetch('/api/clients', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -122,12 +117,12 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
 
   const fetchTeams = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      const token = await getSessionToken();
+      if (!token) return;
 
       const response = await fetch('/api/teams', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 

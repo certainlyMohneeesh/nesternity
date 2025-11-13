@@ -100,6 +100,19 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      // Phase 7: Create default OWNER organisation (Organisation-Centric Architecture)
+      console.log('🏢 Sync User: Creating default OWNER organisation');
+      const defaultOrganisation = await db.organisation.create({
+        data: {
+          name: `${displayName}'s Organisation`,
+          email: user.email || '',
+          type: 'OWNER',
+          status: 'ACTIVE',
+          ownerId: prismaUser.id,
+        }
+      });
+      console.log('✅ Sync User: Created OWNER organisation:', defaultOrganisation.id);
+
       // Create a default team for the user
       const defaultTeam = await (db as any).team.create({
         data: {
@@ -144,7 +157,7 @@ export async function POST(request: NextRequest) {
         ]
       });
 
-      console.log('✅ Sync User: Created default team and board for user:', prismaUser.id);
+      console.log('✅ Sync User: Created default team, organisation, and board for user:', prismaUser.id);
     } else {
       console.log('✅ Sync User: User already exists in database:', prismaUser.id);
     }

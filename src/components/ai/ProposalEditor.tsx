@@ -22,9 +22,11 @@ interface Client {
 
 interface ProposalEditorProps {
   clients: Client[];
+  orgId: string;
+  projectId: string;
 }
 
-export function ProposalEditor({ clients }: ProposalEditorProps) {
+export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   

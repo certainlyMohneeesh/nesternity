@@ -49,11 +49,12 @@ interface Client {
 
 interface InvoiceFormProps {
   teamId?: string // Optional team context
+  organisationId?: string // Organisation ID for data scoping
   clients?: Client[] // Optional pre-fetched clients (for backward compatibility)
   onSuccess?: () => void
 }
 
-export default function InvoiceForm({ teamId, clients: propClients, onSuccess }: InvoiceFormProps) {
+export default function InvoiceForm({ teamId, organisationId, clients: propClients, onSuccess }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>(propClients || [])
   const [fetchingClients, setFetchingClients] = useState(false)
@@ -150,14 +151,20 @@ export default function InvoiceForm({ teamId, clients: propClients, onSuccess }:
         return
       }
 
+      // Include organisationId in the payload
+      const payload = {
+        ...data,
+        organisationId
+      }
+
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(data),
-      })
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorData = await response.json()

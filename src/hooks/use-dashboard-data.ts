@@ -87,21 +87,39 @@ interface DashboardData {
 // Query Keys
 export const dashboardQueryKeys = {
   all: ['dashboard'] as const,
-  overview: (userId: string) => [...dashboardQueryKeys.all, 'overview', userId] as const,
+  overview: (userId: string, organisationId?: string, projectId?: string) => {
+    const key = [...dashboardQueryKeys.all, 'overview', userId];
+    if (organisationId) key.push(organisationId);
+    if (projectId) key.push(projectId);
+    return key;
+  },
 } as const;
 
+interface UseDashboardDataParams {
+  userId: string | undefined;
+  organisationId?: string;
+  projectId?: string;
+  enabled?: boolean;
+}
+
 // Custom Hook for Dashboard Data
-export function useDashboardData(userId: string | undefined, enabled = true) {
+export function useDashboardData({ userId, organisationId, projectId, enabled = true }: UseDashboardDataParams) {
   return useQuery({
-    queryKey: dashboardQueryKeys.overview(userId || ''),
+    queryKey: dashboardQueryKeys.overview(userId || '', organisationId, projectId),
     queryFn: async (): Promise<DashboardData> => {
       if (!userId) {
         throw new Error('User ID is required');
       }
 
-      console.log('Making API call with user ID:', userId);
+      console.log('Making API call with:', { userId, organisationId, projectId });
       
-      const res = await fetch("/api/dashboard", {
+      // Build query params
+      const params = new URLSearchParams();
+      if (organisationId) params.append('organisationId', organisationId);
+      if (projectId) params.append('projectId', projectId);
+      const queryString = params.toString();
+      
+      const res = await fetch(`/api/dashboard${queryString ? `?${queryString}` : ''}`, {
         headers: { "x-user-id": userId },
       });
       
@@ -114,7 +132,7 @@ export function useDashboardData(userId: string | undefined, enabled = true) {
       }
       
       const dashboardData = await res.json();
-      console.log('Dashboard data received:', dashboardData);
+      console.log('Dashboard data received - teams:', dashboardData.teams?.length || 0);
       return dashboardData;
     },
     enabled: enabled && !!userId,

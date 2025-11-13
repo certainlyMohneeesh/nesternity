@@ -146,6 +146,19 @@ export async function POST(request: NextRequest) {
             },
           });
 
+          // Phase 7: Create default OWNER organisation (Organisation-Centric Architecture)
+          console.log('[Login API] Creating default OWNER organisation');
+          const defaultOrganisation = await db.organisation.create({
+            data: {
+              name: `${displayName}'s Organisation`,
+              email: data.user.email || '',
+              type: 'OWNER',
+              status: 'ACTIVE',
+              ownerId: prismaUser.id,
+            },
+          });
+          console.log('[Login API] ✅ Created OWNER organisation:', defaultOrganisation.id);
+
           // Create default team
           const defaultTeam = await db.team.create({
             data: {
@@ -200,7 +213,7 @@ export async function POST(request: NextRequest) {
             ],
           });
 
-          console.log('[Login API] ✅ Created default team and board for user');
+          console.log('[Login API] ✅ Created default team, organisation, and board for user');
         } else {
           console.log('[Login API] ✅ User exists in database');
         }

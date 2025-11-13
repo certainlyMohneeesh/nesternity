@@ -1,22 +1,51 @@
 import { prisma } from "@/lib/db";
 
-// Aggregates all dashboard data for a user
-export async function getDashboardData(userId: string) {
+interface DashboardDataParams {
+  userId: string;
+  organisationId?: string;
+  projectId?: string;
+}
+
+// Aggregates all dashboard data for a user (optionally filtered by org/project)
+export async function getDashboardData({ userId, organisationId, projectId }: DashboardDataParams) {
   console.log('=== getDashboardData DEBUG ===');
   console.log('Looking for user ID:', userId);
+  console.log('Organisation ID:', organisationId);
+  console.log('Project ID:', projectId);
   
-  // Fetch teams for the user (same logic as teams API)
+  // Build team filter based on parameters
+  const teamWhere: any = {
+    OR: [
+      { createdBy: userId },           // Teams user created (owner)
+      { 
+        members: { 
+          some: { userId } 
+        } 
+      }                                // Teams user is member of
+    ]
+  };
+
+  // If projectId is provided, filter teams by project
+  // Since Project belongs to Team (Project.teamId), we need to find the team of this project
+  if (projectId) {
+    // For a specific project, only show the team that owns this project
+    teamWhere.AND = [
+      { projects: { some: { id: projectId } } }
+    ];
+  } 
+  // Otherwise, if organisationId is provided, filter teams by organisation
+  else if (organisationId) {
+    // For an organisation, show teams that have projects in this org
+    teamWhere.AND = [
+      { projects: { some: { organisationId } } }
+    ];
+  }
+
+  console.log('Team filter:', JSON.stringify(teamWhere, null, 2));
+  
+  // Fetch teams for the user (filtered by org/project if provided)
   const teams = await prisma.team.findMany({
-    where: {
-      OR: [
-        { createdBy: userId },           // Teams user created (owner)
-        { 
-          members: { 
-            some: { userId } 
-          } 
-        }                                // Teams user is member of
-      ]
-    },
+    where: teamWhere,
     select: {
       id: true,
       name: true,
@@ -36,17 +65,15 @@ export async function getDashboardData(userId: string) {
   }
   console.log('===========================');
 
-  // Fetch recent tasks and completed tasks in parallel
+  // Extract team IDs for filtering tasks and boards
+  const teamIds = teams.map(t => t.id);
+
+  // Fetch recent tasks and completed tasks in parallel (filtered by teams)
   const [recentTasks, recentCompletedTasks] = await Promise.all([
     prisma.task.findMany({
       where: {
         board: { 
-          team: { 
-            OR: [
-              { createdBy: userId },           // Teams user created (owner)
-              { members: { some: { userId } } } // Teams user is member of
-            ]
-          } 
+          teamId: teamIds.length > 0 ? { in: teamIds } : undefined
         },
         archived: false,
       },
@@ -75,12 +102,7 @@ export async function getDashboardData(userId: string) {
     prisma.task.findMany({
       where: {
         board: { 
-          team: { 
-            OR: [
-              { createdBy: userId },           // Teams user created (owner)
-              { members: { some: { userId } } } // Teams user is member of
-            ]
-          } 
+          teamId: teamIds.length > 0 ? { in: teamIds } : undefined
         },
         status: "DONE",
       },
@@ -106,39 +128,24 @@ export async function getDashboardData(userId: string) {
     }),
   ]);
 
-  // Stats
+  // Stats (filtered by teams)
   const [totalBoards, totalTasks, completedTasks] = await Promise.all([
     prisma.board.count({ 
       where: { 
-        team: { 
-          OR: [
-            { createdBy: userId },           // Teams user created (owner)
-            { members: { some: { userId } } } // Teams user is member of
-          ]
+        teamId: teamIds.length > 0 ? { in: teamIds } : undefined
+      } 
+    }),
+    prisma.task.count({ 
+      where: { 
+        board: { 
+          teamId: teamIds.length > 0 ? { in: teamIds } : undefined
         } 
       } 
     }),
     prisma.task.count({ 
       where: { 
         board: { 
-          team: { 
-            OR: [
-              { createdBy: userId },           // Teams user created (owner)
-              { members: { some: { userId } } } // Teams user is member of
-            ]
-          } 
-        } 
-      } 
-    }),
-    prisma.task.count({ 
-      where: { 
-        board: { 
-          team: { 
-            OR: [
-              { createdBy: userId },           // Teams user created (owner)
-              { members: { some: { userId } } } // Teams user is member of
-            ]
-          } 
+          teamId: teamIds.length > 0 ? { in: teamIds } : undefined
         }, 
         status: "DONE" 
       } 

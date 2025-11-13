@@ -148,7 +148,7 @@ export function ClientCard({ client, onEdit, onDelete, onViewProjects }: ClientC
         {/* Actions */}
         <div className="flex gap-2 pt-2">
           <a
-            href="/dashboard/projects"
+            href="/dashboard/organisation"
             className="flex-1"
             tabIndex={-1}
           >

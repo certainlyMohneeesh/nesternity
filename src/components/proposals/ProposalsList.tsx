@@ -70,6 +70,8 @@ type Proposal = {
 
 type Props = {
   proposals: Proposal[];
+  orgId: string;
+  projectId: string;
 };
 
 const statusColors = {
@@ -88,7 +90,7 @@ const statusLabels = {
   CONVERTED_TO_INVOICE: "Invoiced",
 };
 
-export function ProposalsList({ proposals: initialProposals }: Props) {
+export function ProposalsList({ proposals: initialProposals, orgId, projectId }: Props) {
   const router = useRouter();
   const [proposals, setProposals] = useState(initialProposals);
   const [searchTerm, setSearchTerm] = useState("");
@@ -223,7 +225,7 @@ export function ProposalsList({ proposals: initialProposals }: Props) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
                         <Link
-                          href={`/dashboard/proposals/${proposal.id}`}
+                          href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals/${proposal.id}`}
                           className="cursor-pointer"
                         >
                           <Eye className="mr-2 h-4 w-4" />
