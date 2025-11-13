@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const clientId = searchParams.get('clientId');
+    const organisationId = searchParams.get('organisationId');
 
     const where: any = {
       issuedById: user.id,
@@ -33,6 +34,10 @@ export async function GET(req: NextRequest) {
 
     if (clientId) {
       where.clientId = clientId;
+    }
+
+    if (organisationId) {
+      where.organisationId = organisationId;
     }
 
     const invoices = await prisma.invoice.findMany({
@@ -99,6 +104,7 @@ export async function POST(req: NextRequest) {
       enablePaymentLink,
       watermarkText,
       eSignatureUrl,
+      organisationId,
     } = body;
 
     if (!invoiceNumber || !clientId || !dueDate || !items || items.length === 0) {
@@ -175,6 +181,7 @@ export async function POST(req: NextRequest) {
         invoiceNumber,
         clientId,
         issuedById: user.id,
+        organisationId: organisationId || client.organisationId || null,
         dueDate: new Date(dueDate),
         notes,
         taxRate: taxRate || 0,

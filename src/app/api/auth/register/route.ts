@@ -67,7 +67,20 @@ export async function POST(request: NextRequest) {
                 displayName: displayName,
               }
             });
-            console.log('✅ Register API: User record created directly in database');
+            console.log('✅ Register API: User record created directly in database (fallback)');
+            
+            // Phase 7: Create default OWNER organisation (Organisation-Centric Architecture)
+            console.log('🏢 Register API: Creating default OWNER organisation (fallback)');
+            await db.organisation.create({
+              data: {
+                name: `${displayName}'s Organisation`,
+                email: data.user.email!,
+                type: 'OWNER',
+                status: 'ACTIVE',
+                ownerId: data.user.id,
+              },
+            });
+            console.log('✅ Register API: Created default OWNER organisation (fallback)');
           } catch (dbError: any) {
             console.warn('⚠️ Register API: Failed to create user in database:', dbError);
           }
@@ -84,7 +97,20 @@ export async function POST(request: NextRequest) {
               displayName: displayName,
             }
           });
-          console.log('✅ Register API: User record created directly in database (fallback)');
+          console.log('✅ Register API: User record created directly in database');
+          
+          // Phase 7: Create default OWNER organisation (Organisation-Centric Architecture)
+          console.log('🏢 Register API: Creating default OWNER organisation');
+          await db.organisation.create({
+            data: {
+              name: `${displayName}'s Organisation`,
+              email: data.user.email!,
+              type: 'OWNER',
+              status: 'ACTIVE',
+              ownerId: data.user.id,
+            },
+          });
+          console.log('✅ Register API: Created default OWNER organisation');
         } catch (dbError: any) {
           console.warn('⚠️ Register API: Failed to create user in database:', dbError);
         }
@@ -129,7 +155,19 @@ export async function POST(request: NextRequest) {
           }
         });
         
-        console.log('✅ Register API: Basic user record created in database');
+        // Phase 7: Create default OWNER organisation (Organisation-Centric Architecture)
+        console.log('🏢 Register API: Creating default OWNER organisation');
+        await db.organisation.create({
+          data: {
+            name: `${displayName}'s Organisation`,
+            email: data.user.email!,
+            type: 'OWNER',
+            status: 'ACTIVE',
+            ownerId: data.user.id,
+          },
+        });
+        
+        console.log('✅ Register API: Basic user record and organisation created in database');
       } catch (dbError: any) {
         console.warn('⚠️ Register API: Failed to create user in database:', dbError);
       }

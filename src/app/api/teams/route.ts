@@ -67,23 +67,33 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Get teams where user is owner or member
-    console.log('🔄 Fetching teams for user:', user.id);
+    // Get organisationId from query params for filtering
+    const { searchParams } = new URL(request.url);
+    const organisationId = searchParams.get('organisationId');
+    
+    console.log('🔄 Fetching teams for user:', user.id, organisationId ? `in org: ${organisationId}` : '(all orgs)');
     
     try {
-      const teams = await db.team.findMany({
-        where: {
-          OR: [
-            { createdBy: user.id },
-            { 
-              members: { 
-                some: { 
-                  userId: user.id
-                } 
+      const whereClause: any = {
+        OR: [
+          { createdBy: user.id },
+          { 
+            members: { 
+              some: { 
+                userId: user.id
               } 
-            }
-          ]
-        },
+            } 
+          }
+        ]
+      };
+
+      // Filter by organisationId if provided
+      if (organisationId) {
+        whereClause.organisationId = organisationId;
+      }
+
+      const teams = await db.team.findMany({
+        where: whereClause,
         include: {
           owner: {
             select: { id: true, email: true, displayName: true }
@@ -147,10 +157,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description } = body;
+    const { name, description, organisationId } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
+    }
+
+    // Validate organisationId if provided
+    if (organisationId) {
+      const organisation = await db.organisation.findUnique({
+        where: { id: organisationId }
+      });
+      
+      if (!organisation) {
+        return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+      }
+      
+      // Verify user owns the organisation
+      if (organisation.ownerId !== user.id) {
+        return NextResponse.json({ error: 'Not authorized to create teams in this organisation' }, { status: 403 });
+      }
     }
 
     // Ensure user exists in our database
@@ -203,6 +229,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         createdBy: user.id,
+        organisationId: organisationId || null,
       },
       include: {
         owner: {

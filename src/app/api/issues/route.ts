@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
     const projectId = searchParams.get('projectId');
     const boardId = searchParams.get('boardId');
     const assignedTo = searchParams.get('assignedTo');
+    const organisationId = searchParams.get('organisationId');
 
     const where: any = {
       OR: [
@@ -49,6 +50,10 @@ export async function GET(req: NextRequest) {
         { assignedTo: user.id },
       ],
     };
+
+    if (organisationId) {
+      where.organisationId = organisationId;
+    }
 
     if (status) {
       where.status = status;
@@ -190,6 +195,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Get organisationId from project or board
+    let organisationId = null;
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { organisationId: true }
+      });
+      organisationId = project?.organisationId;
+    } else if (boardId) {
+      const board = await prisma.board.findUnique({
+        where: { id: boardId },
+        select: { organisationId: true }
+      });
+      organisationId = board?.organisationId;
+    }
+
     const issue = await prisma.issue.create({
       data: {
         title,
@@ -199,6 +220,7 @@ export async function POST(req: NextRequest) {
         boardId,
         taskId,
         assignedTo,
+        organisationId,
         createdBy: user.id,
       },
       include: {

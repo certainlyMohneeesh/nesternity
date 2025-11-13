@@ -1,0 +1,10 @@
+-- AlreadyApplied: Schema changes were applied via 'prisma db push'
+-- This migration serves as a baseline to sync migration history with database state
+--
+-- Changes included:
+-- - Added organisation_id column to: teams, boards, clients, invoices, proposals, issues
+-- - Added foreign keys to organisations table
+-- - Added indexes for performance: idx_*_organisation_id
+-- - Added composite indexes: idx_*_org_*
+--
+-- Data migration was completed via: node scripts/migrate-organisation-ids.js

@@ -38,6 +38,34 @@ export async function middleware(request: NextRequest) {
     email: user?.email,
   });
 
+  // Phase 7: Route Redirects - Organisation-Centric Architecture
+  // Redirect old routes to new organisation-centric structure
+  const pathname = request.nextUrl.pathname;
+
+  // Redirect /dashboard/clients -> /dashboard/organisation?tab=clients
+  if (pathname === '/dashboard/clients') {
+    const newUrl = new URL('/dashboard/organisation', request.url);
+    newUrl.searchParams.set('tab', 'clients');
+    console.log('🔄 Redirecting /dashboard/clients -> /dashboard/organisation?tab=clients');
+    return NextResponse.redirect(newUrl);
+  }
+
+  // Redirect /dashboard/projects -> /dashboard/organisation
+  if (pathname === '/dashboard/projects') {
+    const newUrl = new URL('/dashboard/organisation', request.url);
+    console.log('🔄 Redirecting /dashboard/projects -> /dashboard/organisation');
+    return NextResponse.redirect(newUrl);
+  }
+
+  // Redirect /dashboard/clients/[id] -> /dashboard/organisation/[id]
+  const clientIdMatch = pathname.match(/^\/dashboard\/clients\/([^\/]+)$/);
+  if (clientIdMatch) {
+    const clientId = clientIdMatch[1];
+    const newUrl = new URL(`/dashboard/organisation/${clientId}`, request.url);
+    console.log(`🔄 Redirecting /dashboard/clients/${clientId} -> /dashboard/organisation/${clientId}`);
+    return NextResponse.redirect(newUrl);
+  }
+
   // Protect dashboard routes
   if (request.nextUrl.pathname.startsWith('/proposals') ||
       request.nextUrl.pathname.startsWith('/clients') ||
