@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { addDays, addWeeks, addMonths, addQuarters, addYears } from 'date-fns';
-import { generateStructuredCompletion } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -222,7 +222,7 @@ Return only the HTML email body (no subject line).`,
     },
   ];
 
-  const result = await generateStructuredCompletion<{ html: string }>(messages, {
+  const result = await adapter.generateStructuredCompletion<{ html: string }>(messages, {
     temperature: 0.7,
     maxTokens: 1024,
   });

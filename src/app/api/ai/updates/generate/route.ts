@@ -5,10 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/api';
-import { generateStructuredCompletion, checkRateLimit } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
+import { checkRateLimit } from '@/lib/ai/provider';
+import { enforceFeatureLimit } from '@/lib/middleware/subscription'
+import { incrementUsage } from '@/lib/usage'
+import { FeatureType } from '@prisma/client'
 import { createWeeklyUpdatePrompt } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 interface GenerateUpdateRequest {
   clientId: string;
@@ -59,7 +63,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Parse request
+    // 3. Check feature limits for AI updates
+    const check = await enforceFeatureLimit(user.id, FeatureType.AI_PROPOSAL)
+    if (!check.allowed) return NextResponse.json({ error: 'Feature quota exceeded', details: check }, { status: 403 })
+
+    // 4. Parse request
     const body = await request.json() as GenerateUpdateRequest;
     const { clientId, projectId, weekStart, weekEnd } = body;
 
@@ -158,7 +166,7 @@ export async function POST(request: NextRequest) {
           })),
         });
 
-        return await generateStructuredCompletion<UpdateResponse>(messages, {
+        return await adapter.generateStructuredCompletion<UpdateResponse>(messages, {
           temperature: 0.7,
           maxTokens: 3072,
         });
@@ -186,6 +194,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Weekly update generated:', updateDraft.id);
+
+    // Increment usage for AI proposal/update generation
+      try {
+        const sub = await prisma.razorpaySubscription.findFirst({ where: { userId: user.id } })
+        if (sub?.id) {
+          await incrementUsage(user.id, sub.id, FeatureType.AI_PROPOSAL, 1)
+        } else {
+          console.warn('Skipping usage increment: no subscription found for user:', user.id);
+        }
+      } catch (err) {
+        console.warn('Failed to increment usage for AI proposal:', err)
+    }
 
     return NextResponse.json({
       update: {

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import { EstimationAssistant } from '@/components/ai/EstimationAssistant';
 
 export default async function EstimatePage() {

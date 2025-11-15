@@ -28,6 +28,10 @@ model User {
   organisations    Organisation[]   @relation("UserOrganisations")
   paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
   subscription     Subscription?    @relation("UserSubscription")
+  razorpayCustomer RazorpayCustomer?
+  razorpaySubscriptions RazorpaySubscription[]
+  razorpayPayments  RazorpayPayment[]
+  usageRecords      UsageRecord[]
   taskActivities   TaskActivity[]   @relation("TaskActivityUser")
   taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
   taskComments     TaskComment[]    @relation("TaskCommentAuthor")
@@ -837,4 +841,200 @@ enum OrganisationStatus {
   PROSPECT
   ACTIVE
   INACTIVE
+}
+
+// Razorpay & Subscription models
+model RazorpayCustomer {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  razorpayCustomerId String   @unique
+  email              String
+  name               String?
+  phone              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions      RazorpaySubscription[]
+  payments           RazorpayPayment[]
+
+  @@index([userId])
+  @@index([razorpayCustomerId])
+}
+
+model RazorpaySubscription {
+  id                     String   @id @default(cuid())
+  userId                 String
+  customerId             String
+  razorpaySubscriptionId String   @unique
+  razorpayPlanId         String
+  status                 SubscriptionStatus
+  planTier               PlanTier
+  quantity               Int      @default(1)
+
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean  @default(false)
+  canceledAt             DateTime?
+  endedAt                DateTime?
+
+  totalCount             Int?
+  paidCount              Int      @default(0)
+  remainingCount         Int?
+  shortUrl               String?
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  customer               RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageRecords           UsageRecord[]
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([razorpaySubscriptionId])
+  @@index([status])
+}
+
+model RazorpayPayment {
+  id                 String   @id @default(cuid())
+  userId             String
+  customerId         String
+  razorpayPaymentId  String   @unique
+  razorpayOrderId    String?
+
+  amount             Int      // in paise
+  currency           String   @default("INR")
+  status             PaymentStatus
+  method             String?
+  description        String?
+  email              String?
+  contact            String?
+  invoiceId          String?
+  notes              Json?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  customer           RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([razorpayPaymentId])
+  @@index([status])
+}
+
+model SubscriptionPlan {
+  id                   String   @id @default(cuid())
+  razorpayPlanId       String   @unique
+  name                 String
+  tier                 PlanTier
+  description          String?
+  amount               Int      // monthly price in paise
+  currency             String   @default("INR")
+  period               String   @default("monthly")
+  interval             Int      @default(1)
+  maxOrganisations     Int
+  maxProjects          Int
+  maxTeamMembers       Int
+  maxAIProposals       Int
+  maxAIContracts       Int
+  maxRecurringInvoices Int
+  maxInvoices          Int
+  maxStorage           BigInt
+  scopeRadarLevel      String
+  analyticsLevel       String
+  supportLevel         String
+  customBranding       Boolean  @default(false)
+  apiAccess            Boolean  @default(false)
+  whiteLabel           Boolean  @default(false)
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([tier])
+  @@index([active])
+}
+
+model UsageRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  subscriptionId String
+  featureType    FeatureType
+  count          Int      @default(1)
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   RazorpaySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([featureType])
+  @@index([periodStart])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String?
+  resourceId String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+}
+
+// AI-backed documents storage for embeddings & retrieval (pgvector column)
+model Document {
+  id        String   @id @default(cuid())
+  namespace String?  
+  title     String?  
+  content   String?
+  metadata  Json?
+  // Embedding defined as an unsupported type; requires pgvector extension in Postgres
+  embedding Unsupported("vector(384)")? 
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("documents")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  UNPAID
+  PAUSED
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  REFUNDED
+  FAILED
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  GROWTH
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum FeatureType {
+  AI_PROPOSAL
+  AI_CONTRACT
+  RECURRING_INVOICE
+  SCOPE_RADAR_CHECK
+  INVOICE_GENERATED
+  STORAGE_USED
+  TEAM_MEMBER_ADDED
+  PROJECT_CREATED
+  ORGANISATION_CREATED
 }

@@ -83,7 +83,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
     try {
       // Get auth session for making authenticated requests
       const token = await getSessionToken()
-      if (!session?.access_token) {
+      if (!token) {
         toast.error('Authentication required')
         setLoading(false)
         return
@@ -156,7 +156,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
     setDeleting(true)
     try {
       const token = await getSessionToken()
-      if (!session?.access_token) {
+      if (!token) {
         toast.error('Authentication required')
         return
       }

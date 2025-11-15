@@ -101,7 +101,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
     
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}`, {
         headers: {
@@ -135,7 +135,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
   async function fetchInvites() {
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/invites?teamId=${teamId}`, {
         headers: {
@@ -156,7 +156,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
     setSaving(true);
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}`, {
         method: 'PUT',
@@ -183,7 +183,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
   async function handleRoleChange(userId: string, newRole: string) {
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
         method: 'PUT',
@@ -207,7 +207,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
 
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}/members/${userId}`, {
         method: 'DELETE',
@@ -229,7 +229,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
 
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}/invites`, {
         method: 'POST',
@@ -258,7 +258,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
 
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}/transfer-ownership`, {
         method: 'POST',
@@ -282,7 +282,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ teamId:
   async function handleDeleteTeam() {
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch(`/api/teams/${teamId}`, {
         method: 'DELETE',

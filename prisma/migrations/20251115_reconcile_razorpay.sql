@@ -1,0 +1,215 @@
+-- CreateEnum
+CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'PAST_DUE', 'CANCELED', 'INCOMPLETE', 'INCOMPLETE_EXPIRED', 'TRIALING', 'UNPAID', 'PAUSED');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('CREATED', 'AUTHORIZED', 'CAPTURED', 'REFUNDED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "PlanTier" AS ENUM ('FREE', 'STARTER', 'GROWTH', 'PROFESSIONAL', 'ENTERPRISE');
+
+-- CreateEnum
+CREATE TYPE "FeatureType" AS ENUM ('AI_PROPOSAL', 'AI_CONTRACT', 'RECURRING_INVOICE', 'SCOPE_RADAR_CHECK', 'INVOICE_GENERATED', 'STORAGE_USED', 'TEAM_MEMBER_ADDED', 'PROJECT_CREATED', 'ORGANISATION_CREATED');
+
+-- CreateTable
+CREATE TABLE "RazorpayCustomer" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "razorpayCustomerId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT,
+    "phone" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RazorpayCustomer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RazorpaySubscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "razorpaySubscriptionId" TEXT NOT NULL,
+    "razorpayPlanId" TEXT NOT NULL,
+    "status" "SubscriptionStatus" NOT NULL,
+    "planTier" "PlanTier" NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "currentPeriodStart" TIMESTAMP(3) NOT NULL,
+    "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "canceledAt" TIMESTAMP(3),
+    "endedAt" TIMESTAMP(3),
+    "totalCount" INTEGER,
+    "paidCount" INTEGER NOT NULL DEFAULT 0,
+    "remainingCount" INTEGER,
+    "shortUrl" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RazorpaySubscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RazorpayPayment" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "razorpayPaymentId" TEXT NOT NULL,
+    "razorpayOrderId" TEXT,
+    "amount" INTEGER NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'INR',
+    "status" "PaymentStatus" NOT NULL,
+    "method" TEXT,
+    "description" TEXT,
+    "email" TEXT,
+    "contact" TEXT,
+    "invoiceId" TEXT,
+    "notes" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RazorpayPayment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SubscriptionPlan" (
+    "id" TEXT NOT NULL,
+    "razorpayPlanId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "tier" "PlanTier" NOT NULL,
+    "description" TEXT,
+    "amount" INTEGER NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'INR',
+    "period" TEXT NOT NULL DEFAULT 'monthly',
+    "interval" INTEGER NOT NULL DEFAULT 1,
+    "maxOrganisations" INTEGER NOT NULL,
+    "maxProjects" INTEGER NOT NULL,
+    "maxTeamMembers" INTEGER NOT NULL,
+    "maxAIProposals" INTEGER NOT NULL,
+    "maxAIContracts" INTEGER NOT NULL,
+    "maxRecurringInvoices" INTEGER NOT NULL,
+    "maxInvoices" INTEGER NOT NULL,
+    "maxStorage" BIGINT NOT NULL,
+    "scopeRadarLevel" TEXT NOT NULL,
+    "analyticsLevel" TEXT NOT NULL,
+    "supportLevel" TEXT NOT NULL,
+    "customBranding" BOOLEAN NOT NULL DEFAULT false,
+    "apiAccess" BOOLEAN NOT NULL DEFAULT false,
+    "whiteLabel" BOOLEAN NOT NULL DEFAULT false,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SubscriptionPlan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UsageRecord" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "featureType" "FeatureType" NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 1,
+    "periodStart" TIMESTAMP(3) NOT NULL,
+    "periodEnd" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UsageRecord_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "action" TEXT NOT NULL,
+    "resource" TEXT,
+    "resourceId" TEXT,
+    "meta" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RazorpayCustomer_userId_key" ON "RazorpayCustomer"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RazorpayCustomer_razorpayCustomerId_key" ON "RazorpayCustomer"("razorpayCustomerId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayCustomer_userId_idx" ON "RazorpayCustomer"("userId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayCustomer_razorpayCustomerId_idx" ON "RazorpayCustomer"("razorpayCustomerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RazorpaySubscription_razorpaySubscriptionId_key" ON "RazorpaySubscription"("razorpaySubscriptionId");
+
+-- CreateIndex
+CREATE INDEX "RazorpaySubscription_userId_idx" ON "RazorpaySubscription"("userId");
+
+-- CreateIndex
+CREATE INDEX "RazorpaySubscription_customerId_idx" ON "RazorpaySubscription"("customerId");
+
+-- CreateIndex
+CREATE INDEX "RazorpaySubscription_razorpaySubscriptionId_idx" ON "RazorpaySubscription"("razorpaySubscriptionId");
+
+-- CreateIndex
+CREATE INDEX "RazorpaySubscription_status_idx" ON "RazorpaySubscription"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RazorpayPayment_razorpayPaymentId_key" ON "RazorpayPayment"("razorpayPaymentId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayPayment_userId_idx" ON "RazorpayPayment"("userId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayPayment_customerId_idx" ON "RazorpayPayment"("customerId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayPayment_razorpayPaymentId_idx" ON "RazorpayPayment"("razorpayPaymentId");
+
+-- CreateIndex
+CREATE INDEX "RazorpayPayment_status_idx" ON "RazorpayPayment"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SubscriptionPlan_razorpayPlanId_key" ON "SubscriptionPlan"("razorpayPlanId");
+
+-- CreateIndex
+CREATE INDEX "SubscriptionPlan_tier_idx" ON "SubscriptionPlan"("tier");
+
+-- CreateIndex
+CREATE INDEX "SubscriptionPlan_active_idx" ON "SubscriptionPlan"("active");
+
+-- CreateIndex
+CREATE INDEX "UsageRecord_userId_idx" ON "UsageRecord"("userId");
+
+-- CreateIndex
+CREATE INDEX "UsageRecord_subscriptionId_idx" ON "UsageRecord"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "UsageRecord_featureType_idx" ON "UsageRecord"("featureType");
+
+-- CreateIndex
+CREATE INDEX "UsageRecord_periodStart_idx" ON "UsageRecord"("periodStart");
+
+-- AddForeignKey
+ALTER TABLE "RazorpayCustomer" ADD CONSTRAINT "RazorpayCustomer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RazorpaySubscription" ADD CONSTRAINT "RazorpaySubscription_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "RazorpayCustomer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RazorpaySubscription" ADD CONSTRAINT "RazorpaySubscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RazorpayPayment" ADD CONSTRAINT "RazorpayPayment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "RazorpayCustomer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RazorpayPayment" ADD CONSTRAINT "RazorpayPayment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UsageRecord" ADD CONSTRAINT "UsageRecord_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UsageRecord" ADD CONSTRAINT "UsageRecord_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "RazorpaySubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;

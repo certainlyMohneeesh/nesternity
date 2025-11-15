@@ -5,10 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import adapter from '@/lib/ai/adapter';
+import { createEstimationPrompt } from '@/lib/ai/prompts';
 import { prisma } from '@/lib/db';
+import { enforceFeatureLimit } from '@/lib/middleware/subscription'
+import { incrementUsage } from '@/lib/usage'
+import { FeatureType } from '@prisma/client'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface BudgetEstimateRequest {
   title: string;
@@ -50,7 +53,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Parse request
+    // 2. Check feature limits
+    const check = await enforceFeatureLimit(user.id, FeatureType.AI_CONTRACT)
+    if (!check.allowed) return NextResponse.json({ error: 'Feature quota exceeded', details: check }, { status: 403 })
+
+    // 3. Parse request
     const body = await request.json() as BudgetEstimateRequest;
     const { title, brief, deliverables, timeline, currency = 'INR' } = body;
 
@@ -98,89 +105,36 @@ export async function POST(request: NextRequest) {
       // Continue without historical data
     }
 
-    // 4. Create AI prompt
-    const prompt = `You are an expert project cost estimator. Analyze the following project proposal and provide a detailed budget estimation.
-
-**Project Title:** ${title}
-
-**Project Brief:**
-${brief}
-
-**Deliverables:**
-${deliverables.map((d, i) => `${i + 1}. ${d.item}
-   Description: ${d.description}
-   Timeline: ${d.timeline}`).join('\n')}
-
-**Timeline/Milestones:**
-${timeline.map((m, i) => `${i + 1}. ${m.name} (${m.duration})
-   Deliverables: ${m.deliverables.join(', ')}`).join('\n')}
-
-**Historical Data (for learning):**
-${historicalEstimations.length > 0 ? historicalEstimations.map(h => 
-  `- "${h.title}": Estimated ${h.estimatedBudget}, Actual ${h.actualBudget || 'N/A'}, Accuracy: ${h.accuracy || 'N/A'}%`
-).join('\n') : 'No historical data available'}
-
-**Instructions:**
-1. Analyze the scope, complexity, and timeline
-2. Consider industry standards for similar projects
-3. Learn from historical estimations (if available) to improve accuracy
-4. Provide a realistic budget estimate in ${currency}
-5. Break down costs by major categories (design, development, testing, etc.)
-6. Consider factors like: deliverable complexity, timeline constraints, revision rounds
-7. Provide confidence level (low/medium/high) based on information completeness
-
-Return ONLY a valid JSON object with this structure:
-{
-  "estimatedBudget": <number>,
-  "confidence": "<low|medium|high>",
-  "breakdown": [
-    {
-      "category": "<category name>",
-      "amount": <number>,
-      "reasoning": "<brief explanation>"
-    }
-  ],
-  "rationale": "<overall reasoning for the estimate>"
-}`;
-
-    // 5. Generate estimation using AI
-    const modelName = process.env.AI_MODEL || 'gemini-2.0-flash-exp';
-    console.log('🤖 Using AI model:', modelName);
-    
-    const model = genAI.getGenerativeModel({ 
-      model: modelName,
-      generationConfig: {
-        temperature: 0.3, // Lower temperature for more consistent estimates
-        topP: 0.8,
-        topK: 20,
-        responseMimeType: 'application/json', // Force JSON output
-      },
+    // 4. Build prompt messages via prompts helper
+    const messages = createEstimationPrompt({
+      projectDescription: brief,
+      deliverables: deliverables.map(d => d.item),
+      clientBudget: currency === 'INR' ? undefined : undefined, // keep currency handling simple
+      historicalData: { similarProjects: historicalEstimations.map(h => ({ name: h.title, hours: h.estimatedBudget, cost: h.estimatedBudget, actualVsEstimate: h.accuracy ?? undefined })) }
     });
 
-    console.log('🚀 Sending request to Gemini API...');
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    let text = response.text();
 
-    console.log('✅ AI Response received');
-    console.log('📄 Response length:', text.length, 'characters');
-    console.log('📝 Response preview:', text.substring(0, 200) + '...');
+    // 5. Generate estimation using the adapter (RAG + provider). This returns structured JSON as data.
+    const result = await adapter.generateStructuredCompletion<{
+      estimatedHours: number;
+      estimatedCost: number;
+      confidence: number | string;
+      breakdown: Array<{ phase: string; hours: number; cost: number }>
+      rationale: string;
+      riskFactors?: any[];
+      assumptions?: string[];
+      suggestedPackages?: any[];
+    }>(messages, { temperature: 0.3, maxTokens: 4096, ragEnabled: process.env.AI_RAG_ENABLED === 'true' });
 
-    // Clean up response (remove markdown code blocks if present)
-    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-    let estimation: BudgetEstimation;
-    try {
-      estimation = JSON.parse(text);
-      console.log('✅ Successfully parsed AI response');
-      console.log('💵 Estimated budget:', estimation.estimatedBudget);
-      console.log('🎯 Confidence level:', estimation.confidence);
-    } catch (parseError) {
-      console.error('❌ Failed to parse AI response');
-      console.error('📄 Raw response:', text);
-      console.error('🔍 Parse error:', parseError instanceof Error ? parseError.message : 'Unknown error');
-      throw new Error('Invalid AI response format');
-    }
+    const estimation = {
+      estimatedBudget: result.data.estimatedCost,
+      confidence: typeof result.data.confidence === 'number' ? (result.data.confidence >= 0.85 ? 'high' : (result.data.confidence >= 0.6 ? 'medium' : 'low')) : (result.data.confidence as any || 'medium'),
+      breakdown: result.data.breakdown?.map(b => ({ category: b.phase, amount: b.cost, reasoning: '' })) || [],
+      rationale: result.data.rationale || '',
+    } as BudgetEstimation;
+    console.log('✅ Successfully generated AI estimation');
+    console.log('💵 Estimated budget:', estimation.estimatedBudget);
+    console.log('🎯 Confidence level:', estimation.confidence);
 
     // 6. Calculate timeline weeks for storage
     const timelineWeeks = timeline.reduce((total, milestone) => {
@@ -213,6 +167,18 @@ Return ONLY a valid JSON object with this structure:
     }
 
     console.log('✅ Budget estimation completed successfully');
+
+    // Increment usage for AI estimates
+    try {
+      const sub = await prisma.razorpaySubscription.findFirst({ where: { userId: user.id } })
+      if (sub?.id) {
+        await incrementUsage(user.id, sub.id, FeatureType.AI_CONTRACT, 1)
+      } else {
+        console.warn('Skipping usage increment: no subscription found for user:', user.id);
+      }
+    } catch (err) {
+      console.warn('Failed to increment usage for AI estimate:', err)
+    }
 
     return NextResponse.json({
       success: true,

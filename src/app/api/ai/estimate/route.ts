@@ -5,10 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/api';
-import { generateStructuredCompletion, checkRateLimit } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
+import { checkRateLimit } from '@/lib/ai/provider';
+import { enforceFeatureLimit } from '@/lib/middleware/subscription'
+import { incrementUsage } from '@/lib/usage'
+import { FeatureType } from '@prisma/client'
 import { createEstimationPrompt } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 interface EstimateRequest {
   clientId?: string;
@@ -67,7 +71,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Parse request
+    // 3. Check feature limits for AI estimation
+    const check = await enforceFeatureLimit(user.id, FeatureType.AI_CONTRACT)
+    if (!check.allowed) return NextResponse.json({ error: 'Feature quota exceeded', details: check }, { status: 403 })
+
+    // 4. Parse request
     const body = await request.json() as EstimateRequest;
     const { 
       clientId, 
@@ -161,7 +169,7 @@ export async function POST(request: NextRequest) {
           historicalData,
         });
 
-        return await generateStructuredCompletion<EstimationResponse>(messages, {
+        return await adapter.generateStructuredCompletion<EstimationResponse>(messages, {
           temperature: 0.5, // Lower temperature for more consistent estimates
           maxTokens: 8192, // Increased for longer responses
         });
@@ -192,6 +200,19 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Estimation generated and saved:', estimation.id);
+
+    // Increment usage for AI estimation
+    try {
+      // Use the razorpaySubscription for this user if available
+        const sub = await prisma.razorpaySubscription.findFirst({ where: { userId: user.id } })
+        if (sub?.id) {
+          await incrementUsage(user.id, sub.id, FeatureType.AI_CONTRACT, 1)
+        } else {
+          console.warn('Skipping usage increment: no subscription found for user:', user.id);
+        }
+    } catch (err) {
+      console.warn('Failed to increment usage for AI estimation:', err)
+    }
 
     return NextResponse.json({
       estimation: {
