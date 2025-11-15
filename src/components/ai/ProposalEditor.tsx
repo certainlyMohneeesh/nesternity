@@ -320,7 +320,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Total Investment</p>
                         <p className="text-2xl font-bold">
-                          {proposal.pricing.currency} {proposal.pricing.amount.toLocaleString()}
+                          {proposal.pricing?.currency ?? 'INR'} {proposal.pricing?.amount ? Number(proposal.pricing.amount).toLocaleString() : 'TBD'}
                         </p>
                       </div>
                     </div>
@@ -334,7 +334,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Timeline</p>
-                        <p className="text-lg font-semibold">{proposal.timeline.total}</p>
+                        <p className="text-lg font-semibold">{proposal.timeline?.total ?? 'TBD'}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -359,7 +359,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                   <h4 className="font-semibold text-sm uppercase tracking-wide">Deliverables</h4>
                 </div>
                 <div className="space-y-3">
-                  {proposal.deliverables.map((d: any, i: number) => (
+                  {(proposal.deliverables || []).map((d: any, i: number) => (
                     <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/50 border">
                       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
                         {i + 1}
@@ -380,7 +380,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
               </div>
 
               {/* Timeline & Milestones */}
-              {proposal.timeline.milestones && proposal.timeline.milestones.length > 0 && (
+              {proposal.timeline?.milestones?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="h-1 w-1 rounded-full bg-primary" />

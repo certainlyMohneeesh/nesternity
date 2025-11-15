@@ -10,7 +10,7 @@ const supabase = createClient(
 // GET /api/organisations/[id]/projects - List organisation's projects
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -28,9 +28,10 @@ export async function GET(
       );
     }
 
-    // Check ownership
+    // Await params (Next.js may provide a thenable for params) and check ownership
+    const { id: orgId } = (await params) as { id: string };
     const organisation = await prisma.organisation.findUnique({
-      where: { id: params.id }
+      where: { id: orgId }
     });
 
     if (!organisation) {
@@ -51,7 +52,7 @@ export async function GET(
     const status = searchParams.get('status');
 
     const where: any = {
-      organisationId: await params.id
+      organisationId: orgId
     };
 
     if (status) {
@@ -107,7 +108,7 @@ export async function GET(
 // POST /api/organisations/[id]/projects - Create project under organisation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -126,8 +127,9 @@ export async function POST(
     }
 
     // Check ownership and project limits
+    const { id: orgId } = (await params) as { id: string };
     const organisation = await prisma.organisation.findUnique({
-      where: { id: params.id },
+      where: { id: orgId },
       include: {
         _count: {
           select: {
@@ -215,7 +217,7 @@ export async function POST(
         status: status || 'PLANNING',
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-        organisationId: params.id,
+        organisationId: orgId,
         teamId: projectTeamId
       },
       include: {
