@@ -73,10 +73,20 @@ export interface RazorpayWebhookEvent {
     payment?: {
       entity: {
         id: string;
-        order_id: string;
-        status: string;
+        entity?: string;
+        order_id?: string;
+        status?: string;
         amount: number;
         currency: string;
+        method?: string;
+        description?: string;
+        email?: string;
+        contact?: string;
+        // additional fields we commonly use (optional)
+        invoice_id?: string;
+        card_id?: string;
+        created_at?: number;
+        notes?: Record<string, string>;
       };
     };
   };
@@ -236,6 +246,59 @@ export async function cancelPaymentLink(
     return paymentLink;
   } catch (error) {
     console.error('Error cancelling Razorpay payment link:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a Razorpay customer
+ */
+export async function createCustomer(data: { name?: string; email: string; contact?: string }, userKeyId?: string, userKeySecret?: string) {
+  try {
+    const { keyId, keySecret } = getRazorpayCredentials(userKeyId, userKeySecret);
+    const response = await fetch('https://api.razorpay.com/v1/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': getAuthHeader(keyId, keySecret),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.description || 'Failed to create customer');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating Razorpay customer:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a Razorpay subscription
+ */
+export async function createSubscription(data: { plan_id: string; customer_id: string; total_count?: number; quantity?: number; }, userKeyId?: string, userKeySecret?: string) {
+  try {
+    const { keyId, keySecret } = getRazorpayCredentials(userKeyId, userKeySecret);
+    const response = await fetch('https://api.razorpay.com/v1/subscriptions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': getAuthHeader(keyId, keySecret),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Razorpay createSubscription error:', error);
+      throw new Error(error.error?.description || 'Failed to create subscription');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating Razorpay subscription:', error);
     throw error;
   }
 }

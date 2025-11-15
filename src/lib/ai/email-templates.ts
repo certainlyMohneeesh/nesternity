@@ -3,7 +3,7 @@
  * Scope creep warnings, recurring invoices, notifications
  */
 
-import { generateStructuredCompletion } from './gemini';
+import adapter from './adapter';
 import { getCurrencySymbol } from '@/lib/utils';
 
 export interface ScopeCreepEmailData {
@@ -86,7 +86,7 @@ Return only the complete HTML email body (including greeting and signature).`,
   ];
 
   try {
-    const result = await generateStructuredCompletion<{ html: string }>(messages, {
+    const result = await adapter.generateStructuredCompletion<{ html: string }>(messages, {
       temperature: 0.7,
       maxTokens: 2048,
     });
@@ -144,7 +144,7 @@ Return only the complete HTML email body.`,
   ];
 
   try {
-    const result = await generateStructuredCompletion<{ html: string }>(messages, {
+    const result = await adapter.generateStructuredCompletion<{ html: string }>(messages, {
       temperature: 0.7,
       maxTokens: 1536,
     });

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
 

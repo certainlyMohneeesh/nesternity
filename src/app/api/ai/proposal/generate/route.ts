@@ -5,10 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/api';
-import { generateStructuredCompletion, checkRateLimit } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
+import { checkRateLimit } from '@/lib/ai/provider';
+import { enforceFeatureLimit } from '@/lib/middleware/subscription'
+import { incrementUsage } from '@/lib/usage'
+import { FeatureType } from '@prisma/client'
 import { createProposalPrompt } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 interface GenerateProposalRequest {
   clientId: string;
@@ -75,7 +79,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Parse and validate request
+    // 3. Check feature limits for AI proposals
+    const check = await enforceFeatureLimit(user.id, FeatureType.AI_PROPOSAL)
+    if (!check.allowed) return NextResponse.json({ error: 'Feature quota exceeded', details: check }, { status: 403 })
+
+    // 4. Parse and validate request
     const body = await request.json() as GenerateProposalRequest;
     const { clientId, brief, deliverables, budget, timeline } = body;
 
@@ -135,15 +143,27 @@ export async function POST(request: NextRequest) {
           deliverables,
         });
 
-        return await generateStructuredCompletion<ProposalResponse>(messages, {
+        return await adapter.generateStructuredCompletion<ProposalResponse>(messages, {
           temperature: 0.7,
           maxTokens: 4096,
+          ragEnabled: process.env.AI_RAG_ENABLED === 'true',
         });
       },
       24 * 60 * 60 * 1000 // 24 hour cache
     );
 
     console.log('✅ Proposal generated successfully');
+    // Increment usage for AI proposal
+    try {
+      const sub = await prisma.razorpaySubscription.findFirst({ where: { userId: user.id } })
+      if (sub?.id) {
+        await incrementUsage(user.id, sub.id, FeatureType.AI_PROPOSAL, 1)
+      } else {
+        console.warn('Skipping usage increment: no subscription found for user:', user.id);
+      }
+    } catch (err) {
+      console.warn('Failed to increment usage for AI proposal:', err)
+    }
     console.log('📊 Token usage:', result.usage);
 
     // 6. Return response with rate limit headers

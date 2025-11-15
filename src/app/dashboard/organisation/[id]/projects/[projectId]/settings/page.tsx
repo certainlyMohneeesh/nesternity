@@ -69,7 +69,7 @@ export default function SettingsPage() {
   async function fetchUserSettings() {
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch('/api/profile', {
         headers: {
@@ -102,7 +102,7 @@ export default function SettingsPage() {
   async function fetchSubscription() {
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch('/api/stripe/subscription', {
         headers: {
@@ -123,7 +123,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch('/api/profile', {
         method: 'PUT',
@@ -148,7 +148,7 @@ export default function SettingsPage() {
     setExportLoading(true);
     try {
       const token = await getSessionToken();
-      if (!authSession?.access_token) return;
+      if (!token) return;
 
       const response = await fetch('/api/export-data', {
         headers: {

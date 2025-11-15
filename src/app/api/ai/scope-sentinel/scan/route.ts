@@ -5,10 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/api';
-import { generateStructuredCompletion, checkRateLimit } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
+import { checkRateLimit } from '@/lib/ai/provider';
+import { enforceFeatureLimit } from '@/lib/middleware/subscription'
+import { incrementUsage } from '@/lib/usage'
+import { FeatureType } from '@prisma/client'
 import { createScopeAnalysisPrompt } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 interface ScopeScanRequest {
   projectId: string;
@@ -56,7 +60,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Parse request
+    // 3. Check feature limits for scope sentinel
+    const check = await enforceFeatureLimit(user.id, FeatureType.SCOPE_RADAR_CHECK)
+    if (!check.allowed) return NextResponse.json({ error: 'Feature quota exceeded', details: check }, { status: 403 })
+
+    // 4. Parse request
     const body = await request.json() as ScopeScanRequest;
     const { projectId, originalScope } = body;
 
@@ -139,9 +147,10 @@ export async function POST(request: NextRequest) {
           revisionCount,
         });
 
-        return await generateStructuredCompletion<ScopeAnalysisResponse>(messages, {
+        return await adapter.generateStructuredCompletion<ScopeAnalysisResponse>(messages, {
           temperature: 0.6,
           maxTokens: 4096,
+          ragEnabled: process.env.AI_RAG_ENABLED === 'true',
         });
       },
       7 * 24 * 60 * 60 * 1000 // 7 day cache
@@ -166,6 +175,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log('✅ Scope analysis complete:', scopeRadar.id);
+
+    // Increment usage for scope radar check
+    try {
+      const sub = await prisma.razorpaySubscription.findFirst({ where: { userId: user.id } })
+      if (sub?.id) {
+        await incrementUsage(user.id, sub.id, FeatureType.SCOPE_RADAR_CHECK, 1)
+      } else {
+        console.warn('Skipping usage increment: no subscription found for user:', user.id);
+      }
+    } catch (err) {
+      console.warn('Failed to increment usage for scope radar check:', err)
+    }
     console.log(`⚠️  Risk Level: ${result.data.riskLevel}, Creep Risk: ${result.data.creepRisk}`);
 
     return NextResponse.json({

@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
-import { generateStructuredCompletion } from '@/lib/ai/gemini';
+import adapter from '@/lib/ai/adapter';
 import { createScopeRadarNotification, ACTIVITY_TYPES } from '@/lib/notifications';
 
 interface BudgetCheckRequest {
@@ -278,7 +278,7 @@ Return JSON:
       },
     ];
 
-    const aiResult = await generateStructuredCompletion<{
+    const aiResult = await adapter.generateStructuredCompletion<{
       clientEmailDraft: string;
       recommendations: string[];
     }>(messages, {
