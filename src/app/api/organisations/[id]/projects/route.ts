@@ -51,7 +51,7 @@ export async function GET(
     const status = searchParams.get('status');
 
     const where: any = {
-      organisationId: params.id
+      organisationId: await params.id
     };
 
     if (status) {
