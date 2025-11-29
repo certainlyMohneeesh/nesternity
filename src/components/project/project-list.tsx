@@ -211,8 +211,8 @@ export function ProjectList({ organisationId }: ProjectListProps) {
             {project.goal && project.goal > 0 && (
               <div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Progress</span>
-                  <span className="font-medium text-gray-900">{progress}%</span>
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-medium">{progress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                   <div
@@ -220,7 +220,7 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                   <CheckCircle2 className="w-3 h-3" />
                   <span>{project.completedTasks || 0} / {project.goal} tasks completed</span>
                 </div>
@@ -230,11 +230,11 @@ export function ProjectList({ organisationId }: ProjectListProps) {
             {/* Budget Section */}
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
+                <div className="flex items-center gap-1 text-sm font-medium">
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
                   <span>Budget</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">
+                <span className="text-sm font-bold">
                   {currencySymbol}{budget.toLocaleString()}
                 </span>
               </div>

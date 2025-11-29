@@ -223,11 +223,11 @@ export function BreadcrumbCombobox() {
           className="w-6 h-6 sm:w-8 sm:h-8"
         />
       </button>
-      <span className="text-gray-400">/</span>
+      <span className="text-muted-foreground">/</span>
 
       {breadcrumbItems.map((item, index) => (
         <div key={item.href} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {index > 0 && <span className="text-gray-400">/</span>}
+          {index > 0 && <span className="text-muted-foreground">/</span>}
 
           {/* Organisation breadcrumb with combobox */}
           {item.isOrganisation && currentOrgId ? (
@@ -237,13 +237,13 @@ export function BreadcrumbCombobox() {
                   variant="ghost"
                   role="combobox"
                   aria-expanded={orgPopoverOpen}
-                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-gray-100"
+                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
                 >
                   <div className="flex items-center gap-1 sm:gap-2">
                     <span className="hidden sm:inline">{item.icon}</span>
                     <span className={cn(
                       "font-medium truncate max-w-[80px] sm:max-w-none",
-                      item.current ? "text-gray-900" : "text-gray-600"
+                      item.current ? "text-foreground" : "text-muted-foreground"
                     )}>
                       {item.label}
                     </span>
@@ -305,13 +305,13 @@ export function BreadcrumbCombobox() {
                   variant="ghost"
                   role="combobox"
                   aria-expanded={projectPopoverOpen}
-                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-gray-100"
+                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
                 >
                   <div className="flex items-center gap-1 sm:gap-2">
                     <span className="hidden sm:inline">{item.icon}</span>
                     <span className={cn(
                       "font-medium truncate max-w-[80px] sm:max-w-none",
-                      item.current ? "text-gray-900" : "text-gray-600"
+                      item.current ? "text-foreground" : "text-muted-foreground"
                     )}>
                       {item.label}
                     </span>

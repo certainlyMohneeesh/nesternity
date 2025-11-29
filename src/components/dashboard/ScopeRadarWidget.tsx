@@ -404,28 +404,28 @@ export default function ScopeRadarWidget({
   // Get risk level styling
   const getRiskStyles = () => {
     if (!budgetData) return {
-      color: "text-gray-600",
-      bg: "bg-gray-100",
+      color: "text-muted-foreground",
+      bg: "bg-muted",
       badge: "secondary" as const,
       icon: AlertTriangle
     };
 
     const styles = {
       safe: {
-        color: "text-green-600",
-        bg: "bg-green-50",
+        color: "text-green-600 dark:text-green-400",
+        bg: "bg-green-50 dark:bg-green-950/50",
         badge: "default" as const,
         icon: CheckCircle2,
       },
       warning: {
-        color: "text-yellow-600",
-        bg: "bg-yellow-50",
+        color: "text-yellow-600 dark:text-yellow-400",
+        bg: "bg-yellow-50 dark:bg-yellow-950/50",
         badge: "secondary" as const,
         icon: AlertCircle,
       },
       critical: {
-        color: "text-red-600",
-        bg: "bg-red-50",
+        color: "text-red-600 dark:text-red-400",
+        bg: "bg-red-50 dark:bg-red-950/50",
         badge: "destructive" as const,
         icon: XCircle,
       },
@@ -521,7 +521,7 @@ export default function ScopeRadarWidget({
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Spent</span>
-              <span className="font-bold text-blue-600">
+              <span className="font-bold text-blue-600 dark:text-blue-400">
                 {formatBudgetCurrency(budgetData.invoiceTotal || 0)}
               </span>
             </div>
@@ -529,14 +529,14 @@ export default function ScopeRadarWidget({
             {budgetData.remainingBudget >= 0 ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Remaining</span>
-                <span className="font-bold text-green-600">
+                <span className="font-bold text-green-600 dark:text-green-400">
                   {formatBudgetCurrency(budgetData.remainingBudget || 0)}
                 </span>
               </div>
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Overrun</span>
-                <span className="font-bold text-red-600">
+                <span className="font-bold text-red-600 dark:text-red-400">
                   {formatBudgetCurrency(Math.abs(budgetData.overrunAmount || 0))}
                 </span>
               </div>
@@ -547,17 +547,17 @@ export default function ScopeRadarWidget({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className={`font-medium ${(budgetData.spendPercentage || 0) > 100 ? "text-red-600" : ""}`}>
+              <span className={`font-medium ${(budgetData.spendPercentage || 0) > 100 ? "text-red-600 dark:text-red-400" : ""}`}>
                 {(budgetData.spendPercentage || 0).toFixed(1)}%
               </span>
             </div>
             <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all ${budgetData.riskLevel === "critical"
-                    ? "bg-red-600"
-                    : budgetData.riskLevel === "warning"
-                      ? "bg-yellow-600"
-                      : "bg-green-600"
+                  ? "bg-red-600"
+                  : budgetData.riskLevel === "warning"
+                    ? "bg-yellow-600"
+                    : "bg-green-600"
                   }`}
                 style={{ width: `${Math.min(budgetData.spendPercentage || 0, 100)}%` }}
               />
@@ -574,7 +574,7 @@ export default function ScopeRadarWidget({
               {budgetData.overrunAmount > 0 && (
                 <div className="p-3 bg-background rounded-lg border">
                   <p className="text-xs text-muted-foreground">Overrun %</p>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {(budgetData.overrunPercentage || 0).toFixed(1)}%
                   </p>
                 </div>
