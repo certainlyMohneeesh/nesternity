@@ -5,29 +5,29 @@ import { revalidatePath } from 'next/cache';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const resolvedParams = await params
-    
+
     // Get auth token from request headers
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: resolvedParams.id,
+        id: resolvedParams.invoiceId,
         issuedById: user.id,
       },
       include: {
@@ -58,22 +58,22 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const resolvedParams = await params
-    
+
     // Get auth token from request headers
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -83,7 +83,7 @@ export async function PUT(
 
     const invoice = await prisma.invoice.updateMany({
       where: {
-        id: resolvedParams.id,
+        id: resolvedParams.invoiceId,
         issuedById: user.id,
       },
       data: {
@@ -97,7 +97,7 @@ export async function PUT(
     }
 
     const updatedInvoice = await prisma.invoice.findUnique({
-      where: { id: resolvedParams.id },
+      where: { id: resolvedParams.invoiceId },
       include: {
         client: true,
         items: true,
@@ -113,16 +113,16 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     console.log('🗑️ Invoice delete request received');
     const resolvedParams = await params;
-    
+
     // Get auth token from request headers
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       console.error('❌ No authorization token provided');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -130,19 +130,19 @@ export async function DELETE(
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('❌ Invalid authorization token:', authError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('✅ User authenticated:', user.email);
-    console.log('🔍 Looking for invoice:', resolvedParams.id);
+    console.log('🔍 Looking for invoice:', resolvedParams.invoiceId);
 
     // Check if invoice exists and belongs to user
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: resolvedParams.id,
+        id: resolvedParams.invoiceId,
         issuedById: user.id,
       },
       include: {
@@ -161,7 +161,7 @@ export async function DELETE(
     console.log('🗑️ Deleting invoice items...');
     await prisma.invoiceItem.deleteMany({
       where: {
-        invoiceId: resolvedParams.id,
+        invoiceId: resolvedParams.invoiceId,
       },
     });
     console.log('✅ Invoice items deleted');
@@ -170,7 +170,7 @@ export async function DELETE(
     console.log('🗑️ Deleting invoice...');
     await prisma.invoice.delete({
       where: {
-        id: resolvedParams.id,
+        id: resolvedParams.invoiceId,
       },
     });
 
@@ -190,7 +190,7 @@ export async function DELETE(
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     });
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to delete invoice',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });

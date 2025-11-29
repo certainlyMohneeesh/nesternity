@@ -23,7 +23,7 @@ export default async function RecurringInvoicesPage({
   params: Promise<{ id: string; projectId: string }>;
 }) {
   const { id: orgId, projectId } = await params;
-  
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -60,14 +60,14 @@ export default async function RecurringInvoicesPage({
 
   // Calculate stats
   const activeInvoices = recurringInvoices.filter(inv => inv.autoGenerateEnabled);
-  
+
   // Calculate total recurring value with currency information
   const recurringValueByCurrency = recurringInvoices.reduce((acc, inv) => {
     const subtotal = inv.items.reduce((s, item) => s + item.total, 0);
     const tax = subtotal * ((inv.taxRate || 0) / 100);
     const discount = subtotal * ((inv.discount || 0) / 100);
     const total = subtotal + tax - discount;
-    
+
     const currency = inv.currency || 'USD';
     acc[currency] = (acc[currency] || 0) + total;
     return acc;
@@ -98,7 +98,13 @@ export default async function RecurringInvoicesPage({
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard/invoices">
+            <BreadcrumbLink href={`/dashboard/organisation/${orgId}/projects/${projectId}`}>
+              Project
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices`}>
               <FileText className="h-4 w-4 mr-1" />
               Invoices
             </BreadcrumbLink>

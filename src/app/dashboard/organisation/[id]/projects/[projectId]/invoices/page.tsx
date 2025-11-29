@@ -211,6 +211,20 @@ export default function InvoiceHistoryPage() {
     fetchInvoices()
   }
 
+  // Handle status change: update local state immediately, then refetch
+  const handleStatusUpdate = (invoiceId: string, newStatus: Invoice['status']) => {
+    // Immediately update local state for instant UI feedback
+    setInvoices(prevInvoices =>
+      prevInvoices.map(inv =>
+        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+      )
+    )
+    // Refetch in background to ensure data consistency
+    fetchInvoices().catch(err => {
+      console.error('[InvoicesPage] Background refetch failed:', err)
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[200px]">
@@ -221,6 +235,15 @@ export default function InvoiceHistoryPage() {
       </div>
     )
   }
+
+  // Filter invoices based on activeTab
+  const filteredInvoices = invoices.filter(invoice => {
+    if (activeTab === 'all') return true
+    if (activeTab === 'pending') return invoice.status === 'PENDING'
+    if (activeTab === 'paid') return invoice.status === 'PAID'
+    if (activeTab === 'overdue') return invoice.status === 'OVERDUE'
+    return true
+  })
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -309,7 +332,7 @@ export default function InvoiceHistoryPage() {
                 <p className="text-muted-foreground">Loading invoices...</p>
               </div>
             </div>
-          ) : invoices.length === 0 ? (
+          ) : filteredInvoices.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FileText className="w-12 h-12 text-gray-400 mb-4" />
@@ -323,13 +346,13 @@ export default function InvoiceHistoryPage() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {invoices.map((invoice: Invoice) => (
+              {filteredInvoices.map((invoice: Invoice) => (
                 <InvoiceCard
                   key={invoice.id}
                   invoice={invoice}
                   organisationId={orgId}
                   projectId={projectId}
-                  onStatusChange={fetchInvoices}
+                  onStatusChange={(newStatus) => handleStatusUpdate(invoice.id, newStatus)}
                 />
               ))}
             </div>

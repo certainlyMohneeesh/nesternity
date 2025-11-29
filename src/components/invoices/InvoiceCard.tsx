@@ -65,7 +65,7 @@ export interface InvoiceCardProps {
   };
   organisationId?: string;
   projectId?: string;
-  onStatusChange?: (status: string) => void;
+  onStatusChange?: (status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED') => void;
 }
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, organisationId, projectId, onStatusChange }) => {

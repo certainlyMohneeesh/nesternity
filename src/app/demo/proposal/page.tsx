@@ -7,6 +7,9 @@ import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer'
 import { ProposalDocument } from '@/components/pdf/ProposalDocument'
 import { Download, Eye } from 'lucide-react'
 
+// Force dynamic rendering to avoid SSR issues with PDFDownloadLink
+export const dynamic = 'force-dynamic'
+
 // Sample proposal data for demo
 const sampleProposal = {
     id: 'demo-proposal-001',
@@ -110,6 +113,11 @@ const sampleProposal = {
 
 export default function DemoProposalPage() {
     const [showPreview, setShowPreview] = React.useState(false)
+    const [isClient, setIsClient] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -135,17 +143,19 @@ export default function DemoProposalPage() {
                                 <Eye className="h-4 w-4 mr-2" />
                                 {showPreview ? 'Hide Preview' : 'Show Preview'}
                             </Button>
-                            <PDFDownloadLink
-                                document={<ProposalDocument proposal={sampleProposal} />}
-                                fileName="demo-proposal.pdf"
-                            >
-                                {({ loading }) => (
-                                    <Button variant="outline" disabled={loading}>
-                                        <Download className="h-4 w-4 mr-2" />
-                                        {loading ? 'Generating PDF...' : 'Download Demo PDF'}
-                                    </Button>
-                                )}
-                            </PDFDownloadLink>
+                            {isClient && (
+                                <PDFDownloadLink
+                                    document={<ProposalDocument proposal={sampleProposal} />}
+                                    fileName="demo-proposal.pdf"
+                                >
+                                    {({ loading }) => (
+                                        <Button variant="outline" disabled={loading}>
+                                            <Download className="h-4 w-4 mr-2" />
+                                            {loading ? 'Generating PDF...' : 'Download Demo PDF'}
+                                        </Button>
+                                    )}
+                                </PDFDownloadLink>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
