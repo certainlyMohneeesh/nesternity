@@ -10,17 +10,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { Settings, LogOut, User, CreditCard, HelpCircle } from "lucide-react";
+import { Settings, LogOut, User, CreditCard, HelpCircle, Moon, Sun, Monitor } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient, getSessionToken } from '@/lib/supabase/client-session';
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 
 export function UserNav() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const getUser = async () => {
@@ -108,6 +115,31 @@ export function UserNav() {
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Billing</span>
           </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Monitor className="mr-2 h-4 w-4" />
+              <span>Theme</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                <DropdownMenuRadioItem value="system">
+                  <Monitor className="mr-2 h-4 w-4" />
+                  System
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="light">
+                  <Sun className="mr-2 h-4 w-4" />
+                  Light
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">
+                  <Moon className="mr-2 h-4 w-4" />
+                  Dark
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push('/docs')}>

@@ -1,49 +1,49 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, CheckCircle, Star, Zap, Shield, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle,
+  Star,
+  Zap,
+  Shield,
+  Users,
+  Sparkles,
+  Brain,
+  FileText,
+  Database,
+  Lock,
+  Globe,
+  Workflow
+} from "lucide-react";
 import InteractiveDemo from "@/components/demo/InteractiveDemo";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
+import { HomeHeader } from "@/components/navigation/home-header";
+import { BentoGrid } from "@/components/home/bento-grid";
 
 export default function HomePage() {
   return (
     <main className="min-h-screen w-full bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Navigation */}
-      <nav className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
-        <div className="flex items-center space-x-2">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center">
-            <img src="/nesternity.svg" alt="Nesternity" className="w-12 h-12" />
-            </div>
-          <span className="text-xl font-bold">Nesternity</span>
-        </div>
-        <div className="hidden md:flex items-center space-x-6">
-          {/* <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link>
-          <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link> */}
-          <Link href="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">Sign In</Link>
-          <Link href="/dashboard">
-            <Button size="sm">Get Started</Button>
-          </Link>
-        </div>
-      </nav>
+      {/* Dynamic Navigation Header */}
+      <HomeHeader />
 
       {/* Hero Section */}
-      <section className="py-20 md:py-32 px-6 text-center max-w-5xl mx-auto relative">
+      <section className="py-20 md:py-32 px-6 text-center max-w-5xl mx-auto relative mt-16">
         {/* Background overlay image */}
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-          <img 
-        src="/nesternity.svg" 
-        alt="" 
-        className="w-[600px] h-[600px] object-contain"
+          <img
+            src="/nesternity.svg"
+            alt=""
+            className="w-[600px] h-[600px] object-contain"
           />
         </div>
-        
+
         <Badge variant="secondary" className="mb-6 relative z-10">
-          🚀 Now in Beta 
+          🚀 Now in Beta
         </Badge>
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
-          The Freelancer's Nest for Clients, Teams & Clarity. 
+          The Freelancer's Nest for Clients, Teams & Clarity.
           Build, Collaborate, Thrive.
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed relative z-10">
@@ -51,50 +51,130 @@ export default function HomePage() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12 relative z-10">
           <Link href="/dashboard">
-        <Button size="lg" className="gap-2 text-lg px-8 py-6">
-          Get Started Free
-          <ArrowRight className="h-5 w-5" />
-        </Button>
+            <Button size="lg" className="gap-2 text-lg px-8 py-6">
+              Get Started Free
+              <ArrowRight className="h-5 w-5" />
+            </Button>
           </Link>
-          {/* <Link href="/demo">
-        <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-6">
-          Watch Demo
-        </Button>
-          </Link> */}
         </div>
         <div className="flex justify-center items-center gap-6 text-muted-foreground relative z-10">
           <div className="flex items-center gap-2">
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm">Free to start</span>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span className="text-sm">Free to start</span>
           </div>
           <div className="flex items-center gap-2">
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm">No credit card required</span>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span className="text-sm">No credit card required</span>
           </div>
           <div className="flex items-center gap-2">
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm">Setup in 2 minutes</span>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span className="text-sm">Setup in 2 minutes</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Grid - Supabase Style */}
+      <section className="py-20 px-6 bg-gradient-to-br from-background to-secondary/5">
+        <div className="max-w-7xl mx-auto">
+          {/* Bento Grid Features */}
+          <BentoGrid />
+        </div>
+      </section>
+
+      {/* AI Features Section */}
+      <section className="py-24 px-6 bg-gradient-to-r from-primary/5 to-emerald-500/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-4">
+              <Sparkles className="h-3 w-3 mr-1 inline" />
+              AI-Powered
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Work smarter with
+              <span className="bg-gradient-to-r from-primary to-[#A459D1] bg-clip-text text-transparent"> AI assistance</span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Let artificial intelligence handle the heavy lifting while you focus on what matters most
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm hover:shadow-xl transition-all">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center mb-4">
+                  <Brain className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-2xl">Smart Project Planning</CardTitle>
+                <CardDescription className="text-base">
+                  AI analyzes your project requirements and generates detailed plans, timelines, and task breakdowns automatically.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Automatic task generation based on project scope</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Intelligent timeline suggestions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Resource allocation recommendations</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm hover:shadow-xl transition-all">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mb-4">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-2xl">Proposal Generator</CardTitle>
+                <CardDescription className="text-base">
+                  Create professional proposals in minutes. AI writes compelling content tailored to your client's needs.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Personalized proposal content</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Budget estimation and pricing suggestions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground">Industry-specific templates</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
       {/* Product Demo Section */}
       <section className="py-12 px-6 bg-gradient-to-br from-background to-muted/10">
-          <div className="text-center mb-12">
-        <Badge variant="secondary" className="mb-4">
-          ✨ Product Preview
-        </Badge>
-        <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent pb-2">
-          Your Work, Beautifully Organized
-        </h2>
-        <div className="h-2" />
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          See how Nesternity transforms chaotic workflows into seamless experiences. 
-          Every feature designed with your productivity in mind.
-        </p>
-          </div>
+        <div className="text-center mb-12">
+          <Badge variant="secondary" className="mb-4">
+            ✨ Product Preview
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent pb-2">
+            Your Work, Beautifully Organized
+          </h2>
+          <div className="h-2" />
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            See how Nesternity transforms chaotic workflows into seamless experiences.
+            Every feature designed with your productivity in mind.
+          </p>
+        </div>
 
-      {/* Interactive Product Demo Section */}
+        {/* Interactive Product Demo Section */}
         <div className="max-w-7xl mx-auto">
           <InteractiveDemo />
         </div>
@@ -110,15 +190,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/dashboard">
               <Button size="lg" className="gap-2 text-lg px-8 py-4">
-                Start For Free Now 
+                Start For Free Now
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
-            {/* <Link href="/pricing">
-              <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-4">
-                View Pricing
-              </Button>
-            </Link> */}
           </div>
         </div>
       </section>
@@ -160,9 +235,9 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-center">Keep all client details, tasks, and communication in one elegant place.
-                 <br />
-                 <span className="font-medium">Your time is worth more than spreadsheets hell.</span>
-                 <br />
+                  <br />
+                  <span className="font-medium">Your time is worth more than spreadsheets hell.</span>
+                  <br />
                 </p>
               </CardContent>
             </Card>
@@ -178,35 +253,35 @@ export default function HomePage() {
             <p className="text-xl text-muted-foreground">Built specifically for solo professionals who value simplicity</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={<Users className="h-8 w-8 text-primary" />}
-              title="Client Capsule" 
-              description="Track boards, projects, and issues all in one organized space. Never lose track of client details again." 
+              title="Client Capsule"
+              description="Track boards, projects, and issues all in one organized space. Never lose track of client details again."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Shield className="h-8 w-8 text-primary" />}
-              title="Invoice Composer" 
-              description="Generate, customize, and e-sign invoices in minutes. Professional documents without the complexity." 
+              title="Invoice Composer"
+              description="Generate, customize, and e-sign invoices in minutes. Professional documents without the complexity."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Zap className="h-8 w-8 text-primary" />}
-              title="Lightweight & Blazing Fast" 
-              description="Built with Next.js and optimized for speed. No bloat, just brilliance." 
+              title="Lightweight & Blazing Fast"
+              description="Built with Next.js and optimized for speed. No bloat, just brilliance."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Star className="h-8 w-8 text-primary" />}
-              title="Visual Dashboard" 
-              description="Stay on top of everything at a glance with beautiful, intuitive dashboards that actually make sense." 
+              title="Visual Dashboard"
+              description="Stay on top of everything at a glance with beautiful, intuitive dashboards that actually make sense."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<CheckCircle className="h-8 w-8 text-primary" />}
-              title="Activity Tracking" 
-              description="From task edits to comment threads — know who did what, when." 
+              title="Activity Tracking"
+              description="From task edits to comment threads — know who did what, when."
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<ArrowRight className="h-8 w-8 text-primary" />}
-              title="Team Collaboration" 
-              description="Invite team members. Share progress, get feedback, and stay aligned effortlessly." 
+              title="Team Collaboration"
+              description="Invite team members. Share progress, get feedback, and stay aligned effortlessly."
             />
           </div>
         </div>
@@ -217,7 +292,7 @@ export default function HomePage() {
           <div className="flex justify-center mb-6">
             <span className="text-5xl">💼</span>
           </div>
-          <h2 className="text-4xl font-bold mb-4">Who It’s For</h2>
+          <h2 className="text-4xl font-bold mb-4">Who It's For</h2>
           <p className="text-2xl font-semibold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Freelancers. Agencies. Indie Hackers. Creators.
           </p>
@@ -226,86 +301,6 @@ export default function HomePage() {
           </p>
         </div>
       </section>
-
-      {/* Pricing Preview */}
-      {/* <section className="py-20 px-6 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">Simple pricing for growing freelancers</h2>
-          <p className="text-xl text-muted-foreground mb-12">Start free, scale when you're ready. No hidden fees, no surprises.</p>
-          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-            <Card className="border-2 border-muted/20 shadow-lg">
-              <CardHeader className="text-center">
-                <Badge variant="secondary" className="w-fit mx-auto mb-4">Perfect for Starting</Badge>
-                <CardTitle className="text-2xl mb-2">Free Forever</CardTitle>
-                <div className="text-4xl font-bold mb-2">$0</div>
-                <CardDescription>For freelancers just getting started</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Up to 3 clients</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Basic contract templates</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Simple invoicing</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Project tracking</span>
-                  </div>
-                </div>
-                <Link href="/dashboard" className="block">
-                  <Button className="w-full" size="lg">Get Started Free</Button>
-                </Link>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-2 border-primary shadow-xl relative">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground px-4 py-1">Most Popular</Badge>
-              </div>
-              <CardHeader className="text-center">
-                <Badge variant="outline" className="w-fit mx-auto mb-4">Coming Soon</Badge>
-                <CardTitle className="text-2xl mb-2">Pro</CardTitle>
-                <div className="text-4xl font-bold mb-2">$15<span className="text-lg font-normal">/month</span></div>
-                <CardDescription>For established freelancers scaling up</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Unlimited clients</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Custom branding</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Advanced contract features</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Team collaboration</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span>Priority support</span>
-                  </div>
-                </div>
-                <Button variant="outline" size="lg" className="w-full" disabled>
-                  Join Waitlist
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section> */}
 
       {/* Newsletter / Waitlist */}
       <NewsletterSignup />
@@ -316,9 +311,6 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
-                {/* <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">N</span>
-                </div> */}
                 <span className="text-xl font-bold">Nesternity</span>
               </div>
               <p className="font-bold mb-2">The Philosophy Behind Nesternity</p>
@@ -342,7 +334,7 @@ export default function HomePage() {
             <div>
               <h3 className="font-semibold mb-4">Support</h3>
               <div className="space-y-2 text-muted-foreground">
-                <div>Help Center</div>
+                <Link href="/docs" className="block hover:text-foreground">Documentation</Link>
                 <div>Contact</div>
                 <div>Privacy</div>
                 <div>Terms</div>
@@ -375,3 +367,4 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
     </Card>
   );
 }
+

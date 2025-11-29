@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle2, 
-  Users, 
-  ClipboardList, 
-  AlertTriangle, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Users,
+  ClipboardList,
+  AlertTriangle,
   Plus,
   Building2,
   FolderKanban,
@@ -83,14 +83,6 @@ interface DemoStep {
 const demoSteps: DemoStep[] = [
   {
     id: 1,
-    title: 'Create Clients',
-    subtitle: 'Start by adding your clients',
-    description: 'Build your client base by adding companies and contacts. This forms the foundation of your project management workflow.',
-    icon: <Building2 className="w-5 h-5" />,
-    buttonText: 'Add Client'
-  },
-  {
-    id: 2,
     title: 'Setup Projects',
     subtitle: 'Organize work into projects',
     description: 'Create projects for your clients with clear timelines, budgets, and deliverables to keep everything organized.',
@@ -98,7 +90,7 @@ const demoSteps: DemoStep[] = [
     buttonText: 'Create Project'
   },
   {
-    id: 3,
+    id: 2,
     title: 'Add Team Members',
     subtitle: 'Build your dream team',
     description: 'Invite team members with different roles and permissions. Collaborate effectively by bringing the right people together.',
@@ -106,7 +98,7 @@ const demoSteps: DemoStep[] = [
     buttonText: 'Add Team Members'
   },
   {
-    id: 4,
+    id: 3,
     title: 'Create Boards',
     subtitle: 'Organize work with boards',
     description: 'Use our interactive Kanban boards to create, assign, and track tasks. Drag and drop to update status and keep everyone aligned.',
@@ -114,7 +106,7 @@ const demoSteps: DemoStep[] = [
     buttonText: 'Create Board'
   },
   {
-    id: 5,
+    id: 4,
     title: 'Track Issues',
     subtitle: 'Identify and resolve problems',
     description: 'Log issues, assign priorities, and track resolution. Keep your project running smoothly with proactive issue management.',
@@ -122,7 +114,7 @@ const demoSteps: DemoStep[] = [
     buttonText: 'Report Issue'
   },
   {
-    id: 6,
+    id: 5,
     title: 'Generate Invoices',
     subtitle: 'Get paid for your work',
     description: 'Create professional invoices, track payments, and manage your revenue. Download PDFs and send them directly to clients.',
@@ -148,7 +140,7 @@ const demoClients = [
     createdAt: "2025-06-01"
   },
   {
-    id: "client2", 
+    id: "client2",
     name: "Sarah Johnson",
     company: "Design Studio Pro",
     email: "sarah@designstudio.com",
@@ -263,7 +255,7 @@ const demoInvoices = [
         amount: 6000
       },
       {
-        id: "item2", 
+        id: "item2",
         description: "Frontend Development",
         quantity: 60,
         rate: 120,
@@ -281,7 +273,7 @@ const demoInvoices = [
   },
   {
     id: "inv2",
-    invoiceNumber: "INV-2025-002", 
+    invoiceNumber: "INV-2025-002",
     clientName: "Sarah Johnson",
     clientCompany: "Design Studio Pro",
     clientEmail: "sarah@designstudio.com",
@@ -366,37 +358,15 @@ export default function InteractiveDemo() {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h3 className="text-xl font-semibold mb-2">Client Management</h3>
-              <p className="text-muted-foreground">Start by adding your clients and building strong relationships</p>
-            </div>
-            <ClientList 
-              clients={demoClients}
-              onAddClient={() => {}}
-              onEditClient={() => {}}
-              onViewProjects={() => {}}
-            />
-            <div className="text-center">
-              <Button onClick={handleStepAction} className="gap-2">
-                <Building2 className="w-4 h-4" />
-                Add New Client
-              </Button>
-            </div>
-          </div>
-        );
-      
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
               <h3 className="text-xl font-semibold mb-2">Project Portfolio</h3>
               <p className="text-muted-foreground">Create projects for your clients with clear timelines and deliverables</p>
             </div>
-            <ProjectList 
+            <ProjectList
               projects={demoProjects}
-              onAddProject={() => {}}
-              onViewProject={() => {}}
-              onEditProject={() => {}}
-              onAddTask={() => {}}
+              onAddProject={() => { }}
+              onViewProject={() => { }}
+              onEditProject={() => { }}
+              onAddTask={() => { }}
             />
             <div className="text-center">
               <Button onClick={handleStepAction} className="gap-2">
@@ -406,15 +376,15 @@ export default function InteractiveDemo() {
             </div>
           </div>
         );
-      
-      case 3:
+
+      case 2:
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold mb-2">Team Collaboration</h3>
               <p className="text-muted-foreground">Invite team members to collaborate on your projects</p>
             </div>
-            <DemoTeamMembers 
+            <DemoTeamMembers
               members={demoMembers}
               teamCreatedBy="user1"
             />
@@ -426,8 +396,8 @@ export default function InteractiveDemo() {
             </div>
           </div>
         );
-      
-      case 4:
+
+      case 3:
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -443,8 +413,8 @@ export default function InteractiveDemo() {
             </div>
           </div>
         );
-      
-      case 5:
+
+      case 4:
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -455,7 +425,7 @@ export default function InteractiveDemo() {
               <IssueCard
                 issue={demoIssueWithStatus}
                 onStatusChange={handleDemoStatusChange}
-                onDelete={() => {}}
+                onDelete={() => { }}
               />
             </div>
             <div className="text-center">
@@ -466,21 +436,21 @@ export default function InteractiveDemo() {
             </div>
           </div>
         );
-      
-      case 6:
+
+      case 5:
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold mb-2">Invoice Management</h3>
               <p className="text-muted-foreground">Create professional invoices and track payments</p>
             </div>
-            <InvoiceList 
+            <InvoiceList
               invoices={demoInvoices}
-              onAddInvoice={() => {}}
-              onViewInvoice={() => {}}
-              onDownloadInvoice={() => {}}
-              onSendInvoice={() => {}}
-              onEditInvoice={() => {}}
+              onAddInvoice={() => { }}
+              onViewInvoice={() => { }}
+              onDownloadInvoice={() => { }}
+              onSendInvoice={() => { }}
+              onEditInvoice={() => { }}
             />
             <div className="text-center">
               <Button onClick={handleStepAction} className="gap-2">
@@ -490,7 +460,7 @@ export default function InteractiveDemo() {
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -521,8 +491,8 @@ export default function InteractiveDemo() {
                   currentStep === step.id
                     ? "bg-primary text-primary-foreground shadow-md"
                     : completedSteps.includes(step.id)
-                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-green-100 text-green-700 hover:bg-green-200"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 {completedSteps.includes(step.id) ? (
@@ -547,12 +517,11 @@ export default function InteractiveDemo() {
           <div className="flex items-center gap-3 mb-4">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center",
-              currentStep === 1 && "bg-blue-100 text-blue-600",
-              currentStep === 2 && "bg-green-100 text-green-600", 
-              currentStep === 3 && "bg-purple-100 text-purple-600",
-              currentStep === 4 && "bg-orange-100 text-orange-600",
-              currentStep === 5 && "bg-red-100 text-red-600",
-              currentStep === 6 && "bg-indigo-100 text-indigo-600"
+              currentStep === 1 && "bg-green-100 text-green-600",
+              currentStep === 2 && "bg-purple-100 text-purple-600",
+              currentStep === 3 && "bg-orange-100 text-orange-600",
+              currentStep === 4 && "bg-red-100 text-red-600",
+              currentStep === 5 && "bg-indigo-100 text-indigo-600"
             )}>
               {currentStepData?.icon}
             </div>
@@ -591,8 +560,8 @@ export default function InteractiveDemo() {
                     index + 1 === currentStep
                       ? "bg-primary"
                       : completedSteps.includes(index + 1)
-                      ? "bg-green-500"
-                      : "bg-muted"
+                        ? "bg-green-500"
+                        : "bg-muted"
                   )}
                 />
               ))}

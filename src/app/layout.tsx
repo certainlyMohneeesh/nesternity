@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import CookieConsent from "@/components/CookieConsent";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
+import { ThemeProvider } from "next-themes";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -74,11 +75,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="font-sans semi-bold bg-background text-foreground min-h-screen">
-        <QueryProvider>
-          {children}
-        </QueryProvider>
-        <CookieConsent />
-        <Toaster position="bottom-center" richColors closeButton />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <QueryProvider>
+            {children}
+          </QueryProvider>
+          <CookieConsent />
+          <Toaster position="bottom-center" richColors closeButton />
+        </ThemeProvider>
       </body>
     </html>
   );
