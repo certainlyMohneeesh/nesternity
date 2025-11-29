@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     console.log('🔄 Starting proposal to invoice conversion...');
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
     console.log('📋 Proposal ID:', id);
 
     // Get authenticated user
@@ -78,7 +79,7 @@ export async function POST(
     // Parse deliverables to create invoice items
     console.log('📦 Parsing deliverables...');
     let items: Array<{ description: string; quantity: number; rate: number; total: number }> = [];
-    
+
     if (proposal.deliverables) {
       try {
         const deliverables = Array.isArray(proposal.deliverables)
@@ -90,7 +91,7 @@ export async function POST(
         if (Array.isArray(deliverables) && deliverables.length > 0) {
           // Calculate rate per deliverable (divide total by number of deliverables)
           const ratePerItem = proposal.pricing / deliverables.length;
-          
+
           items = deliverables.map((deliverable: any, index: number) => {
             const description = deliverable.item || deliverable.description || deliverable.toString();
             console.log(`  📝 Item ${index + 1}:`, description);
@@ -136,8 +137,9 @@ export async function POST(
         invoiceNumber,
         clientId: proposal.clientId,
         issuedById: user.id,
+        organisationId: proposal.organisationId, // Add organisationId from proposal
         dueDate,
-        notes: proposal.paymentTerms 
+        notes: proposal.paymentTerms
           ? `Converted from proposal: ${proposal.title}\n\nPayment Terms:\n${proposal.paymentTerms}`
           : `Converted from proposal: ${proposal.title}`,
         taxRate: 0,
@@ -175,7 +177,7 @@ export async function POST(
     console.log('📄 Generating PDF for invoice...');
     try {
       const { generateInvoicePDF } = await import('@/lib/generatePdf');
-      
+
       const invoiceForPDF = {
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
@@ -202,11 +204,11 @@ export async function POST(
           total: item.total,
         })),
       };
-      
+
       console.log('🔧 Starting PDF generation...');
       const pdfUrl = await generateInvoicePDF(invoiceForPDF);
       console.log('✅ PDF generated and uploaded:', pdfUrl);
-      
+
       // Update invoice with PDF URL
       console.log('💾 Updating invoice with PDF URL...');
       await prisma.invoice.update({

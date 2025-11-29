@@ -10,9 +10,10 @@ const supabase = createClient(
 // GET /api/organisations/[id] - Get organisation details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
@@ -30,7 +31,7 @@ export async function GET(
 
     const organisation = await prisma.organisation.findUnique({
       where: {
-        id: params.id
+        id
       },
       include: {
         projects: {
@@ -97,9 +98,10 @@ export async function GET(
 // PATCH /api/organisations/[id] - Update organisation
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
@@ -117,7 +119,7 @@ export async function PATCH(
 
     // Check ownership
     const existing = await prisma.organisation.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existing) {
@@ -153,7 +155,7 @@ export async function PATCH(
     } = body;
 
     const organisation = await prisma.organisation.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(name && { name }),
         ...(email && { email }),
@@ -196,9 +198,10 @@ export async function PATCH(
 // DELETE /api/organisations/[id] - Delete organisation
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
@@ -216,7 +219,7 @@ export async function DELETE(
 
     // Check ownership
     const existing = await prisma.organisation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -243,7 +246,7 @@ export async function DELETE(
     // Check if organisation has projects
     if (existing._count.projects > 0) {
       return NextResponse.json(
-        { 
+        {
           error: 'Cannot delete organisation with existing projects',
           message: 'Please delete or reassign all projects before deleting this organisation.'
         },
@@ -253,7 +256,7 @@ export async function DELETE(
 
     // Delete organisation
     await prisma.organisation.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({

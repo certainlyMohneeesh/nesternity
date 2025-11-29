@@ -36,7 +36,7 @@ interface BudgetCheckResponse {
 export async function POST(request: NextRequest) {
   try {
     console.log('[BudgetCheckAPI] POST - Starting budget check');
-    
+
     // 1. Authenticate
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,12 +65,13 @@ export async function POST(request: NextRequest) {
     // 3. Fetch data based on what's provided
     let client: { id: string; name: string; email: string | null; budget: number | null; currency: string | null } | null = null;
     let proposals: any[] = [];
-    
+    let project: any = null;
+
     if (projectId) {
       console.log(`[BudgetCheckAPI] Fetching by projectId: ${projectId}`);
-      
+
       // Fetch project with client and proposals
-      const project = await prisma.project.findUnique({
+      project = await prisma.project.findUnique({ // Fetching project data
         where: { id: projectId },
         include: {
           client: {
@@ -99,17 +100,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       }
 
-      if (!project.client) {
-        console.error('[BudgetCheckAPI] Project has no client');
-        return NextResponse.json({ error: 'Project has no client' }, { status: 400 });
+      // Client is optional - projects can exist without clients
+      if (project.client) {
+        client = project.client;
+        console.log(`[BudgetCheckAPI] Found project client: ${client?.name}`);
+      } else {
+        console.log(`[BudgetCheckAPI] Project has no client, will use project budget and organisationId`);
       }
-
-      client = project.client;
       proposals = project.proposals;
-      console.log(`[BudgetCheckAPI] Found project client: ${client.name}`);
     } else if (clientId) {
       console.log(`[BudgetCheckAPI] Fetching by clientId: ${clientId}`);
-      
+
       // Fetch client directly
       const clientData = await prisma.client.findUnique({
         where: { id: clientId },
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       }
 
       client = clientData;
-      
+
       // Get accepted proposals for this client
       proposals = await prisma.proposal.findMany({
         where: {
@@ -140,43 +141,73 @@ export async function POST(request: NextRequest) {
         },
         take: 1,
       });
-      
+
       console.log(`[BudgetCheckAPI] Found client: ${client.name}`);
     }
 
-    if (!client) {
-      console.error('[BudgetCheckAPI] Client not found');
+    // Client is optional when we have projectId
+    // If no client and no projectId, then error
+    if (!client && !projectId) {
+      console.error('[BudgetCheckAPI] Neither client nor project found');
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // 4. Get all invoices for this client
-    console.log(`[BudgetCheckAPI] Fetching invoices for client: ${client.id}`);
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        clientId: client.id,
-        status: {
-          in: ['PENDING', 'PAID'],
+    // 4. Get all invoices - by clientId if available, otherwise by organisationId
+    let invoices: any[] = [];
+    if (client) {
+      console.log(`[BudgetCheckAPI] Fetching invoices for client: ${client.id}`);
+      invoices = await prisma.invoice.findMany({
+        where: {
+          clientId: client.id,
+          status: {
+            in: ['PENDING', 'PAID'],
+          },
         },
-      },
-      include: {
-        items: true,
-      },
-      orderBy: {
-        issuedDate: 'desc',
-      },
-    });
+        include: {
+          items: true,
+        },
+        orderBy: {
+          issuedDate: 'desc',
+        },
+      });
+    } else if (project?.organisationId) {
+      console.log(`[BudgetCheckAPI] Fetching invoices for organisation: ${project.organisationId}`);
+      invoices = await prisma.invoice.findMany({
+        where: {
+          organisationId: project.organisationId,
+          status: {
+            in: ['PENDING', 'PAID'],
+          },
+        },
+        include: {
+          items: true,
+        },
+        orderBy: {
+          issuedDate: 'desc',
+        },
+      });
+    } else {
+      console.warn('[BudgetCheckAPI] No client or organisation found');
+      invoices = [];
+    }
 
     console.log(`[BudgetCheckAPI] Found ${invoices.length} invoices`);
 
     // 5. Calculate budget baseline
     let originalBudget = 0;
-    const currency = client.currency || 'INR';
+    // Default currency to INR if not found in client or project
+    let currency = client?.currency || project?.currency || 'INR';
 
-    // Priority: 1. Accepted proposal, 2. Client budget
-    if (proposals.length > 0) {
+    // Priority: 1. Project Budget (if projectId exists), 2. Accepted Proposal, 3. Client Budget
+    if (projectId && project?.budget) {
+      originalBudget = project.budget;
+      currency = project.currency || currency;
+      console.log(`[BudgetCheckAPI] Using project budget: ${currency} ${originalBudget}`);
+    } else if (proposals.length > 0) {
       originalBudget = proposals[0].pricing;
+      currency = proposals[0].currency || currency;
       console.log(`[BudgetCheckAPI] Using proposal budget: ${currency} ${originalBudget}`);
-    } else if (client.budget) {
+    } else if (client?.budget) {
       originalBudget = client.budget;
       console.log(`[BudgetCheckAPI] Using client budget: ${currency} ${originalBudget}`);
     } else {
@@ -192,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     // 6. Calculate current spend (sum of all invoices)
     const invoiceTotal = invoices.reduce((sum, invoice) => {
-      const itemsTotal = invoice.items.reduce((iSum, item) => iSum + item.total, 0);
+      const itemsTotal = invoice.items.reduce((iSum: number, item: any) => iSum + item.total, 0);
       const tax = itemsTotal * ((invoice.taxRate || 0) / 100);
       const discount = itemsTotal * ((invoice.discount || 0) / 100);
       return sum + (itemsTotal + tax - discount);
@@ -203,8 +234,8 @@ export async function POST(request: NextRequest) {
     // 7. Calculate metrics
     const remainingBudget = originalBudget - invoiceTotal;
     const overrunAmount = Math.max(0, invoiceTotal - originalBudget);
-    const overrunPercent = originalBudget > 0 
-      ? (overrunAmount / originalBudget) * 100 
+    const overrunPercent = originalBudget > 0
+      ? (overrunAmount / originalBudget) * 100
       : 0;
 
     // 8. Determine risk level
@@ -244,7 +275,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 10. Generate AI recommendations and client email
-    const clientName = client.name;
+    const clientName = client?.name || project?.name || 'Client';
     const messages = [
       {
         role: 'system' as const,
@@ -262,7 +293,7 @@ export async function POST(request: NextRequest) {
 ${overrunPercent > 0 ? `**Budget Overrun:** ${overrunPercent.toFixed(1)}%` : ''}
 
 **Recent Invoices:**
-${invoices.slice(0, 5).map(inv => `- ${inv.invoiceNumber}: ${currency} ${inv.items.reduce((s, i) => s + i.total, 0).toLocaleString()}`).join('\n')}
+${invoices.slice(0, 5).map(inv => `- ${inv.invoiceNumber}: ${currency} ${inv.items.reduce((s: number, i: any) => s + i.total, 0).toLocaleString()}`).join('\n')}
 
 ${scopeRadar ? `**Scope Creep Detected:** ${scopeRadar.outOfScopeCount} items flagged` : ''}
 
@@ -309,90 +340,90 @@ Return JSON:
       } else {
         // Risk is warning or critical - create or update radar
         if (!existingRadar) {
-        // Create new radar
-        const newRadar = await prisma.scopeRadar.create({
-          data: {
-            projectId,
-            creepRisk: riskLevel === 'critical' ? 0.9 : 0.6,
-            revisionCount: 0,
-            outOfScopeCount: 0,
-            originalBudget,
-            currentEstimate: invoiceTotal,
-            budgetOverrun: overrunAmount,
-            budgetOverrunPercent: overrunPercent,
-            flaggedItems: invoices.slice(0, 5).map(inv => ({
-              item: inv.invoiceNumber,
-              amount: inv.items.reduce((s, i) => s + i.total, 0),
-              date: inv.issuedDate.toISOString(),
-            })),
-            clientEmailDraft: aiResult.data.clientEmailDraft,
-            recommendations: aiResult.data.recommendations,
-            aiModel: 'gemini-2.5-flash',
-          },
-        });
-        scopeRadarId = newRadar.id;
-        console.log(`[BudgetCheckAPI] Created new scope radar alert: ${scopeRadarId}`);
-      } else {
-        // Update existing radar with latest data
-        console.log(`[BudgetCheckAPI] Updating existing radar: ${existingRadar.id}`);
-        const updatedRadar = await prisma.scopeRadar.update({
-          where: { id: existingRadar.id },
-          data: {
-            creepRisk: riskLevel === 'critical' ? 0.9 : 0.6,
-            originalBudget,
-            currentEstimate: invoiceTotal,
-            budgetOverrun: overrunAmount,
-            budgetOverrunPercent: overrunPercent,
-            flaggedItems: invoices.slice(0, 5).map(inv => ({
-              item: inv.invoiceNumber,
-              amount: inv.items.reduce((s, i) => s + i.total, 0),
-              date: inv.issuedDate.toISOString(),
-            })),
-            clientEmailDraft: aiResult.data.clientEmailDraft,
-            recommendations: aiResult.data.recommendations,
-            flaggedAt: new Date(), // Update timestamp
-          },
-        });
-        scopeRadarId = updatedRadar.id;
-        console.log(`[BudgetCheckAPI] Updated radar with latest budget data`);
-      }
-
-      // Send notification on every check (new or update)
-      try {
-        const project = await prisma.project.findUnique({
-          where: { id: projectId },
-          include: { team: true }
-        });
-
-        if (project) {
-          const notificationType = overrunPercent > 0 
-            ? ACTIVITY_TYPES.BUDGET_EXCEEDED 
-            : ACTIVITY_TYPES.BUDGET_WARNING;
-          
-          await createScopeRadarNotification(
-            user.id,
-            notificationType,
-            project.name,
-            riskLevel === 'critical' ? 'critical' : 'high',
-            {
-              original: originalBudget,
-              current: invoiceTotal,
-              overrun: overrunAmount,
-              currency
+          // Create new radar
+          const newRadar = await prisma.scopeRadar.create({
+            data: {
+              projectId,
+              creepRisk: riskLevel === 'critical' ? 0.9 : 0.6,
+              revisionCount: 0,
+              outOfScopeCount: 0,
+              originalBudget,
+              currentEstimate: invoiceTotal,
+              budgetOverrun: overrunAmount,
+              budgetOverrunPercent: overrunPercent,
+              flaggedItems: invoices.slice(0, 5).map(inv => ({
+                item: inv.invoiceNumber,
+                amount: inv.items.reduce((s: number, i: any) => s + i.total, 0),
+                date: inv.issuedDate.toISOString(),
+              })),
+              clientEmailDraft: aiResult.data.clientEmailDraft,
+              recommendations: aiResult.data.recommendations,
+              aiModel: 'gemini-2.5-flash',
             },
-            {
-              teamId: project.teamId,
-              projectId: project.id,
-              clientName,
-              scopeRadarId
-            }
-          );
-          console.log(`[BudgetCheckAPI] Notification sent for ${notificationType} (re-check)`);
+          });
+          scopeRadarId = newRadar.id;
+          console.log(`[BudgetCheckAPI] Created new scope radar alert: ${scopeRadarId}`);
+        } else {
+          // Update existing radar with latest data
+          console.log(`[BudgetCheckAPI] Updating existing radar: ${existingRadar.id}`);
+          const updatedRadar = await prisma.scopeRadar.update({
+            where: { id: existingRadar.id },
+            data: {
+              creepRisk: riskLevel === 'critical' ? 0.9 : 0.6,
+              originalBudget,
+              currentEstimate: invoiceTotal,
+              budgetOverrun: overrunAmount,
+              budgetOverrunPercent: overrunPercent,
+              flaggedItems: invoices.slice(0, 5).map(inv => ({
+                item: inv.invoiceNumber,
+                amount: inv.items.reduce((s: number, i: any) => s + i.total, 0),
+                date: inv.issuedDate.toISOString(),
+              })),
+              clientEmailDraft: aiResult.data.clientEmailDraft,
+              recommendations: aiResult.data.recommendations,
+              flaggedAt: new Date(), // Update timestamp
+            },
+          });
+          scopeRadarId = updatedRadar.id;
+          console.log(`[BudgetCheckAPI] Updated radar with latest budget data`);
         }
-      } catch (notifError) {
-        console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
-        // Don't fail the request if notification fails
-      }
+
+        // Send notification on every check (new or update)
+        try {
+          const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { team: true }
+          });
+
+          if (project) {
+            const notificationType = overrunPercent > 0
+              ? ACTIVITY_TYPES.BUDGET_EXCEEDED
+              : ACTIVITY_TYPES.BUDGET_WARNING;
+
+            await createScopeRadarNotification(
+              user.id,
+              notificationType,
+              project.name,
+              riskLevel === 'critical' ? 'critical' : 'high',
+              {
+                original: originalBudget,
+                current: invoiceTotal,
+                overrun: overrunAmount,
+                currency
+              },
+              {
+                teamId: project.teamId,
+                projectId: project.id,
+                clientName,
+                scopeRadarId
+              }
+            );
+            console.log(`[BudgetCheckAPI] Notification sent for ${notificationType} (re-check)`);
+          }
+        } catch (notifError) {
+          console.error('[BudgetCheckAPI] Failed to send notification:', notifError);
+          // Don't fail the request if notification fails
+        }
       }
     } else if (riskLevel !== 'safe') {
       console.log(`[BudgetCheckAPI] Risk detected but no projectId, skipping ScopeRadar creation`);
@@ -414,7 +445,7 @@ Return JSON:
       recommendations: aiResult.data.recommendations,
       flaggedInvoices: invoices.slice(0, 5).map(inv => ({
         invoiceNumber: inv.invoiceNumber,
-        amount: inv.items.reduce((s, i) => s + i.total, 0),
+        amount: inv.items.reduce((s: number, i: any) => s + i.total, 0),
         date: inv.issuedDate.toLocaleDateString(),
       })),
     };
@@ -448,7 +479,7 @@ Return JSON:
 export async function GET(request: NextRequest) {
   try {
     console.log('[BudgetCheckAPI] GET - Fetching budget status');
-    
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -465,18 +496,32 @@ export async function GET(request: NextRequest) {
 
     if (!projectId && !clientId) {
       console.error('[BudgetCheckAPI] GET - Missing required parameters');
-      return NextResponse.json({ 
-        error: 'Missing required parameter: projectId or clientId' 
+      return NextResponse.json({
+        error: 'Missing required parameter: projectId or clientId'
       }, { status: 400 });
     }
 
-    // If we have clientId, we need to find projects for that client
-    // and get the latest radar across all projects
+    // Prioritize projectId over clientId if both are provided
+    // projectId is more specific and reliable
     let latestRadar;
-    
-    if (clientId) {
+
+    if (projectId) {
+      console.log(`[BudgetCheckAPI] GET - Searching by projectId: ${projectId}`);
+
+      latestRadar = await prisma.scopeRadar.findFirst({
+        where: {
+          projectId: projectId,
+          budgetOverrun: {
+            not: null,
+          },
+        },
+        orderBy: {
+          flaggedAt: 'desc',
+        },
+      });
+    } else if (clientId) {
       console.log(`[BudgetCheckAPI] GET - Searching by clientId: ${clientId}`);
-      
+
       // Get all projects for this client
       const projects = await prisma.project.findMany({
         where: { clientId },
@@ -488,8 +533,8 @@ export async function GET(request: NextRequest) {
 
       if (projectIds.length === 0) {
         console.warn('[BudgetCheckAPI] GET - No projects found for client');
-        return NextResponse.json({ 
-          error: 'No projects found for this client' 
+        return NextResponse.json({
+          error: 'No projects found for this client'
         }, { status: 404 });
       }
 
@@ -504,34 +549,34 @@ export async function GET(request: NextRequest) {
           flaggedAt: 'desc',
         },
       });
-    } else {
-      console.log(`[BudgetCheckAPI] GET - Searching by projectId: ${projectId}`);
-      
-      latestRadar = await prisma.scopeRadar.findFirst({
-        where: {
-          projectId: projectId!,
-          budgetOverrun: {
-            not: null,
-          },
-        },
-        orderBy: {
-          flaggedAt: 'desc',
-        },
-      });
     }
 
     if (!latestRadar) {
       console.warn('[BudgetCheckAPI] GET - No budget data found');
-      return NextResponse.json({ 
-        error: 'No budget data found' 
+      return NextResponse.json({
+        error: 'No budget data found'
       }, { status: 404 });
     }
 
     console.log('[BudgetCheckAPI] GET - Found radar data:', latestRadar.id);
 
+    // Fetch project to get currency
+    let currency = 'INR'; // Default currency
+    try {
+      const project = await prisma.project.findUnique({
+        where: { id: latestRadar.projectId },
+      });
+      if (project?.currency) {
+        currency = project.currency;
+      }
+    } catch (error) {
+      console.warn('[BudgetCheckAPI] GET - Could not fetch project currency:', error);
+    }
+
     return NextResponse.json({
       success: true,
       radar: latestRadar,
+      currency, // Include currency in response
     });
 
   } catch (error) {
@@ -541,7 +586,7 @@ export async function GET(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to get budget status',
         details: error instanceof Error ? error.message : 'Unknown error',
       },

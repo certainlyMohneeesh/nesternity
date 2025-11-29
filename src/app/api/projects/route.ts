@@ -10,7 +10,7 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     console.log('[ProjectsAPI] GET - Fetching projects');
-    
+
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       console.error('[ProjectsAPI] No valid authorization header');
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('[ProjectsAPI] POST - Creating project');
-    
+
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       console.error('[ProjectsAPI] No valid authorization header');
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     console.log('[ProjectsAPI] User authenticated:', user.id);
 
     const body = await request.json();
-    const { name, description, clientId, teamId, startDate, endDate, status, goal } = body;
+    const { name, description, clientId, teamId, startDate, endDate, status, goal, budget } = body;
 
     console.log('[ProjectsAPI] Request body:', { name, teamId, clientId });
 
@@ -172,7 +172,8 @@ export async function POST(request: NextRequest) {
         endDate: endDate ? new Date(endDate) : null,
         status: status || 'PLANNING',
         goal: goal ? Number(goal) : null,
-      },
+        budget: budget ? Number(budget) : null,
+      } as any,
       include: {
         client: true,
         team: {

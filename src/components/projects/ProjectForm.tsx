@@ -35,6 +35,7 @@ interface Project {
   endDate?: string;
   status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
   goal?: number;
+  budget?: number;
 }
 
 interface ProjectFormProps {
@@ -47,6 +48,7 @@ interface ProjectFormProps {
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
     goal?: number;
+    budget?: number;
   };
   onSubmit: (project: {
     name: string;
@@ -57,6 +59,7 @@ interface ProjectFormProps {
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
     goal?: number;
+    budget?: number;
   }) => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -72,6 +75,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
     endDate?: string;
     status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
     goal?: number;
+    budget?: number;
   }>({
     name: project?.name || '',
     description: project?.description || '',
@@ -81,6 +85,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
     endDate: project?.endDate || '',
     status: project?.status || 'PLANNING',
     goal: project?.goal || undefined,
+    budget: project?.budget || undefined,
   });
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -267,6 +272,19 @@ export function ProjectForm({ project, onSubmit, onCancel, isLoading }: ProjectF
           value={formData.goal ?? ''}
           onChange={e => handleChange('goal', e.target.value ? Number(e.target.value) : undefined)}
           placeholder="Enter the number of tasks for this project"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="budget">Budget</Label>
+        <Input
+          id="budget"
+          type="number"
+          min={0}
+          step="0.01"
+          value={formData.budget ?? ''}
+          onChange={e => handleChange('budget', e.target.value ? Number(e.target.value) : undefined)}
+          placeholder="Enter project budget"
         />
       </div>
 

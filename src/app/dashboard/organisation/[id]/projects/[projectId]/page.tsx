@@ -12,12 +12,12 @@ import { useSession } from "@/components/auth/session-context";
 import { toast } from "sonner";
 import RecurringInvoicesOverview from "@/components/dashboard/RecurringInvoicesOverview";
 import ScopeRadarWidget from "@/components/dashboard/ScopeRadarWidget";
-import { 
-  Users, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  TrendingUp, 
+import {
+  Users,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
   Plus,
   ArrowRight,
   FolderKanban,
@@ -35,16 +35,16 @@ export default function ProjectDashboard() {
   const params = useParams();
   const orgId = params.id as string;
   const projectId = params.projectId as string;
-  
+
   const { session, loading: sessionLoading } = useSession();
-  
+
   // React Query hook for dashboard data filtered by organisation and project
   const {
     data,
     isLoading,
     error,
     refetch: fetchDashboardData
-  } = useDashboardData({ 
+  } = useDashboardData({
     userId: session?.user?.id,
     organisationId: orgId,
     projectId: projectId,
@@ -126,8 +126,8 @@ export default function ProjectDashboard() {
     );
   }
 
-  const completionRate = data.stats.totalTasks > 0 
-    ? Math.round((data.stats.completedTasks / data.stats.totalTasks) * 100) 
+  const completionRate = data.stats.totalTasks > 0
+    ? Math.round((data.stats.completedTasks / data.stats.totalTasks) * 100)
     : 0;
 
   return (
@@ -139,7 +139,7 @@ export default function ProjectDashboard() {
           Here's what's happening with your teams and projects.
         </p>
       </div>
-      
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -157,7 +157,7 @@ export default function ProjectDashboard() {
                 </div>
               </Button>
             </Link>
-            
+
             <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals`}>
               <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
                 <FileText className="h-4 w-4 flex-shrink-0" />
@@ -215,10 +215,10 @@ export default function ProjectDashboard() {
         </Card>
 
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-600">Active Boards</CardTitle>
             <FolderKanban className="h-4 w-4 text-green-600" />
-            </CardHeader>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{data.stats.totalBoards}</div>
             <p className="text-xs text-muted-foreground">
@@ -373,12 +373,12 @@ export default function ProjectDashboard() {
           {data.recurringInvoices && data.recurringInvoices.length > 0 && (
             <RecurringInvoicesOverview invoices={data.recurringInvoices} />
           )}
-          
+
           {/* Scope Radar for first client with budget */}
           {data.clients && data.clients.length > 0 && (
             <ScopeRadarWidget
               clientId={data.clients[0].id}
-              projectId={data.clients[0].projects?.[0]?.id}
+              projectId={projectId}
               userId={session?.user?.id || ""}
               compact={false}
             />

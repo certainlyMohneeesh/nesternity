@@ -5,11 +5,11 @@ import { prisma } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
-    console.log('📝 Starting proposal update...');
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
     console.log('📋 Proposal ID:', id);
 
     // Get authenticated user
@@ -104,7 +104,7 @@ export async function PUT(
 
     // Update the proposal
     console.log('💾 Updating proposal in database...');
-    
+
     // Get organisationId from project or client
     let organisationId = null;
     if (projectId) {
@@ -120,7 +120,7 @@ export async function PUT(
       });
       organisationId = client?.organisationId;
     }
-    
+
     const updatedProposal = await prisma.proposal.update({
       where: { id },
       data: {
@@ -181,7 +181,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const user = await getAuthenticatedUser();
@@ -189,7 +189,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
 
     // Check if proposal exists and belongs to user
     const proposal = await prisma.proposal.findUnique({

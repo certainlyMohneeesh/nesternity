@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSession } from "@/components/auth/session-context";
+import { useRouter } from 'next/navigation';
 import { getSessionToken } from '@/lib/supabase/client-session';
 import { 
   User, 
@@ -51,6 +52,7 @@ interface Subscription {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { session, loading: sessionLoading } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -171,6 +173,27 @@ export default function SettingsPage() {
       console.error('Error exporting data:', error);
     } finally {
       setExportLoading(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (!confirm('Are you sure you want to permanently delete your account? This cannot be undone.')) return;
+    try {
+      const token = await getSessionToken();
+      if (!token) return;
+
+      const response = await fetch('/api/profile', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        router.push('/auth/login');
+      } else {
+        alert('Failed to delete account');
+      }
+    } catch (err) {
+      console.error('Failed to delete account:', err);
     }
   }
 
@@ -365,7 +388,7 @@ export default function SettingsPage() {
                       Permanently delete your account and all data
                     </p>
                   </div>
-                  <Button variant="destructive" className="gap-2">
+                  <Button variant="destructive" className="gap-2" onClick={deleteAccount}>
                     <Trash2 className="h-4 w-4" />
                     Delete Account
                   </Button>

@@ -1,15 +1,16 @@
-import LocalProvider from './providers/localProvider';
+import OpenRouterProvider from './providers/openRouterProvider';
+import { ChatMessage, CompletionOptions, CompletionResult } from './types';
 
 export interface IProvider {
-  generateCompletion(messages: any[], options?: any): Promise<any>;
-  generateStructuredCompletion<T = unknown>(messages: any[], options?: any): Promise<{ data: T; usage?: any; model: string }>;
+  generateCompletion(messages: ChatMessage[], options?: CompletionOptions): Promise<CompletionResult>;
+  generateStructuredCompletion<T = unknown>(messages: ChatMessage[], options?: CompletionOptions): Promise<{ data: T; usage?: CompletionResult['usage']; model: string }>;
   embedText?(texts: string[]): Promise<number[][]> | Promise<null>;
   searchEmbeddings?(query: string, topK?: number): Promise<Array<{ id: string; score: number; metadata?: Record<string, any> }>>;
   healthCheck?(): Promise<boolean>;
 }
 
 export function createProvider(): IProvider {
-  return new LocalProvider();
+  return new OpenRouterProvider();
 }
 
 export const provider: IProvider = createProvider();

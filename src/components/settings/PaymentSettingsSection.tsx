@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FieldSet, Field, FieldLabel, FieldContent, FieldLegend } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -263,29 +264,35 @@ export function PaymentSettingsSection() {
                 <h3 className="font-semibold">Contact Information</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Email *</Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={settings.contactEmail || ''}
-                    onChange={(e) => handleChange('contactEmail', e.target.value)}
-                  />
-                </div>
+              <FieldSet>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="contactEmail">Email *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="contactEmail"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={settings.contactEmail || ''}
+                        onChange={(e) => handleChange('contactEmail', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="contactPhone">Phone Number *</Label>
-                  <Input
-                    id="contactPhone"
-                    type="tel"
-                    placeholder="+91XXXXXXXXXX"
-                    value={settings.contactPhone || ''}
-                    onChange={(e) => handleChange('contactPhone', e.target.value)}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="contactPhone">Phone Number *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="contactPhone"
+                        type="tel"
+                        placeholder="+91XXXXXXXXXX"
+                        value={settings.contactPhone || ''}
+                        onChange={(e) => handleChange('contactPhone', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
                 </div>
-              </div>
+              </FieldSet>
             </div>
 
             {/* Business/KYC Details */}
@@ -295,41 +302,47 @@ export function PaymentSettingsSection() {
                 <h3 className="font-semibold">Business Details</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Business/Legal Name</Label>
-                  <Input
-                    id="businessName"
-                    placeholder="Your Business Name"
-                    value={settings.businessName || ''}
-                    onChange={(e) => handleChange('businessName', e.target.value)}
-                  />
-                </div>
+              <FieldSet>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="businessName">Business/Legal Name</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="businessName"
+                        placeholder="Your Business Name"
+                        value={settings.businessName || ''}
+                        onChange={(e) => handleChange('businessName', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="panNumber">PAN Number * (India)</Label>
-                  <Input
-                    id="panNumber"
-                    placeholder="AAAAA0000A"
-                    value={settings.panNumber || ''}
-                    onChange={(e) => handleChange('panNumber', e.target.value.toUpperCase())}
-                    maxLength={10}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Required for KYC verification
-                  </p>
-                </div>
+                  <Field>
+                    <FieldLabel htmlFor="panNumber">PAN Number * (India)</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="panNumber"
+                        placeholder="AAAAA0000A"
+                        value={settings.panNumber || ''}
+                        onChange={(e) => handleChange('panNumber', e.target.value.toUpperCase())}
+                        maxLength={10}
+                      />
+                      <p className="text-xs text-muted-foreground">Required for KYC verification</p>
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gstNumber">GST Number (Optional)</Label>
-                  <Input
-                    id="gstNumber"
-                    placeholder="22AAAAA0000A1Z5"
-                    value={settings.gstNumber || ''}
-                    onChange={(e) => handleChange('gstNumber', e.target.value.toUpperCase())}
-                  />
+                  <Field>
+                    <FieldLabel htmlFor="gstNumber">GST Number (Optional)</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="gstNumber"
+                        placeholder="22AAAAA0000A1Z5"
+                        value={settings.gstNumber || ''}
+                        onChange={(e) => handleChange('gstNumber', e.target.value.toUpperCase())}
+                      />
+                    </FieldContent>
+                  </Field>
                 </div>
-              </div>
+              </FieldSet>
             </div>
 
             {/* Bank Account Details */}
@@ -339,74 +352,88 @@ export function PaymentSettingsSection() {
                 <h3 className="font-semibold">Bank Account Details</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="accountHolderName">Account Holder Name *</Label>
-                  <Input
-                    id="accountHolderName"
-                    placeholder="Full name as per bank account"
-                    value={settings.accountHolderName || ''}
-                    onChange={(e) => handleChange('accountHolderName', e.target.value)}
-                  />
-                </div>
+              <FieldSet>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="accountHolderName">Account Holder Name *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="accountHolderName"
+                        placeholder="Full name as per bank account"
+                        value={settings.accountHolderName || ''}
+                        onChange={(e) => handleChange('accountHolderName', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="accountNumber">Account Number *</Label>
-                  <Input
-                    id="accountNumber"
-                    placeholder="Enter account number"
-                    value={settings.accountNumber || ''}
-                    onChange={(e) => handleChange('accountNumber', e.target.value)}
-                  />
-                </div>
+                  <Field>
+                    <FieldLabel htmlFor="accountNumber">Account Number *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="accountNumber"
+                        placeholder="Enter account number"
+                        value={settings.accountNumber || ''}
+                        onChange={(e) => handleChange('accountNumber', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ifscCode">IFSC Code *</Label>
-                  <Input
-                    id="ifscCode"
-                    placeholder="SBIN0001234"
-                    value={settings.ifscCode || ''}
-                    onChange={(e) => handleChange('ifscCode', e.target.value.toUpperCase())}
-                    maxLength={11}
-                  />
-                </div>
+                  <Field>
+                    <FieldLabel htmlFor="ifscCode">IFSC Code *</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="ifscCode"
+                        placeholder="SBIN0001234"
+                        value={settings.ifscCode || ''}
+                        onChange={(e) => handleChange('ifscCode', e.target.value.toUpperCase())}
+                        maxLength={11}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="bankName">Bank Name</Label>
-                  <Input
-                    id="bankName"
-                    placeholder="State Bank of India"
-                    value={settings.bankName || ''}
-                    onChange={(e) => handleChange('bankName', e.target.value)}
-                  />
-                </div>
+                  <Field>
+                    <FieldLabel htmlFor="bankName">Bank Name</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="bankName"
+                        placeholder="State Bank of India"
+                        value={settings.bankName || ''}
+                        onChange={(e) => handleChange('bankName', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="branchName">Branch Name</Label>
-                  <Input
-                    id="branchName"
-                    placeholder="Main Branch"
-                    value={settings.branchName || ''}
-                    onChange={(e) => handleChange('branchName', e.target.value)}
-                  />
-                </div>
+                  <Field>
+                    <FieldLabel htmlFor="branchName">Branch Name</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="branchName"
+                        placeholder="Main Branch"
+                        value={settings.branchName || ''}
+                        onChange={(e) => handleChange('branchName', e.target.value)}
+                      />
+                    </FieldContent>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label htmlFor="accountType">Account Type *</Label>
-                  <Select
-                    value={settings.accountType || 'SAVINGS'}
-                    onValueChange={(value) => handleChange('accountType', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SAVINGS">Savings Account</SelectItem>
-                      <SelectItem value="CURRENT">Current Account</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Field>
+                    <FieldLabel htmlFor="accountType">Account Type *</FieldLabel>
+                    <FieldContent>
+                      <Select
+                        value={settings.accountType || 'SAVINGS'}
+                        onValueChange={(value) => handleChange('accountType', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SAVINGS">Savings Account</SelectItem>
+                          <SelectItem value="CURRENT">Current Account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
                 </div>
-              </div>
+              </FieldSet>
             </div>
 
             {/* Business Address */}

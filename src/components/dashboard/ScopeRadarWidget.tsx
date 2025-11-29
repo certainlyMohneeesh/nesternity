@@ -113,8 +113,8 @@ export default function ScopeRadarWidget({
   const parseEmailContent = (htmlContent: string): EmailData => {
     // Extract subject if it exists in the HTML
     const subjectMatch = htmlContent.match(/<p><b>Subject:?\s*<\/b>\s*(.*?)<\/p>/i) ||
-                        htmlContent.match(/Subject:\s*(.*?)(?:<\/p>|<br>|\n)/i);
-    
+      htmlContent.match(/Subject:\s*(.*?)(?:<\/p>|<br>|\n)/i);
+
     let subject = "Urgent: Project Budget Status Update";
     let body = htmlContent;
 
@@ -174,11 +174,11 @@ export default function ScopeRadarWidget({
     }
   }, [budgetData?.clientEmailDraft, userDetails]);
 
-  // Fetch budget data
+  // Fetch budget data (only cached results, no AI check)
   const fetchBudgetData = async () => {
     try {
       setLoading(true);
-      console.log('[ScopeRadarWidget] Fetching budget data for:', { clientId, projectId });
+      console.log('[ScopeRadarWidget] Fetching cached budget data for:', { clientId, projectId });
 
       const response = await fetch(
         `/api/ai/scope-sentinel/budget-check?clientId=${clientId}${projectId ? `&projectId=${projectId}` : ""}`
@@ -186,18 +186,19 @@ export default function ScopeRadarWidget({
 
       console.log('[ScopeRadarWidget] Response status:', response.status);
 
-      // If no existing data (404), trigger a fresh budget check (silently on initial load)
+      // If no existing data (404), show empty state - don't auto-trigger AI check
       if (response.status === 404) {
-        console.log('[ScopeRadarWidget] No existing budget data, running initial check');
-        await checkBudget(false); // Don't show toast on auto-check
+        console.log('[ScopeRadarWidget] No existing budget data - user can manually check');
+        setBudgetData(null);
+        setLoading(false);
         return;
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('[ScopeRadarWidget] API Error:', errorData);
-        // Don't throw, just show empty state
         setBudgetData(null);
+        setLoading(false);
         return;
       }
 
@@ -206,8 +207,8 @@ export default function ScopeRadarWidget({
 
       if (data.radar) {
         // Map from ScopeRadar model to BudgetData
-        const spendPercentage = data.radar.originalBudget > 0 
-          ? (data.radar.currentEstimate / data.radar.originalBudget) * 100 
+        const spendPercentage = data.radar.originalBudget > 0
+          ? (data.radar.currentEstimate / data.radar.originalBudget) * 100
           : 0;
 
         setBudgetData({
@@ -219,7 +220,7 @@ export default function ScopeRadarWidget({
           overrunPercentage: data.radar.budgetOverrunPercent || 0,
           riskLevel: spendPercentage >= 100 ? 'critical' : spendPercentage >= 80 ? 'warning' : 'safe',
           invoiceCount: data.radar.flaggedItems?.length || 0,
-          currency: 'INR', // Default to INR if not in radar data
+          currency: data.currency || 'INR', // Use currency from API response
           clientEmailDraft: data.radar.clientEmailDraft,
           lastChecked: data.radar.flaggedAt,
         });
@@ -253,7 +254,7 @@ export default function ScopeRadarWidget({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('[ScopeRadarWidget] POST Error:', errorData);
-        
+
         // Show user-friendly error message
         if (errorData.message?.includes('No budget found')) {
           toast.error("No budget configured", {
@@ -271,8 +272,8 @@ export default function ScopeRadarWidget({
       console.log('[ScopeRadarWidget] Budget check response:', data);
 
       // Calculate spend percentage
-      const spendPercentage = data.originalBudget > 0 
-        ? (data.invoiceTotal / data.originalBudget) * 100 
+      const spendPercentage = data.originalBudget > 0
+        ? (data.invoiceTotal / data.originalBudget) * 100
         : 0;
 
       setBudgetData({
@@ -330,7 +331,7 @@ export default function ScopeRadarWidget({
       });
 
       toast.info("Sending email to client...");
-      
+
       // Fill placeholders one more time before sending
       const finalEmailBody = fillEmailPlaceholders(emailData.body);
 
@@ -382,13 +383,14 @@ export default function ScopeRadarWidget({
         error: error instanceof Error ? error.message : 'Unknown error',
         errorStack: error instanceof Error ? error.stack : undefined,
       });
-      
+
       toast.error("Failed to send email", {
         description: error instanceof Error ? error.message : "An unexpected error occurred",
       });
     }
   };
 
+  // Only fetch cached data on mount, don't auto-trigger expensive AI checks
   useEffect(() => {
     fetchBudgetData();
   }, [clientId, projectId]);
@@ -401,11 +403,11 @@ export default function ScopeRadarWidget({
 
   // Get risk level styling
   const getRiskStyles = () => {
-    if (!budgetData) return { 
-      color: "text-gray-600", 
-      bg: "bg-gray-100", 
+    if (!budgetData) return {
+      color: "text-gray-600",
+      bg: "bg-gray-100",
       badge: "secondary" as const,
-      icon: AlertTriangle 
+      icon: AlertTriangle
     };
 
     const styles = {
@@ -475,9 +477,9 @@ export default function ScopeRadarWidget({
               Click below to analyze your budget and invoices
             </p>
           </div>
-          <Button 
-            onClick={() => checkBudget(true)} 
-            disabled={checking} 
+          <Button
+            onClick={() => checkBudget(true)}
+            disabled={checking}
             className="w-full"
             size="lg"
           >
@@ -551,13 +553,12 @@ export default function ScopeRadarWidget({
             </div>
             <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className={`h-full rounded-full transition-all ${
-                  budgetData.riskLevel === "critical"
+                className={`h-full rounded-full transition-all ${budgetData.riskLevel === "critical"
                     ? "bg-red-600"
                     : budgetData.riskLevel === "warning"
-                    ? "bg-yellow-600"
-                    : "bg-green-600"
-                }`}
+                      ? "bg-yellow-600"
+                      : "bg-green-600"
+                  }`}
                 style={{ width: `${Math.min(budgetData.spendPercentage || 0, 100)}%` }}
               />
             </div>
@@ -654,7 +655,7 @@ export default function ScopeRadarWidget({
                               />
                             </div>
                           </div>
-                          
+
                           {/* User Details (Editable) */}
                           <div className="border-t pt-3">
                             <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Email Signature</Label>

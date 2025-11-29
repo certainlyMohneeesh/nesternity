@@ -40,6 +40,7 @@ type Contract = {
   currency: string;
   acceptedAt: Date | null;
   pdfUrl: string | null;
+  organisationId: string | null;
   client: {
     id: string;
     name: string;
@@ -90,13 +91,20 @@ export function ContractsList({ contracts: initialContracts }: Props) {
       }
 
       const data = await response.json();
-      
+
       toast.success("Converted to invoice! 🎉", {
         description: `Invoice ${data.invoice.invoiceNumber} has been created`,
       });
 
-      // Navigate to the invoice
-      router.push(`/dashboard/invoices/${data.invoice.id}`);
+      // Navigate to the invoices page for this project
+      const contract = contracts.find(c => c.id === contractId);
+      if (contract?.organisationId && contract?.project?.id) {
+        router.push(`/dashboard/organisation/${contract.organisationId}/projects/${contract.project.id}/invoices`);
+      } else {
+        // Fallback if org/project missing (shouldn't happen for valid contracts)
+        console.warn("Missing organisationId or projectId for redirect");
+        router.push(`/dashboard/invoices`);
+      }
     } catch (error) {
       console.error("Convert to invoice error:", error);
       toast.error("Failed to convert", {

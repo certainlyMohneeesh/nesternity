@@ -2,7 +2,11 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Calendar, Building2, ListChecks, AlertTriangle, Edit, Trash2 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Users, Calendar, Building2, ListChecks, AlertTriangle, Edit, Trash2, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getSessionToken } from '@/lib/supabase/client-session';
+import { toast } from 'sonner';
 
 interface Board {
   id: string;
@@ -30,6 +34,7 @@ interface ProjectCardProps {
     _count: { boards: number; issues: number };
     createdAt: string;
     goal?: number;
+    budget?: number;
   };
   issuesCount: number;
   onEdit: () => void;
@@ -56,6 +61,35 @@ export function ProjectCard({ project, issuesCount, onEdit, onDelete }: ProjectC
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const [budget, setBudget] = useState(project.budget || 0);
+
+  const handleBudgetChange = async (value: number[]) => {
+    const newBudget = value[0];
+    setBudget(newBudget);
+
+    try {
+      const token = await getSessionToken();
+      if (!token) return;
+
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ budget: newBudget }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update budget');
+      }
+      toast.success('Budget updated');
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      toast.error('Failed to update budget');
+    }
   };
 
   return (
@@ -105,6 +139,23 @@ export function ProjectCard({ project, issuesCount, onEdit, onDelete }: ProjectC
               style={{ width: `${progress}%` }}
             ></div>
           </div>
+        </div>
+        {/* Budget Slider */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <DollarSign className="h-3 w-3" />
+              <span>Budget</span>
+            </div>
+            <span className="text-xs font-medium">${budget.toLocaleString()}</span>
+          </div>
+          <Slider
+            defaultValue={[budget]}
+            max={100000}
+            step={100}
+            onValueCommit={handleBudgetChange}
+            className="py-2"
+          />
         </div>
         {/* Issues Count */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">

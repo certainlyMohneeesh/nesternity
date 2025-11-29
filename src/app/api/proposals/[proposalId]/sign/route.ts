@@ -6,24 +6,25 @@ import { createProposalNotification, ACTIVITY_TYPES } from "@/lib/notifications"
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
-    const { id } = await context.params;
-    
+    const { proposalId } = await context.params;
+    const id = proposalId;
+
     // Get client IP for rate limiting
     const clientIP = getClientIP(request);
-    
+
     // Rate Limiting: 3 signature attempts per 15 minutes per IP
     const rateLimit = checkRateLimit(`signature:${clientIP}`, 3, 15 * 60 * 1000);
-    
+
     if (!rateLimit.allowed) {
       const resetIn = Math.ceil((rateLimit.resetAt - Date.now()) / 1000 / 60);
       return NextResponse.json(
-        { 
+        {
           error: "Too many signature attempts",
           message: `Please wait ${resetIn} minutes before trying again`,
-          resetIn 
+          resetIn
         },
         { status: 429 }
       );

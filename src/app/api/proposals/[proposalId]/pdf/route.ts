@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const user = await getAuthenticatedUser();
@@ -12,7 +12,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
 
     // Fetch proposal with all details
     const proposal = await prisma.proposal.findUnique({
@@ -53,9 +54,9 @@ export async function GET(
 
     // Generate new PDF
     console.log('📄 Generating PDF for proposal:', proposal.title);
-    
+
     const { generateProposalPDF } = await import('@/lib/generateProposalPdf');
-    
+
     const proposalForPDF = {
       id: proposal.id,
       title: proposal.title,
@@ -83,7 +84,7 @@ export async function GET(
     // Update proposal with PDF URL
     await prisma.proposal.update({
       where: { id },
-      data: { 
+      data: {
         pdfUrl: typeof pdfUrl === 'string' ? pdfUrl : pdfUrl?.toString() || null
       },
     });

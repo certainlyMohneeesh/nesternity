@@ -437,6 +437,8 @@ model Project {
   teamId         String        @map("team_id")
   status         ProjectStatus @default(PLANNING)
   goal           Int?
+  budget         Float?
+  currency       String        @default("INR")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
   completedTasks Int?          @map("completed_tasks")
@@ -960,7 +962,7 @@ model SubscriptionPlan {
 model UsageRecord {
   id             String   @id @default(cuid())
   userId         String
-  subscriptionId String
+  subscriptionId String?  // Made nullable to avoid FK errors when missing
   featureType    FeatureType
   count          Int      @default(1)
   periodStart    DateTime
@@ -968,7 +970,7 @@ model UsageRecord {
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription   RazorpaySubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription   RazorpaySubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([subscriptionId])

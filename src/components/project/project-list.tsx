@@ -5,10 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectModal } from "./project-modal";
-import { FolderKanban, Plus, Loader2, Calendar, CheckCircle2 } from "lucide-react";
+import { FolderKanban, Plus, Loader2, Calendar, CheckCircle2, DollarSign } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { getSessionToken } from '@/lib/supabase/client-session';
+import { getCurrencySymbol } from '@/lib/utils';
 
 interface Project {
   id: string;
@@ -20,6 +23,8 @@ interface Project {
   goal?: number;
   completedTasks?: number;
   createdAt: string;
+  budget?: number;
+  currency?: string;
 }
 
 interface ProjectListProps {
@@ -37,19 +42,19 @@ export function ProjectList({ organisationId }: ProjectListProps) {
   const fetchProjects = async () => {
     console.log('[ProjectList] ========== FETCH START ==========');
     console.log('[ProjectList] Organisation ID:', organisationId);
-    
+
     try {
       setLoading(true);
-      
+
       // Get session token for authorization
       console.log('[ProjectList] Getting session token...');
       const token = await getSessionToken();
-      
+
       console.log('[ProjectList] Token check:', {
         hasToken: !!token,
         tokenLength: token?.length
       });
-      
+
       if (!token) {
         console.log('[ProjectList] ❌ No session token, redirecting to login...');
         router.push('/auth/login');
@@ -63,19 +68,19 @@ export function ProjectList({ organisationId }: ProjectListProps) {
           'Content-Type': 'application/json'
         }
       });
-      
+
       console.log('[ProjectList] Response status:', response.status);
-      
+
       if (!response.ok) {
         const error = await response.json();
         console.error('[ProjectList] ❌ API Error:', error);
-        
+
         if (response.status === 401) {
           console.log('[ProjectList] 401 Unauthorized - redirecting to login');
           router.push('/auth/login');
           return;
         }
-        
+
         throw new Error(error.error || 'Failed to fetch projects');
       }
 
@@ -83,14 +88,14 @@ export function ProjectList({ organisationId }: ProjectListProps) {
       console.log('[ProjectList] ✅ Fetched projects:', {
         count: data.projects?.length || 0
       });
-      
+
       setProjects(data.projects || []);
       setCanCreateMore(data.meta?.canCreateMore ?? true);
       setLimits({
         current: data.meta?.currentCount ?? 0,
         limit: data.meta?.limit ?? 0
       });
-      
+
       console.log('[ProjectList] ========== FETCH COMPLETE ==========');
     } catch (error) {
       console.error('[ProjectList] ❌ Error fetching projects:', error);
@@ -144,9 +149,39 @@ export function ProjectList({ organisationId }: ProjectListProps) {
 
   const ProjectCard = ({ project }: { project: Project }) => {
     const progress = getProgress(project);
-    
+    const [budget, setBudget] = useState(project.budget || 0);
+    const [showSlider, setShowSlider] = useState(false);
+    const currencySymbol = getCurrencySymbol(project.currency || 'INR');
+
+    const handleBudgetChange = async (value: number[]) => {
+      const newBudget = value[0];
+      setBudget(newBudget);
+
+      try {
+        const token = await getSessionToken();
+        if (!token) return;
+
+        const response = await fetch(`/api/organisations/${organisationId}/projects/${project.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ budget: newBudget }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update budget');
+        }
+        // Optional: Show success toast only on final commit or debounce
+      } catch (error) {
+        console.error('Error updating budget:', error);
+        toast.error('Failed to update budget');
+      }
+    };
+
     return (
-      <Card 
+      <Card
         className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-indigo-200"
         onClick={() => handleProjectClick(project)}
       >
@@ -180,7 +215,7 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                   <span className="font-medium text-gray-900">{progress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all"
                     style={{ width: `${progress}%` }}
                   />
@@ -191,6 +226,56 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                 </div>
               </div>
             )}
+
+            {/* Budget Section */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
+                  <DollarSign className="w-4 h-4 text-gray-500" />
+                  <span>Budget</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">
+                  {currencySymbol}{budget.toLocaleString()}
+                </span>
+              </div>
+
+              <div onClick={(e) => e.stopPropagation()}>
+                {!showSlider ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs h-7"
+                    onClick={() => setShowSlider(true)}
+                  >
+                    Change Budget
+                  </Button>
+                ) : (
+                  <div className="px-1 py-2">
+                    <Slider
+                      defaultValue={[budget]}
+                      max={1000000} // This should ideally be dynamic or higher
+                      step={100}
+                      onValueCommit={(value) => {
+                        handleBudgetChange(value);
+                        // Keep slider open or close it? User request implies "shows the budget slider", 
+                        // maybe it stays open or toggles. Let's keep it open for adjustment.
+                      }}
+                      className="py-2"
+                    />
+                    <div className="flex justify-end mt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-[10px] h-5 px-2 text-gray-500"
+                        onClick={() => setShowSlider(false)}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Dates */}
             {(project.startDate || project.endDate) && (
@@ -212,9 +297,9 @@ export function ProjectList({ organisationId }: ProjectListProps) {
             )}
 
             <div className="pt-3 border-t">
-              <Button 
-                size="sm" 
-                variant="ghost" 
+              <Button
+                size="sm"
+                variant="ghost"
                 className="text-xs w-full"
                 onClick={(e) => {
                   e.stopPropagation();

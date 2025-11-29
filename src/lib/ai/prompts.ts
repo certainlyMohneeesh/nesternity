@@ -3,7 +3,7 @@
  * Structured prompts for each AI feature
  */
 
-import { ChatMessage } from './gemini';
+import { ChatMessage } from './types';
 
 export interface ProposalPromptInput {
   clientName: string;
@@ -151,9 +151,9 @@ Keep rationale concise. Limit riskFactors to top 3. Limit assumptions to 5.`;
 
   const historicalContext = input.historicalData?.similarProjects.length
     ? `\n\n**Historical Data (Similar Projects):**
-${input.historicalData.similarProjects.map(p => 
-  `- ${p.name}: ${p.hours}h, ${p.cost} INR${p.actualVsEstimate ? ` (${p.actualVsEstimate > 0 ? '+' : ''}${p.actualVsEstimate}% variance)` : ''}`
-).join('\n')}`
+${input.historicalData.similarProjects.map(p =>
+      `- ${p.name}: ${p.hours}h, ${p.cost} INR${p.actualVsEstimate ? ` (${p.actualVsEstimate > 0 ? '+' : ''}${p.actualVsEstimate}% variance)` : ''}`
+    ).join('\n')}`
     : '';
 
   const userPrompt = `Estimate the time and cost for this project:

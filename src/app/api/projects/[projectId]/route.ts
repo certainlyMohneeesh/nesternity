@@ -9,11 +9,12 @@ const supabase = createClient(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    console.log('[ProjectAPI] GET - Fetching project:', params.id);
-    
+    const { projectId } = await context.params;
+    console.log('[ProjectAPI] GET - Fetching project:', projectId);
+
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       console.error('[ProjectAPI] No valid authorization header');
@@ -32,7 +33,7 @@ export async function GET(
 
     const project = await db.project.findFirst({
       where: {
-        id: params.id,
+        id: projectId,
       },
       include: {
         client: true,
@@ -58,7 +59,7 @@ export async function GET(
     });
 
     if (!project) {
-      console.error('[ProjectAPI] Project not found:', params.id);
+      console.error('[ProjectAPI] Project not found:', projectId);
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -98,9 +99,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await context.params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
@@ -115,7 +117,7 @@ export async function PUT(
 
     const project = await db.project.findFirst({
       where: {
-        id: params.id,
+        id: projectId,
       },
     });
 
@@ -143,7 +145,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, clientId, startDate, endDate, status, goal } = body;
+    const { name, description, clientId, startDate, endDate, status, goal, budget } = body;
 
     // If clientId is provided, verify the client exists and user has access
     if (clientId) {
@@ -161,7 +163,7 @@ export async function PUT(
 
     const updatedProject = await db.project.update({
       where: {
-        id: params.id,
+        id: projectId,
       },
       data: {
         name,
@@ -171,7 +173,8 @@ export async function PUT(
         endDate: endDate ? new Date(endDate) : null,
         status,
         ...(goal !== undefined ? { goal: Number(goal) } : {}),
-      },
+        ...(budget !== undefined ? { budget: Number(budget) } : {}),
+      } as any,
       include: {
         client: true,
         team: {
@@ -202,11 +205,12 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
+export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await context.params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
@@ -221,7 +225,73 @@ export async function DELETE(
 
     const project = await db.project.findFirst({
       where: {
-        id: params.id,
+        id: projectId,
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Verify user has access to the team
+    const teamAccess = await db.teamMember.findFirst({
+      where: {
+        teamId: project.teamId,
+        userId: user.id,
+      },
+    });
+
+    const isOwner = await db.team.findFirst({
+      where: {
+        id: project.teamId,
+        createdBy: user.id,
+      },
+    });
+
+    if (!teamAccess && !isOwner) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { budget } = body;
+
+    const updatedProject = await db.project.update({
+      where: {
+        id: projectId,
+      },
+      data: {
+        ...(budget !== undefined ? { budget: Number(budget) } : {}),
+      } as any,
+    });
+
+    return NextResponse.json(updatedProject);
+  } catch (error) {
+    console.error('Error updating project:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const { projectId } = await context.params;
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No valid authorization header' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const project = await db.project.findFirst({
+      where: {
+        id: projectId,
       },
     });
 
@@ -250,7 +320,7 @@ export async function DELETE(
 
     await db.project.delete({
       where: {
-        id: params.id,
+        id: projectId,
       },
     });
 

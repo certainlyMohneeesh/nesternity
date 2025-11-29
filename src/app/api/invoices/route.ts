@@ -4,28 +4,37 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('[InvoicesAPI] GET - Starting invoice fetch');
+
     // Get auth token from request headers
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
+      console.error('[InvoicesAPI] No authorization token');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
+      console.error('[InvoicesAPI] Auth error:', authError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[InvoicesAPI] User authenticated:', user.id);
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const clientId = searchParams.get('clientId');
     const organisationId = searchParams.get('organisationId');
 
+    console.log('[InvoicesAPI] Query params:', { status, clientId, organisationId });
+
     const where: any = {
-      issuedById: user.id,
+      // Remove issuedById filter to show all invoices for the organisation
+      // issuedById: user.id,
     };
 
     if (status) {
@@ -40,6 +49,8 @@ export async function GET(req: NextRequest) {
       where.organisationId = organisationId;
     }
 
+    console.log('[InvoicesAPI] Where clause:', JSON.stringify(where, null, 2));
+
     const invoices = await prisma.invoice.findMany({
       where,
       include: {
@@ -51,9 +62,20 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    console.log('[InvoicesAPI] Found', invoices.length, 'invoices');
+    if (invoices.length > 0) {
+      console.log('[InvoicesAPI] First invoice:', {
+        id: invoices[0].id,
+        invoiceNumber: invoices[0].invoiceNumber,
+        organisationId: invoices[0].organisationId,
+        clientId: invoices[0].clientId,
+        status: invoices[0].status
+      });
+    }
+
     return NextResponse.json(invoices);
   } catch (error) {
-    console.error('Error fetching invoices:', error);
+    console.error('[InvoicesAPI] Error fetching invoices:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -61,11 +83,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     console.log('📧 Invoice creation request received');
-    
+
     // Get auth token from request headers
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       console.error('❌ No authorization token provided');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -73,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('❌ Invalid authorization token:', authError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -213,7 +235,7 @@ export async function POST(req: NextRequest) {
         let paymentUrl = null;
         let razorpayPaymentLinkId = null;
         let razorpayPaymentLinkStatus = null;
-        
+
         if (enablePaymentLink) {
           console.log('💳 Generating Razorpay payment link with Route...');
           try {
@@ -224,13 +246,13 @@ export async function POST(req: NextRequest) {
 
             if (paymentSettings?.razorpayAccountId && paymentSettings.accountActive) {
               // Use Razorpay Route for payment link with auto-transfer
-              const { 
-                createPaymentLinkWithTransfer, 
+              const {
+                createPaymentLinkWithTransfer,
                 convertToPaise,
                 calculateCommission,
                 mapSettlementSchedule
               } = await import('@/lib/razorpay-route');
-              
+
               // Calculate commission
               const totalInPaise = convertToPaise(total);
               const commissionData = calculateCommission(
@@ -238,7 +260,7 @@ export async function POST(req: NextRequest) {
                 paymentSettings.enableCommission || false,
                 paymentSettings.commissionPercent || 5.0
               );
-              
+
               const razorpayLink = await createPaymentLinkWithTransfer({
                 amount: totalInPaise,
                 currency: (currency || 'INR').toUpperCase(),
@@ -264,7 +286,7 @@ export async function POST(req: NextRequest) {
               paymentUrl = razorpayLink.short_url;
               razorpayPaymentLinkId = razorpayLink.id;
               razorpayPaymentLinkStatus = razorpayLink.status;
-              
+
               console.log('✅ Razorpay Route payment link generated:', paymentUrl);
               console.log(`💰 Commission: ₹${commissionData.commission / 100} (${commissionData.commissionPercent}%)`);
               console.log(`📤 Transfer to user: ₹${commissionData.transferAmount / 100}`);
@@ -294,7 +316,7 @@ export async function POST(req: NextRequest) {
 
         // Import the PDF generation function
         const { generateInvoicePDF } = await import('@/lib/generatePdf');
-        
+
         // Create invoice data for PDF generation
         const invoiceForPDF = {
           id: invoice.id,
@@ -322,11 +344,11 @@ export async function POST(req: NextRequest) {
             total: item.total,
           })),
         };
-        
+
         console.log('🔧 Generating PDF...');
         const pdfUrl = await generateInvoicePDF(invoiceForPDF);
         console.log('✅ PDF generated successfully:', pdfUrl);
-        
+
         // Update invoice with PDF URL
         console.log('💾 Updating invoice with PDF URL...');
         const updatedInvoice = await prisma.invoice.update({
@@ -337,7 +359,7 @@ export async function POST(req: NextRequest) {
             items: true,
           },
         });
-        
+
         console.log('✅ Invoice updated with PDF URL');
         // Return the updated invoice with PDF URL
         return NextResponse.json(updatedInvoice, { status: 201 });
@@ -352,7 +374,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {
     console.error('❌ Error creating invoice:', error);
-    
+
     // Provide more detailed error information
     if (error instanceof Error) {
       console.error('Error details:', {
@@ -360,13 +382,13 @@ export async function POST(req: NextRequest) {
         stack: error.stack,
         name: error.name
       });
-      return NextResponse.json({ 
-        error: 'Failed to create invoice', 
-        details: error.message 
+      return NextResponse.json({
+        error: 'Failed to create invoice',
+        details: error.message
       }, { status: 500 });
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Internal Server Error',
       details: 'An unknown error occurred while creating the invoice'
     }, { status: 500 });

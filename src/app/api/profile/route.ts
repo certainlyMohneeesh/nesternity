@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { supabase } from '@/lib/supabase';
+import { supabase, createSupabaseServerClient } from '@/lib/supabase';
 
 // Get current user profile or create if doesn't exist
 export async function GET(request: NextRequest) {
@@ -77,5 +77,43 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('Profile update error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Delete user account and associated data
+export async function DELETE(request: NextRequest) {
+  try {
+    // Token from headers
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Delete user from our database (cascades will handle related data)
+    await db.user.delete({ where: { id: user.id } });
+
+    // Delete user from Supabase Auth as well using service role key
+    try {
+      // admin client using service role key
+      const adminClient = createSupabaseServerClient();
+      if (adminClient?.auth?.admin) {
+        await adminClient.auth.admin.deleteUser(user.id);
+      }
+    } catch (adminErr) {
+      console.warn('Could not delete Supabase auth user via admin client:', adminErr);
+      // Not failing hard — we already removed DB user
+    }
+
+    return NextResponse.json({ success: true, message: 'Account deleted' });
+  } catch (error) {
+    console.error('Error deleting user account:', error);
+    return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }

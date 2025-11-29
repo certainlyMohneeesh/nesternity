@@ -1,3 +1,7 @@
+**A blazing-fast, feature-rich team collaboration platform built with modern web technologies**
+
+[Demo](https://nesternity.vercel.app) • [Documentation](#documentation) • [Developer Guide](DEVELOPER_GUIDE.md) • [Features](#features) • [Getting Started](#getting-started)
+
 # 🚀 Nesternity - Modern Team Collaboration & the calmest CRM out there
 
 <div align="center">
@@ -40,6 +44,49 @@
 - **Type Safety** - Full TypeScript implementation
 - **Security First** - Comprehensive authentication and authorization
 - **Production Ready** - Enterprise-grade architecture and deployment
+
+---
+
+## 🧭 Product Flow (User Journey)
+
+This section outlines a typical flow in Nesternity from organisation creation to invoicing and billing. Each step includes the path to the related UI/page or API for quick reference.
+
+1) Create an Organisation (Your Organisation or Client Organisation)
+	- Create an organisation using the organisation page and modal UI.
+	- Files: `src/app/dashboard/organisation/page.tsx`, `src/components/organisation/organisation-modal.tsx`, `src/components/organisation/organisation-list.tsx`
+
+2) Create a Project within an Organisation
+	- After creating a project, users are redirected to the Project Dashboard.
+	- Files: `src/app/dashboard/organisation/[id]/projects/*`, `src/components/projects/ProjectForm.tsx`
+
+3) Project Dashboard: Teams, Boards & Tasks (Kanban)
+	- Project dashboard includes Teams, Boards (Kanban), Tasks, and Issue tracking. Team members can be assigned to tasks inside boards.
+	- Files: `src/app/dashboard/organisation/[id]/projects/[projectId]/layout.tsx`, `src/components/boards/*`, `src/components/tasks/*`, `src/components/teams/*`
+
+4) Proposals (AI-assisted) -> Contracts
+	- Generate AI-produced proposals, send to clients, and convert an accepted proposal into a contract.
+	- Files: `src/components/ai/ProposalEditor.tsx`, `src/app/dashboard/organisation/[id]/projects/[projectId]/proposals/*`
+
+5) Contracts -> Invoice
+	- Convert a signed contract into an invoice directly from the Contracts interface.
+	- Files: `src/app/dashboard/organisation/[id]/projects/[projectId]/contracts/*`, `src/components/contracts/*`
+
+6) Create Invoices (manual & recurring)
+	- Create one-off invoices with the InvoiceForm, or create recurring invoices via the recurring invoice flows.
+	- Files: `src/components/invoices/InvoiceForm.tsx`, `src/components/invoices/RecurringInvoiceForm.tsx`, `src/app/dashboard/organisation/[id]/projects/[projectId]/invoices/recurring/*`
+
+7) Razorpay Subscription & Billing
+	- Razorpay subscription features, plan tiers, and billing flows are detailed in `RAZORPAY_SUBSCRIPTION_SYSTEM.md`. Razorpay subscription data is stored in Prisma and is accessible via endpoints like `GET /api/razorpay/subscription`.
+	- Files: `RAZORPAY_SUBSCRIPTION_SYSTEM.md`, `src/app/api/razorpay/*`, `src/app/api/payment-settings/route.ts`
+
+8) AI Budget Estimator & AI Scope Sentinel
+	- AI Budget Estimator estimates cost/effort for a project via AI-backed endpoints.
+	- AI Scope Sentinel provides a Scope Radar that highlights scope change risks (used during recurring invoice flows and contract checks).
+	- Files: `src/app/api/ai/estimate-budget/route.ts`, `src/components/proposals/BudgetEstimation.tsx`, `src/components/dashboard/ScopeRadarWidget.tsx`, `RECURRING_INVOICES_SCOPE_SENTINEL.md`
+
+---
+
+If you want an in-depth developer walkthrough (with per-file descriptions and how-to's), check out `DEVELOPER_GUIDE.md`.
 
 ---
 

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { getSessionToken } from '@/lib/supabase/client-session';
+import { CURRENCY_SYMBOLS } from '@/lib/utils';
 
 export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
 
@@ -31,13 +32,15 @@ export function ProjectModal({
 }: ProjectModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
     status: initialData?.status || 'PLANNING',
     startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
-    endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : ''
+    endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
+    budget: initialData?.budget || '',
+    currency: initialData?.currency || 'INR'
   });
 
   const handleChange = (field: string, value: string) => {
@@ -53,7 +56,7 @@ export function ProjectModal({
     try {
       console.log('[ProjectModal] Getting session token...');
       const token = await getSessionToken();
-      
+
       if (!token) {
         console.error('[ProjectModal] No session token available');
         setError('Authentication required. Please log in again.');
@@ -62,11 +65,11 @@ export function ProjectModal({
       }
 
       console.log('[ProjectModal] Token obtained, making request...');
-      
-      const url = mode === 'edit' && initialData?.id 
-        ? `/api/organisations/${organisationId}/projects/${initialData.id}` 
+
+      const url = mode === 'edit' && initialData?.id
+        ? `/api/organisations/${organisationId}/projects/${initialData.id}`
         : `/api/organisations/${organisationId}/projects`;
-      
+
       const method = mode === 'edit' ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {
@@ -78,7 +81,9 @@ export function ProjectModal({
         body: JSON.stringify({
           ...formData,
           startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
-          endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
+          endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+          budget: formData.budget ? Number(formData.budget) : null,
+          currency: formData.currency
         }),
       });
 
@@ -116,7 +121,7 @@ export function ProjectModal({
             {mode === 'edit' ? 'Edit Project' : 'Create New Project'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'edit' 
+            {mode === 'edit'
               ? 'Update the details of your project.'
               : 'Create a new project to organize your work and team.'}
           </DialogDescription>
@@ -154,8 +159,8 @@ export function ProjectModal({
           {/* Status */}
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select 
-              value={formData.status} 
+            <Select
+              value={formData.status}
               onValueChange={(value) => handleChange('status', value)}
               disabled={loading}
             >
@@ -170,6 +175,42 @@ export function ProjectModal({
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Budget and Currency */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) => handleChange('currency', value)}
+                disabled={loading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CURRENCY_SYMBOLS).map(([code, symbol]) => (
+                    <SelectItem key={code} value={code}>
+                      {code} ({symbol})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="budget">Budget</Label>
+              <Input
+                id="budget"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.budget}
+                onChange={(e) => handleChange('budget', e.target.value)}
+                placeholder="Enter amount"
+                disabled={loading}
+              />
+            </div>
           </div>
 
           {/* Dates */}

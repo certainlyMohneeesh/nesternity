@@ -1,5 +1,5 @@
 import provider from '@/lib/ai/provider';
-import { ChatMessage, CompletionOptions, generateStructuredCompletion as geminiStructuredCompletion } from './gemini';
+import { ChatMessage, CompletionOptions } from './types';
 import { embedText, indexTextChunks } from './embeddings';
 import { retrieveRelevantDocs } from './retriever';
 
@@ -15,13 +15,13 @@ export async function generateStructuredCompletion<T = unknown>(
   const { ragEnabled = process.env.AI_RAG_ENABLED === 'true', ragTopK = 5 } = options;
 
   if (!ragEnabled) {
-      return await provider.generateStructuredCompletion<T>(messages, options);
+    return await provider.generateStructuredCompletion<T>(messages, options);
   }
 
   // RAG enabled: embed the user's last message and retrieve relevant docs
   const lastUser = messages.slice().reverse().find(m => m.role === 'user');
   if (!lastUser) {
-      return await provider.generateStructuredCompletion<T>(messages, options);
+    return await provider.generateStructuredCompletion<T>(messages, options);
   }
 
   const queryText = lastUser.content;
@@ -48,20 +48,20 @@ export async function generateStructuredCompletion<T = unknown>(
     augmentedMessages.unshift({ role: 'system', content: `RETRIEVED CONTEXT:\n${contextStr}` });
   }
 
-    // Ensure provider health (if available) before generation to provide a clearer error message
-    if (typeof provider.healthCheck === 'function') {
-      try {
-        const healthy = await provider.healthCheck();
-        if (!healthy) {
-          throw new Error('Local provider is not healthy. Ensure the generator service is running and reachable (AI_MODEL_ENDPOINT).');
-        }
-      } catch (err) {
-        throw new Error((err as any)?.message || 'Local provider health check failed');
+  // Ensure provider health (if available) before generation to provide a clearer error message
+  if (typeof provider.healthCheck === 'function') {
+    try {
+      const healthy = await provider.healthCheck();
+      if (!healthy) {
+        throw new Error('Local provider is not healthy. Ensure the generator service is running and reachable (AI_MODEL_ENDPOINT).');
       }
+    } catch (err) {
+      throw new Error((err as any)?.message || 'Local provider health check failed');
     }
+  }
 
-    // Call the provider generator with augmented messages. We are using in-house provider only.
-    return await provider.generateStructuredCompletion<T>(augmentedMessages, options);
+  // Call the provider generator with augmented messages. We are using in-house provider only.
+  return await provider.generateStructuredCompletion<T>(augmentedMessages, options);
 }
 
 export default { generateStructuredCompletion };

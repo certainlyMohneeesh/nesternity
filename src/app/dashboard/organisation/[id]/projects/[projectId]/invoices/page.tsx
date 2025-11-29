@@ -60,7 +60,7 @@ export default function InvoiceHistoryPage() {
   const params = useParams()
   const orgId = params.id as string
   const projectId = params.projectId as string
-  
+
   const router = useRouter()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,7 +79,7 @@ export default function InvoiceHistoryPage() {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setOrganisation(data)
@@ -89,17 +89,27 @@ export default function InvoiceHistoryPage() {
     }
   }
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = async (filterClientId?: string) => {
     try {
       setLoading(true)
       console.log('[InvoicesPage] Fetching invoices with filter:', statusFilter)
-      
+      console.log('[InvoicesPage] filterClientId:', filterClientId, 'orgId:', orgId)
+
       const params = new URLSearchParams()
-      params.append('organisationId', orgId)  // Add organisationId filter
+
+      // Prefer clientId for project-specific invoices, fall back to organisationId
+      if (filterClientId) {
+        console.log('[InvoicesPage] Using clientId filter:', filterClientId)
+        params.append('clientId', filterClientId)
+      } else {
+        console.log('[InvoicesPage] Using organisationId filter:', orgId)
+        params.append('organisationId', orgId)
+      }
+
       if (statusFilter !== 'all') {
         params.append('status', statusFilter)
       }
-      
+
       // Get auth session for making authenticated requests
       const token = await getSessionToken()
       if (!token) {
@@ -107,15 +117,15 @@ export default function InvoiceHistoryPage() {
         toast.error('Authentication required')
         return
       }
-      
+
       const response = await fetch(`/api/invoices?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       console.log('[InvoicesPage] Response status:', response.status)
-      
+
       if (response.ok) {
         const data = await response.json()
         console.log('[InvoicesPage] Fetched invoices:', data.length)
@@ -133,9 +143,47 @@ export default function InvoiceHistoryPage() {
     }
   }
 
+  const loadData = async () => {
+    try {
+      // First, fetch the project to get the clientId
+      const token = await getSessionToken()
+      if (!token) {
+        console.error('[InvoicesPage] No auth token')
+        fetchInvoices() // Fetch with organisationId fallback
+        return
+      }
+
+      const response = await fetch(`/api/organisations/${orgId}/projects/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[InvoicesPage] Project data:', data)
+
+        if (data.clientId) {
+          console.log('[InvoicesPage] Using clientId from project:', data.clientId)
+          // Fetch invoices with the clientId
+          await fetchInvoices(data.clientId)
+        } else {
+          console.warn('[InvoicesPage] Project has no clientId, falling back to organisationId')
+          await fetchInvoices()
+        }
+      } else {
+        console.error('[InvoicesPage] Failed to fetch project')
+        await fetchInvoices()
+      }
+    } catch (error) {
+      console.error('[InvoicesPage] Error in loadData:', error)
+      await fetchInvoices()
+    }
+  }
+
   useEffect(() => {
     fetchOrganisation()
-    fetchInvoices()
+    loadData()
   }, [statusFilter])
 
   const getStatusVariant = (status: Invoice['status']) => {

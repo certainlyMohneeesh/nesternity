@@ -6,7 +6,7 @@ import { generateProposalAccessToken } from "@/lib/security";
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const user = await getAuthenticatedUser();
@@ -20,7 +20,8 @@ export async function POST(
       select: { displayName: true, email: true }
     });
 
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
 
     // Check if proposal exists and belongs to user
     const proposal = await prisma.proposal.findUnique({
@@ -52,12 +53,12 @@ export async function POST(
 
     // Generate PDF if not already generated
     let pdfUrl: string | null = proposal.pdfUrl;
-    
+
     if (!pdfUrl) {
       console.log('📄 Generating PDF for proposal:', proposal.title);
-      
+
       const { generateProposalPDF } = await import('@/lib/generateProposalPdf');
-      
+
       const proposalForPDF = {
         id: proposal.id,
         title: proposal.title,

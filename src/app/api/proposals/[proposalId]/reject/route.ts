@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ proposalId: string }> }
 ) {
   try {
     const user = await getAuthenticatedUser();
@@ -12,7 +12,8 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { proposalId } = await context.params;
+    const id = proposalId;
 
     // Check if proposal exists and belongs to user
     const proposal = await prisma.proposal.findUnique({
