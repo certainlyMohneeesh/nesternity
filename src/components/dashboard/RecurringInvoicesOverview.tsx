@@ -67,7 +67,7 @@ export default function RecurringInvoicesOverview({
       const tax = subtotal * (inv.taxRate / 100);
       const discount = subtotal * (inv.discount / 100);
       const total = subtotal + tax - discount;
-      
+
       // Normalize to monthly value
       const multiplier = {
         WEEKLY: 4.33,
@@ -75,11 +75,11 @@ export default function RecurringInvoicesOverview({
         QUARTERLY: 0.33,
         YEARLY: 0.083,
       }[inv.recurrence] || 1;
-      
+
       const monthlyValue = total * multiplier;
       const currency = inv.currency || 'USD';
       acc[currency] = (acc[currency] || 0) + monthlyValue;
-      
+
       return acc;
     }, {} as Record<string, number>);
 
@@ -142,7 +142,7 @@ export default function RecurringInvoicesOverview({
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <RefreshCw className="h-4 w-4 text-blue-600" />
+              <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <p className="text-2xl font-bold">{activeCount}</p>
             <p className="text-xs text-muted-foreground">Active</p>
@@ -150,7 +150,7 @@ export default function RecurringInvoicesOverview({
 
           <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
             <p className="text-2xl font-bold">
               {monthlyCurrencySymbol}{Math.round(totalMonthlyValue).toLocaleString()}
@@ -162,7 +162,7 @@ export default function RecurringInvoicesOverview({
 
           <div className="text-center p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
             <div className="flex items-center justify-center mb-1">
-              <Clock className="h-4 w-4 text-purple-600" />
+              <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             </div>
             <p className="text-2xl font-bold">{upcomingThisWeek.length}</p>
             <p className="text-xs text-muted-foreground">This Week</p>
@@ -183,7 +183,7 @@ export default function RecurringInvoicesOverview({
 
               const daysUntil = Math.ceil(
                 (new Date(invoice.nextIssueDate).getTime() - new Date().getTime()) /
-                  (1000 * 60 * 60 * 24)
+                (1000 * 60 * 60 * 24)
               );
 
               return (
@@ -207,10 +207,10 @@ export default function RecurringInvoicesOverview({
                         {daysUntil < 0
                           ? "Overdue"
                           : daysUntil === 0
-                          ? "Today"
-                          : daysUntil === 1
-                          ? "Tomorrow"
-                          : `in ${daysUntil} days`}
+                            ? "Today"
+                            : daysUntil === 1
+                              ? "Tomorrow"
+                              : `in ${daysUntil} days`}
                       </p>
                       {invoice.autoSendEnabled && (
                         <Badge variant="secondary" className="text-xs">

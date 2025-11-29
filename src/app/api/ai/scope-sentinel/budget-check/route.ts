@@ -328,14 +328,54 @@ Return JSON:
       });
 
       if (riskLevel === 'safe') {
-        // If safe and radar exists, delete it
+        // If safe, update radar with safe status (don't delete!)
         if (existingRadar) {
-          await prisma.scopeRadar.delete({
+          const updatedRadar = await prisma.scopeRadar.update({
             where: { id: existingRadar.id },
+            data: {
+              creepRisk: 0.1, // Low risk for safe status
+              originalBudget,
+              currentEstimate: invoiceTotal,
+              budgetOverrun: 0, // No overrun when safe
+              budgetOverrunPercent: 0,
+              flaggedItems: invoices.slice(0, 5).map(inv => ({
+                item: inv.invoiceNumber,
+                amount: inv.items.reduce((s: number, i: any) => s + i.total, 0),
+                date: inv.issuedDate.toISOString(),
+              })),
+              clientEmailDraft: '', // No email needed when safe
+              recommendations: ['Budget is on track', 'Continue monitoring spending'],
+              flaggedAt: new Date(), // Update timestamp
+              acknowledged: true, // Auto-acknowledge safe status
+            },
           });
-          console.log(`[BudgetCheckAPI] Deleted radar - budget is safe now`);
+          scopeRadarId = updatedRadar.id;
+          console.log(`[BudgetCheckAPI] Updated radar to safe status`);
         } else {
-          console.log(`[BudgetCheckAPI] Budget is safe, no radar needed`);
+          // Create new radar even when safe (for persistence)
+          const newRadar = await prisma.scopeRadar.create({
+            data: {
+              projectId,
+              creepRisk: 0.1,
+              revisionCount: 0,
+              outOfScopeCount: 0,
+              originalBudget,
+              currentEstimate: invoiceTotal,
+              budgetOverrun: 0,
+              budgetOverrunPercent: 0,
+              flaggedItems: invoices.slice(0, 5).map(inv => ({
+                item: inv.invoiceNumber,
+                amount: inv.items.reduce((s: number, i: any) => s + i.total, 0),
+                date: inv.issuedDate.toISOString(),
+              })),
+              clientEmailDraft: '',
+              recommendations: ['Budget is on track', 'Continue monitoring spending'],
+              aiModel: 'gemini-2.5-flash',
+              acknowledged: true,
+            },
+          });
+          scopeRadarId = newRadar.id;
+          console.log(`[BudgetCheckAPI] Created new radar with safe status`);
         }
       } else {
         // Risk is warning or critical - create or update radar
@@ -511,9 +551,6 @@ export async function GET(request: NextRequest) {
       latestRadar = await prisma.scopeRadar.findFirst({
         where: {
           projectId: projectId,
-          budgetOverrun: {
-            not: null,
-          },
         },
         orderBy: {
           flaggedAt: 'desc',
@@ -541,9 +578,6 @@ export async function GET(request: NextRequest) {
       latestRadar = await prisma.scopeRadar.findFirst({
         where: {
           projectId: { in: projectIds },
-          budgetOverrun: {
-            not: null,
-          },
         },
         orderBy: {
           flaggedAt: 'desc',
