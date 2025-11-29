@@ -105,31 +105,29 @@ export async function POST(request: NextRequest) {
       // Continue without historical data
     }
 
-    // 4. Build prompt messages via prompts helper
+    // 4. Build prompt messages via prompts helper with currency awareness
     const messages = createEstimationPrompt({
       projectDescription: brief,
       deliverables: deliverables.map(d => d.item),
       clientBudget: currency === 'INR' ? undefined : undefined, // keep currency handling simple
       historicalData: { similarProjects: historicalEstimations.map(h => ({ name: h.title, hours: h.estimatedBudget, cost: h.estimatedBudget, actualVsEstimate: h.accuracy ?? undefined })) }
-    });
+    }, currency); // Pass currency for market-aware rates
 
 
     // 5. Generate estimation using the adapter (RAG + provider). This returns structured JSON as data.
     const result = await adapter.generateStructuredCompletion<{
-      estimatedHours: number;
-      estimatedCost: number;
-      confidence: number | string;
-      breakdown: Array<{ phase: string; hours: number; cost: number }>
+      estimatedBudget: number;
+      confidence: string;
+      breakdown: Array<{ category: string; amount: number; reasoning: string }>;
       rationale: string;
-      riskFactors?: any[];
-      assumptions?: string[];
-      suggestedPackages?: any[];
     }>(messages, { temperature: 0.3, maxTokens: 4096, ragEnabled: process.env.AI_RAG_ENABLED === 'true' });
 
     const estimation = {
-      estimatedBudget: result.data.estimatedCost,
-      confidence: typeof result.data.confidence === 'number' ? (result.data.confidence >= 0.85 ? 'high' : (result.data.confidence >= 0.6 ? 'medium' : 'low')) : (result.data.confidence as any || 'medium'),
-      breakdown: result.data.breakdown?.map(b => ({ category: b.phase, amount: b.cost, reasoning: '' })) || [],
+      estimatedBudget: result.data.estimatedBudget,
+      confidence: (result.data.confidence?.toLowerCase() === 'high' || result.data.confidence?.toLowerCase() === 'medium' || result.data.confidence?.toLowerCase() === 'low')
+        ? result.data.confidence.toLowerCase()
+        : 'medium',
+      breakdown: result.data.breakdown || [],
       rationale: result.data.rationale || '',
     } as BudgetEstimation;
     console.log('✅ Successfully generated AI estimation');
@@ -187,16 +185,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Budget estimation error:', error);
-    
+
     // Enhanced error logging
     if (error instanceof Error) {
       console.error('📛 Error name:', error.name);
       console.error('📝 Error message:', error.message);
       console.error('📚 Error stack:', error.stack);
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to generate budget estimation',
         details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),

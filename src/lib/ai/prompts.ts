@@ -1,6 +1,13 @@
 /**
- * AI Prompt Templates
- * Structured prompts for each AI feature
+ * prompts.ts — Fine-tuned (2025 market)
+ *
+ * Updated: 2025 market rates, clearer currency handling, safer defaults,
+ * improved system prompts and minor API improvements (optional currency param)
+ *
+ * Notes:
+ * - Exchange rates change; this file uses a working default EXCHANGE_RATE (INR per USD)
+ *   which should be updated at runtime if exact conversions are required.
+ * - System prompts ask the model to return strict JSON for downstream parsing.
  */
 
 import { ChatMessage } from './types';
@@ -10,7 +17,7 @@ export interface ProposalPromptInput {
   clientEmail: string;
   company?: string;
   brief: string;
-  budget?: number;
+  budget?: number; // numeric budget in chosen currency
   timeline?: string;
   deliverables?: string[];
 }
@@ -24,7 +31,7 @@ export interface EstimationPromptInput {
       name: string;
       hours: number;
       cost: number;
-      actualVsEstimate?: number;
+      actualVsEstimate?: number; // percentage
     }>;
   };
 }
@@ -32,7 +39,7 @@ export interface EstimationPromptInput {
 export interface UpdatePromptInput {
   clientName: string;
   projectName: string;
-  weekStart: string;
+  weekStart: string; // ISO date or human-friendly
   weekEnd: string;
   commits?: Array<{ message: string; date: string }>;
   tasksCompleted?: Array<{ title: string; description?: string }>;
@@ -48,31 +55,78 @@ export interface ScopePromptInput {
   clientRequests?: Array<{ request: string; date: string }>;
 }
 
+// Default exchange rate snapshot used for conversions in prompts only.
+// IMPORTANT: Update at runtime (or replace with a live lookup) if you need an exact conversion.
+export const EXCHANGE_RATE_INR_PER_USD = 89; // approximate Nov 2025 market (update as needed)
+
+// Helper: safe currency label
+function normCurrency(currency?: string) {
+  const c = (currency || 'INR').toUpperCase();
+  return c === 'INR' || c === 'USD' || c === 'EUR' ? c : 'INR';
+}
+
 /**
  * Smart Proposal & SOW Generator Prompt
+ * - currency param is optional and defaults to 'INR'
  */
-export function createProposalPrompt(input: ProposalPromptInput): ChatMessage[] {
-  const systemPrompt = `You are an expert business proposal writer specializing in software development and digital services. 
-Your task is to create professional, compelling proposals that balance client needs with realistic delivery expectations.
+export function createProposalPrompt(input: ProposalPromptInput, currency?: string): ChatMessage[] {
+  const C = normCurrency(currency);
+  const currentYear = 2025; // pinned for prompt clarity
+
+  // Market ranges (2025 snapshot). These are guidance numbers for the assistant —
+  // kept conservative and realistic for freelancer/contractor quotes.
+  const systemPrompt = `You are an expert business proposal writer specializing in software development with deep knowledge of ${currentYear} market rates.
+
+CRITICAL PRICING GUIDELINES (${currentYear} snapshot):
+
+**For INR (India) — indicative freelancer/contractor ranges:**
+- Small web app / landing page: ₹50,000 - ₹200,000
+- Medium web application: ₹200,000 - ₹800,000
+- Large enterprise app: ₹800,000 - ₹3,000,000
+- Mobile app (iOS/Android): ₹300,000 - ₹1,200,000
+- E-commerce platform: ₹200,000 - ₹2,000,000 (template → custom marketplace)
+- SaaS MVP: ₹800,000 - ₹2,500,000
+- API / Backend system: ₹200,000 - ₹1,000,000
+
+**Team Rates (INR/hour) — typical freelance bands:**
+- Junior: ₹300 - ₹1,500/hr
+- Mid-level: ₹1,000 - ₹2,500/hr
+- Senior: ₹2,500 - ₹5,000/hr
+- Designer: ₹800 - ₹2,500/hr
+
+**For USD (international) — indicative ranges:**
+- Small project: $500 - $5,000
+- Medium project: $10,000 - $60,000
+- Large project: $60,000 - $250,000+
+- Mobile app: $15,000 - $150,000+
+- SaaS MVP: $15,000 - $150,000+
+- API / Backend: $5,000 - $50,000+
+
+PRICING STRATEGY:
+1. START with the realistic market range for the project type
+2. ADJUST based on complexity, integrations, compliance
+3. USE MID-RANGE pricing by default unless the scope clearly justifies premium
+4. Account for actual development effort (realistic velocity)
+5. Include buffer (15-20%) for unknowns
+6. Consider team mix (junior/mid/senior) and non-billable overhead (project mgmt, handover)
 
 CRITICAL INSTRUCTIONS:
-1. Return ONLY valid, complete JSON - no markdown code blocks, no explanations outside JSON
-2. Ensure ALL arrays and objects are properly closed with matching brackets/braces
-3. Keep deliverables array to maximum 6 items to avoid truncation
-4. Keep milestone array to maximum 4 items
-5. All string values must use proper escaping for quotes and special characters
-6. Do not truncate the response - complete all fields before ending
+1. Return ONLY valid, complete JSON — no markdown code fences, no extra text outside JSON
+2. Ensure ALL arrays/objects are properly closed
+3. Keep deliverables array to max 6 items; milestone array to max 4 items
+4. All string values must be properly escaped
+5. Do not truncate the response — complete all fields before ending
+6. USE REALISTIC ${C} PRICING — clients prefer accurate over cheap
 
 Guidelines:
-- Be clear, concise, and professional
-- Break down deliverables into specific, measurable items
-- Provide realistic timelines with milestones
-- Include payment terms that protect both parties
-- Suggest value-based pricing when appropriate
-- Highlight unique value propositions
+- Be concise, professional and value-focused
+- Break deliverables into measurable items
+- Provide realistic timelines with clear milestones
+- Include payment terms protecting both parties
+- Prefer fixed-price for well-scoped work; hourly for exploratory work
 
-REQUIRED Output Format (complete this exact structure):
-{
+REQUIRED Output Format (exact structure):
+{ 
   "title": "Proposal title (max 100 chars)",
   "deliverables": [
     { "item": "Deliverable name", "description": "Details (max 200 chars)", "timeline": "2-3 weeks" }
@@ -84,34 +138,45 @@ REQUIRED Output Format (complete this exact structure):
     ]
   },
   "pricing": {
-    "amount": 50000,
-    "currency": "INR",
+    "amount": 500000,
+    "currency": "${C}",
     "breakdown": [
-      { "item": "Development", "cost": 30000 },
-      { "item": "Design", "cost": 20000 }
+      { "item": "Development", "cost": 300000 },
+      { "item": "Design", "cost": 100000 },
+      { "item": "Testing & QA", "cost": 60000 },
+      { "item": "Deployment", "cost": 40000 }
     ]
   },
   "paymentTerms": "50% upfront, 25% at milestone 2, 25% on completion",
   "summary": "Brief executive summary (max 300 chars)"
 }
 
-IMPORTANT: Complete ALL fields. Do not truncate arrays. Close all brackets and braces.`;
+IMPORTANT: Complete ALL fields. Use MARKET-REALISTIC pricing. Do not truncate arrays.`;
 
-  const userPrompt = `Create a professional proposal for:
+  const userPrompt = `Create a professional proposal with REALISTIC ${C} pricing for:
 
 **Client:** ${input.clientName}${input.company ? ` (${input.company})` : ''}
 **Email:** ${input.clientEmail}
-${input.budget ? `**Budget:** ${input.budget} INR` : ''}
+${input.budget ? `**Client Budget:** ${C} ${input.budget.toLocaleString()}` : ''}
 ${input.timeline ? `**Timeline:** ${input.timeline}` : ''}
 
 **Client Brief:**
+
 ${input.brief}
 
 ${input.deliverables?.length ? `**Requested Deliverables:**\n${input.deliverables.map(d => `- ${d}`).join('\n')}` : ''}
 
-Generate a detailed proposal with clear deliverables, timeline, and pricing.
+**CRITICAL PRICING INSTRUCTIONS:**
+1. Use realistic ${currentYear} ${C} market rates
+2. Base pricing on actual development effort required
+3. Include phase breakdown (Planning, Design, Development, Testing, Deployment)
+4. Add 15-20% buffer for unknowns
+5. If client budget is provided, stay within ±20% unless scope justifies otherwise
+6. Be CONSERVATIVE — better to give realistic quote than lose client trust
 
-RESPOND WITH COMPLETE VALID JSON ONLY. Ensure all arrays and objects are properly closed.`;
+Generate a detailed proposal with clear deliverables, realistic timeline, and MARKET-ACCURATE pricing.
+
+RESPOND WITH COMPLETE VALID JSON ONLY. Ensure all arrays/objects are properly closed.`;
 
   return [
     { role: 'system', content: systemPrompt },
@@ -122,52 +187,84 @@ RESPOND WITH COMPLETE VALID JSON ONLY. Ensure all arrays and objects are properl
 /**
  * AI Estimation & Pricing Assistant Prompt
  */
-export function createEstimationPrompt(input: EstimationPromptInput): ChatMessage[] {
-  const systemPrompt = `You are an expert project estimator for software development projects.
-Your task is to analyze project requirements and provide accurate time and cost estimates.
+export function createEstimationPrompt(input: EstimationPromptInput, currency: string = 'INR'): ChatMessage[] {
+  const C = normCurrency(currency);
+  const systemPrompt = `You are an expert project estimator for software development projects with deep knowledge of global market rates (2025 snapshot).
 
-CRITICAL: Return ONLY valid, complete JSON. No markdown formatting, no explanations outside JSON.
+CRITICAL PRICING GUIDELINES (${C}):
+
+**Currency-specific freelance bands (2025 typical):**
+- INR (India):
+  - Junior Developer: ₹300-1,500/hour
+  - Mid-Level Developer: ₹1,000-2,500/hour
+  - Senior Developer: ₹2,500-5,000/hour
+  - Full Stack: ₹1,500-3,500/hour
+  - UI/UX Designer: ₹800-2,500/hour
+  - Project Manager: ₹1,200-2,500/hour
+
+- USD (International):
+  - Junior Developer: $20-40/hour
+  - Mid-Level Developer: $40-80/hour
+  - Senior Developer: $70-150+/hour
+  - Full Stack: $50-100/hour
+  - UI/UX Designer: $35-80/hour
+  - Project Manager: $50-100/hour
+
+ESTIMATION STRATEGY:
+1. ALWAYS check historical data first - learn from past projects
+2. Use conservative estimates and include a 15-20% buffer
+3. Break down by phases: Planning (10%), Design (15%), Development (50%), Testing (15%), Deployment (10%)
+4. Account for realistic team mix
+5. Account for non-billable and coordination overhead
+
+CRITICAL: Return ONLY valid, complete JSON. No markdown or extra text.
 
 Output Format:
 {
-  "estimatedHours": 320,
-  "estimatedCost": 480000,
-  "confidence": 0.85,
+  "estimatedBudget": 480000,
+  "confidence": "high",
   "breakdown": [
-    { "phase": "Discovery & Planning", "hours": 40, "cost": 60000 },
-    { "phase": "Development", "hours": 200, "cost": 300000 }
+    { "category": "Discovery & Planning", "amount": 60000, "reasoning": "Requirements gathering, architecture planning" },
+    { "category": "UI/UX Design", "amount": 80000, "reasoning": "Wireframes, mockups, prototypes" },
+    { "category": "Development", "amount": 250000, "reasoning": "Core features, integrations, testing" },
+    { "category": "QA & Testing", "amount": 50000, "reasoning": "Testing, bug fixes, optimization" },
+    { "category": "Deployment & Training", "amount": 40000, "reasoning": "Launch, documentation, client training" }
   ],
-  "rationale": "Brief explanation (max 500 chars)",
-  "riskFactors": [
-    { "risk": "Description", "impact": "low|medium|high", "mitigation": "Brief solution" }
-  ],
-  "assumptions": ["Assumption 1", "Assumption 2"],
-  "suggestedPackages": [
-    { "name": "MVP Package", "hours": 200, "cost": 300000, "description": "Brief desc" }
-  ]
+  "rationale": "Brief explanation based on scope, team mix, and market rates (max 500 chars)"
 }
 
-Keep rationale concise. Limit riskFactors to top 3. Limit assumptions to 5.`;
+Keep rationale concise and data-driven.`;
 
-  const historicalContext = input.historicalData?.similarProjects.length
-    ? `\n\n**Historical Data (Similar Projects):**
-${input.historicalData.similarProjects.map(p =>
-      `- ${p.name}: ${p.hours}h, ${p.cost} INR${p.actualVsEstimate ? ` (${p.actualVsEstimate > 0 ? '+' : ''}${p.actualVsEstimate}% variance)` : ''}`
-    ).join('\n')}`
+  const historicalContext = input.historicalData?.similarProjects?.length
+    ? `\n\n**YOUR HISTORICAL DATA (Learn from this!):**\n\n${input.historicalData.similarProjects.map(p =>
+      `- ${p.name}: Estimated ${C} ${p.cost.toLocaleString()}${p.actualVsEstimate ? ` | Actual variance: ${p.actualVsEstimate > 0 ? '+' : ''}${p.actualVsEstimate}%` : ''}`
+    ).join('\n')}
+
+**IMPORTANT:** Analyze these past projects. If estimates were consistently too low/high, adjust accordingly.`
     : '';
 
-  const userPrompt = `Estimate the time and cost for this project:
+  const userPrompt = `Estimate the budget for this project using **${C}** and current market rates (2025 snapshot):
 
 **Project Description:**
+
 ${input.projectDescription}
 
 **Deliverables:**
 ${input.deliverables.map((d, i) => `${i + 1}. ${d}`).join('\n')}
 
-${input.clientBudget ? `**Client Budget:** ${input.clientBudget} INR` : ''}
+${input.clientBudget ? `**Client Budget Expectation:** ${C} ${input.clientBudget.toLocaleString()}` : ''}
 ${historicalContext}
 
-Provide a detailed, accurate estimate with breakdown and package options.`;
+**INSTRUCTIONS:**
+1. Use realistic ${C} market rates for 2025
+2. Be CONSERVATIVE - accuracy over low-ball numbers
+3. Learn from historical data patterns
+4. Break down by development phases
+5. Account for realistic team composition
+6. Include buffer for unknowns (15-20%)
+7. Consider project complexity and technical risks
+
+Provide a detailed, market-accurate estimate.`;
 
   return [
     { role: 'system', content: systemPrompt },
@@ -180,6 +277,7 @@ Provide a detailed, accurate estimate with breakdown and package options.`;
  */
 export function createWeeklyUpdatePrompt(input: UpdatePromptInput): ChatMessage[] {
   const systemPrompt = `You are a professional client communication specialist.
+
 Your task is to draft clear, positive, and transparent weekly project updates for clients.
 
 Guidelines:
@@ -188,7 +286,7 @@ Guidelines:
 - Include specific metrics (tasks completed, features shipped)
 - Set clear expectations for next week
 - Maintain professional but friendly tone
-- Avoid technical jargon unless necessary
+- Avoid unnecessary technical jargon
 
 Output Format: Return ONLY valid JSON with this structure:
 {
@@ -211,30 +309,18 @@ Output Format: Return ONLY valid JSON with this structure:
 }`;
 
   const commitsSection = input.commits?.length
-    ? `\n**Git Commits (${input.commits.length}):**
-${input.commits.slice(0, 10).map(c => `- ${c.message} (${c.date})`).join('\n')}`
+    ? `\n**Git Commits (${input.commits.length}):**\n${input.commits.slice(0, 10).map(c => `- ${c.message} (${c.date})`).join('\n')}`
     : '';
 
   const tasksSection = input.tasksCompleted?.length
-    ? `\n**Completed Tasks:**
-${input.tasksCompleted.map(t => `- ${t.title}${t.description ? ': ' + t.description : ''}`).join('\n')}`
+    ? `\n**Completed Tasks:**\n${input.tasksCompleted.map(t => `- ${t.title}${t.description ? ': ' + t.description : ''}`).join('\n')}`
     : '';
 
   const inProgressSection = input.tasksInProgress?.length
-    ? `\n**In Progress:**
-${input.tasksInProgress.map(t => `- ${t.title}${t.blockers ? ' (Blocker: ' + t.blockers + ')' : ''}`).join('\n')}`
+    ? `\n**In Progress:**\n${input.tasksInProgress.map(t => `- ${t.title}${t.blockers ? ' (Blocker: ' + t.blockers + ')' : ''}`).join('\n')}`
     : '';
 
-  const userPrompt = `Draft a weekly update email for:
-
-**Client:** ${input.clientName}
-**Project:** ${input.projectName}
-**Week:** ${input.weekStart} to ${input.weekEnd}
-${commitsSection}
-${tasksSection}
-${inProgressSection}
-
-Generate a professional client update with accomplishments, blockers, and next steps.`;
+  const userPrompt = `Draft a weekly update email for:\n\n**Client:** ${input.clientName}\n**Project:** ${input.projectName}\n**Week:** ${input.weekStart} to ${input.weekEnd}${commitsSection}${tasksSection}${inProgressSection}\n\nGenerate a professional client update with accomplishments, blockers, and next steps.`;
 
   return [
     { role: 'system', content: systemPrompt },
@@ -247,6 +333,7 @@ Generate a professional client update with accomplishments, blockers, and next s
  */
 export function createScopeAnalysisPrompt(input: ScopePromptInput): ChatMessage[] {
   const systemPrompt = `You are an expert project scope analyst.
+
 Your task is to detect scope creep by comparing original project scope with current tasks and client requests.
 
 Guidelines:
@@ -287,23 +374,10 @@ Output Format: Return ONLY valid JSON with this structure:
 }`;
 
   const clientRequestsSection = input.clientRequests?.length
-    ? `\n**Recent Client Requests:**
-${input.clientRequests.map(r => `- ${r.request} (${r.date})`).join('\n')}`
+    ? `\n**Recent Client Requests:**\n${input.clientRequests.map(r => `- ${r.request} (${r.date})`).join('\n')}`
     : '';
 
-  const userPrompt = `Analyze scope creep for:
-
-**Project:** ${input.projectName}
-**Revision Count:** ${input.revisionCount}
-
-**Original Scope:**
-${input.originalScope}
-
-**Current Tasks:**
-${input.currentTasks.map(t => `- [${t.isOriginal ? 'ORIGINAL' : 'NEW'}] ${t.title}: ${t.description}`).join('\n')}
-${clientRequestsSection}
-
-Identify scope creep, assess risk, and draft a change order email if needed.`;
+  const userPrompt = `Analyze scope creep for:\n\n**Project:** ${input.projectName}\n**Revision Count:** ${input.revisionCount}\n\n**Original Scope:**\n\n${input.originalScope}\n\n**Current Tasks:**\n${input.currentTasks.map(t => `- [${t.isOriginal ? 'ORIGINAL' : 'NEW'}] ${t.title}: ${t.description}`).join('\n')}\n${clientRequestsSection}\n\nIdentify scope creep, assess risk, and draft a change order email if needed.`;
 
   return [
     { role: 'system', content: systemPrompt },

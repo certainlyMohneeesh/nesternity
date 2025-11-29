@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, TrendingUp, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrencySymbol, formatCurrency } from "@/lib/utils";
+import { AnimatedGradientBorder } from "@/components/ui/animated-gradient-border";
 
 interface Deliverable {
   item: string;
@@ -123,25 +124,27 @@ export function BudgetEstimation({
 
   return (
     <div className="space-y-4">
-      <Button
-        type="button"
-        onClick={handleEstimate}
-        disabled={loading}
-        variant="outline"
-        className="w-full"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Estimating Budget...
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Estimate Budget with AI
-          </>
-        )}
-      </Button>
+      <AnimatedGradientBorder isAnimating={loading} className="rounded-lg">
+        <Button
+          type="button"
+          onClick={handleEstimate}
+          disabled={loading}
+          variant="outline"
+          className="w-full border-0"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Estimating Budget...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Estimate Budget with AI
+            </>
+          )}
+        </Button>
+      </AnimatedGradientBorder>
 
       {estimation && (
         <Card className="border-primary/50">
@@ -153,10 +156,10 @@ export function BudgetEstimation({
                   {confidenceLabels[estimation.confidence]}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between gap-3">
                 <p className="text-base sm:text-lg md:text-xl font-bold text-primary break-words min-w-0 flex-1">
-                  {currencySymbol}{estimation.estimatedBudget.toLocaleString()}
+                  {currencySymbol}{estimation.estimatedBudget?.toLocaleString() ?? '0'}
                 </p>
                 <Button
                   type="button"
@@ -189,7 +192,7 @@ export function BudgetEstimation({
                     <TrendingUp className="h-3 w-3" />
                     View Cost Breakdown
                   </button>
-                  
+
                   <div className="space-y-2 bg-muted/30 rounded-lg p-3">
                     {estimation.breakdown.map((item, index) => (
                       <div key={index} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 text-sm">
