@@ -18,6 +18,7 @@ import {
 import { ChevronDown, Check, Building2, FolderKanban, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSessionToken } from '@/lib/supabase/client-session';
+import Image from 'next/image';
 
 interface BreadcrumbItem {
   label: string;
@@ -120,19 +121,19 @@ export function BreadcrumbCombobox() {
 
   // Parse pathname to get breadcrumb items
   const breadcrumbItems: BreadcrumbItem[] = [];
-  
+
   // Extract organisation ID and project ID from path
   const pathSegments = pathname.split('/').filter(Boolean);
   const orgIndex = pathSegments.indexOf('organisation');
   const projectsIndex = pathSegments.indexOf('projects');
-  
+
   let currentOrgId = '';
   let currentProjectId = '';
-  
+
   if (orgIndex !== -1 && pathSegments[orgIndex + 1]) {
     currentOrgId = pathSegments[orgIndex + 1];
   }
-  
+
   if (projectsIndex !== -1 && pathSegments[projectsIndex + 1]) {
     currentProjectId = pathSegments[projectsIndex + 1];
   }
@@ -153,7 +154,7 @@ export function BreadcrumbCombobox() {
 
   // Dashboard
   breadcrumbItems.push({
-    label: 'Dashboard',
+    label: 'Home',
     href: '/dashboard',
     icon: <Home className="w-4 h-4" />
   });
@@ -173,14 +174,14 @@ export function BreadcrumbCombobox() {
   if (currentProjectId) {
     const orgProjects = projects[currentOrgId] || [];
     const project = orgProjects.find(p => p.id === currentProjectId);
-    
+
     breadcrumbItems.push({
       label: project?.name || 'Project',
       href: `/dashboard/organisation/${currentOrgId}/projects/${currentProjectId}`,
       icon: <FolderKanban className="w-4 h-4" />,
       isProject: true // Mark this as the project breadcrumb
     });
-    
+
     // Sub-pages (teams, proposals, etc.)
     const subPage = pathSegments[pathSegments.length - 1];
     if (subPage !== currentProjectId && !['projects'].includes(subPage)) {
@@ -208,10 +209,26 @@ export function BreadcrumbCombobox() {
 
   return (
     <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm overflow-x-auto">
+      {/* Nesternity Logo */}
+      <button
+        onClick={() => router.push('/')}
+        className="flex-shrink-0 hover:opacity-80 transition-opacity"
+        aria-label="Go to homepage"
+      >
+        <Image
+          src="/nesternity_l.png"
+          alt="Nesternity"
+          width={32}
+          height={32}
+          className="w-6 h-6 sm:w-8 sm:h-8"
+        />
+      </button>
+      <span className="text-gray-400">/</span>
+
       {breadcrumbItems.map((item, index) => (
         <div key={item.href} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {index > 0 && <span className="text-gray-400">/</span>}
-          
+
           {/* Organisation breadcrumb with combobox */}
           {item.isOrganisation && currentOrgId ? (
             <Popover open={orgPopoverOpen} onOpenChange={setOrgPopoverOpen}>

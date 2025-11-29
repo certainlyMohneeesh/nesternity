@@ -27,7 +27,7 @@ import dynamic from 'next/dynamic'
 // Dynamic import for InvoicePDFClient to ensure it only loads on client-side, bhai yeh dhunda maine EZ snippet ki video main (Dynamic Imports in Next.js)
 const InvoicePDFClient = dynamic(
   () => import('@/components/pdf/InvoicePDFClient').then(mod => ({ default: mod.InvoicePDFClient })),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
@@ -72,12 +72,17 @@ interface Invoice {
   }>
 }
 
-export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: string; invoiceId: string; projectId: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+
+  // Extract route params
+  const organisationId = resolvedParams.id
+  const projectId = resolvedParams.projectId
+  const invoiceId = resolvedParams.invoiceId
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -89,12 +94,12 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
         return
       }
 
-      const response = await fetch(`/api/invoices/${resolvedParams.id}`, {
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setInvoice(data)
@@ -108,7 +113,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
     } finally {
       setLoading(false)
     }
-  }, [resolvedParams.id])
+  }, [invoiceId])
 
   useEffect(() => {
     fetchInvoice()
@@ -160,20 +165,20 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
         toast.error('Authentication required')
         return
       }
-      
+
       const res = await fetch(`/api/invoices/${invoice?.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       })
-      
+
       if (!res.ok) {
         throw new Error((await res.json()).error || 'Failed to delete invoice')
       }
-      
+
       toast.success('Invoice deleted successfully')
-      router.push('/dashboard/invoices')
+      router.push(`/dashboard/organisation/${organisationId}/projects/${projectId}/invoices`)
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete invoice')
       setDeleting(false)
@@ -197,7 +202,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
         <Card>
           <CardContent className="text-center py-8">
             <h2 className="text-xl font-semibold mb-4">Invoice not found</h2>
-            <Link href="/dashboard/invoices">
+            <Link href={`/dashboard/organisation/${organisationId}/projects/${projectId}/invoices`}>
               <Button>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Invoices
@@ -215,7 +220,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard/invoices">
+            <Link href={`/dashboard/organisation/${organisationId}/projects/${projectId}/invoices`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
@@ -391,7 +396,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
               />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button 
+                  <Button
                     variant="destructive"
                     disabled={deleting}
                   >
@@ -437,7 +442,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
                   </div>
                 </div>
               }>
-                <InvoicePDFClient 
+                <InvoicePDFClient
                   invoice={{
                     ...invoice,
                     createdAt: invoice.issuedDate,
@@ -448,7 +453,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
                     paymentUrl: invoice.paymentUrl,
                     watermarkText: invoice.watermarkText,
                     eSignatureUrl: invoice.eSignatureUrl
-                  }} 
+                  }}
                   showPreview={true}
                 />
               </React.Suspense>

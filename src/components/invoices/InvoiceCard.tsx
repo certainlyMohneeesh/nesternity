@@ -36,17 +36,7 @@ const statusBadge: Record<string, string> = {
   CANCELLED: 'bg-gray-100 text-gray-800',
 };
 
-// Add a currency symbol map
-const currencySymbols: Record<string, string> = {
-  USD: '$',
-  EUR: '€',
-  INR: '₹',
-  GBP: '£',
-  AUD: 'A$',
-  CAD: 'C$',
-  JPY: '¥',
-  // Add more as needed
-};
+import { formatCurrencyWithDisplay } from '@/lib/utils';
 
 export interface InvoiceCardProps {
   invoice: {
@@ -73,17 +63,20 @@ export interface InvoiceCardProps {
       total: number;
     }>;
   };
+  organisationId?: string;
+  projectId?: string;
   onStatusChange?: (status: string) => void;
 }
 
-export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChange }) => {
+export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, organisationId, projectId, onStatusChange }) => {
   const router = useRouter();
   const [status, setStatus] = useState<"PENDING" | "PAID" | "OVERDUE" | "CANCELLED">(invoice.status);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const total = invoice.items.reduce((sum, item) => sum + item.total, 0);
-  const symbol = currencySymbols[invoice.currency] || invoice.currency;
+  // Format total to show currency code (e.g. 'INR 35,000.00')
+  const formattedTotal = formatCurrencyWithDisplay(total, invoice.currency, 'en-US', 'code');
 
   const handleStatusChange = async (newStatus: "PENDING" | "PAID" | "OVERDUE" | "CANCELLED") => {
     if (newStatus === status) return;
@@ -118,18 +111,18 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChang
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error('Not authenticated');
-      
+
       const res = await fetch(`/api/invoices/${invoice.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
       });
-      
+
       if (!res.ok) {
         throw new Error((await res.json()).error || 'Failed to delete invoice');
       }
-      
+
       toast.success('Invoice deleted successfully');
       router.refresh();
     } catch (err: any) {
@@ -163,7 +156,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChang
               <span className="text-sm font-medium">Total Amount</span>
             </div>
             <span className="text-lg font-bold text-green-600">
-              {symbol} {total.toFixed(2)}
+              {formattedTotal}
             </span>
           </div>
         </div>
@@ -206,14 +199,18 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ invoice, onStatusChang
             )}
           </PDFDownloadLink>
           <Button asChild variant="outline" size="sm">
-            <a href={`/dashboard/invoices/${invoice.id}`}>
+            <a href={
+              organisationId && projectId
+                ? `/dashboard/organisation/${organisationId}/projects/${projectId}/invoices/${invoice.id}`
+                : `/dashboard/invoices/${invoice.id}`
+            }>
               <Eye className="h-4 w-4 mr-1" /> View
             </a>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 size="sm"
                 disabled={deleting}
               >

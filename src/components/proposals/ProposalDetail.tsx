@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getCurrencySymbol } from "@/lib/utils";
+import { getCurrencySymbol, formatCurrencyWithDisplay, replaceSymbolWithCurrencyCode } from "@/lib/utils";
 import {
   Card,
   CardContent,

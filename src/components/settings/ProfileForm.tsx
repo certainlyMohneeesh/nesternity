@@ -6,13 +6,11 @@ import { Button } from '@/components/ui/button';
 export function ProfileForm({ settings, onSave, saving }: any) {
   const [form, setForm] = useState({
     displayName: settings.displayName || '',
-    email: settings.email || '',
-    avatarUrl: settings.avatarUrl || '',
   });
 
   return (
     <FieldSet>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-6">
         <Field>
           <FieldLabel htmlFor="displayName">Display Name</FieldLabel>
           <FieldContent>
@@ -31,27 +29,18 @@ export function ProfileForm({ settings, onSave, saving }: any) {
             <Input
               id="email"
               type="email"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              value={settings.email}
+              disabled
+              className="bg-muted cursor-not-allowed"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Email cannot be changed
+            </p>
           </FieldContent>
         </Field>
       </div>
 
-      <Field>
-        <FieldLabel htmlFor="avatarUrl">Avatar URL</FieldLabel>
-        <FieldContent>
-          <Input
-            id="avatarUrl"
-            type="url"
-            value={form.avatarUrl}
-            onChange={e => setForm(f => ({ ...f, avatarUrl: e.target.value }))}
-            placeholder="https://example.com/avatar.jpg"
-          />
-        </FieldContent>
-      </Field>
-
-      <div className="flex items-center">
+      <div className="flex items-center pt-4">
         <Button onClick={() => onSave(form)} disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>

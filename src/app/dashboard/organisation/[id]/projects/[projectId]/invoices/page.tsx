@@ -324,7 +324,13 @@ export default function InvoiceHistoryPage() {
           ) : (
             <div className="grid gap-4">
               {invoices.map((invoice: Invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice} onStatusChange={fetchInvoices} />
+                <InvoiceCard
+                  key={invoice.id}
+                  invoice={invoice}
+                  organisationId={orgId}
+                  projectId={projectId}
+                  onStatusChange={fetchInvoices}
+                />
               ))}
             </div>
           )}

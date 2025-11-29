@@ -25,7 +25,7 @@ export function UserNav() {
   useEffect(() => {
     const getUser = async () => {
       const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
       }
@@ -96,7 +96,7 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push('/dashboard/settings/profile')}>
+          <DropdownMenuItem onClick={() => router.push('/dashboard/settings#profile')}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
@@ -104,7 +104,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push('/dashboard/settings/billing')}>
+          <DropdownMenuItem onClick={() => router.push('/dashboard/settings#billing')}>
             <CreditCard className="mr-2 h-4 w-4" />
             <span>Billing</span>
           </DropdownMenuItem>

@@ -62,3 +62,43 @@ export function formatCurrency(
   
   return `${symbol}${formattedAmount}`;
 }
+
+/**
+ * Format a number to a currency string using Intl.NumberFormat with explicit currencyDisplay.
+ * CurrencyDisplay can be 'symbol' (₹, $) or 'code' (INR, USD).
+ */
+export function formatCurrencyWithDisplay(
+  amount: number,
+  currencyCode: string = 'USD',
+  locale: string = 'en-US',
+  currencyDisplay: 'symbol' | 'code' | 'name' = 'symbol'
+): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode.toUpperCase(),
+    currencyDisplay,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Replace known currency symbols within a text string with their ISO currency codes.
+ * Example: '₹ 35,000' -> 'INR 35,000'
+ */
+export function replaceSymbolWithCurrencyCode(text: string | undefined): string | undefined {
+  if (!text) return text;
+  // Build reverse map from symbol -> code
+  const symbolToCode: Record<string, string> = {};
+  Object.keys(CURRENCY_SYMBOLS).forEach((code) => {
+    const symbol = CURRENCY_SYMBOLS[code as keyof typeof CURRENCY_SYMBOLS];
+    if (symbol) symbolToCode[symbol] = code;
+  });
+  let replaced = text;
+  Object.entries(symbolToCode).forEach(([symbol, code]) => {
+    // Add space after code for readability
+    const re = new RegExp(`\\${symbol}\\s*`, 'g');
+    replaced = replaced.replace(re, `${code} `);
+  });
+  return replaced;
+}
