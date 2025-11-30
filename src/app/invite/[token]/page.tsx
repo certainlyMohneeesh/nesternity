@@ -16,6 +16,11 @@ interface InviteData {
     id: string;
     name: string;
     description?: string;
+    organisationId: string | null;
+    projects: Array<{
+      id: string;
+      organisationId: string;
+    }>;
   };
   inviter: {
     email: string;
@@ -27,7 +32,7 @@ export default function InvitePage() {
   const params = useParams();
   const router = useRouter();
   const token = params.token as string;
-  
+
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +84,7 @@ export default function InvitePage() {
 
       // Get current session for auth token
       const session = await getSafeSession();
-      
+
       if (!session?.access_token) {
         // If no valid session, redirect to login
         const returnUrl = encodeURIComponent(`/invite/${token}`);
@@ -102,10 +107,20 @@ export default function InvitePage() {
       }
 
       setSuccess(true);
-      
-      // Redirect to team dashboard after a short delay
+
+      // Redirect to proper nested URL after a short delay
       setTimeout(() => {
-        router.push(`/dashboard/teams/${invite?.team.id}`);
+        if (invite?.team.projects && invite.team.projects.length > 0) {
+          const project = invite.team.projects[0];
+          const orgId = project.organisationId || invite.team.organisationId;
+          router.push(`/dashboard/organisation/${orgId}/projects/${project.id}/teams`);
+        } else if (invite?.team.organisationId) {
+          // Fallback: go to organisation dashboard if no project
+          router.push(`/dashboard/organisation/${invite.team.organisationId}`);
+        } else {
+          // Last resort: go to general dashboard
+          router.push('/dashboard');
+        }
       }, 2000);
     } catch (err: any) {
       setError(err.message);
@@ -140,8 +155,8 @@ export default function InvitePage() {
             <div className="p-4 border border-destructive/20 bg-destructive/10 rounded-lg">
               <p className="text-sm text-destructive">{error}</p>
             </div>
-            <Button 
-              onClick={() => router.push('/')} 
+            <Button
+              onClick={() => router.push('/')}
               className="w-full mt-4"
             >
               Return Home
@@ -225,17 +240,17 @@ export default function InvitePage() {
                       Please sign in with the correct account.
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => supabase.auth.signOut().then(() => handleAcceptInvite())} 
-                    variant="outline" 
+                  <Button
+                    onClick={() => supabase.auth.signOut().then(() => handleAcceptInvite())}
+                    variant="outline"
                     className="w-full"
                   >
                     Sign Out & Use Different Account
                   </Button>
                 </div>
               ) : (
-                <Button 
-                  onClick={handleAcceptInvite} 
+                <Button
+                  onClick={handleAcceptInvite}
                   disabled={accepting}
                   className="w-full"
                 >

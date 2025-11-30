@@ -46,6 +46,8 @@ export function BreadcrumbCombobox() {
   const router = useRouter();
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [projects, setProjects] = useState<Record<string, Project[]>>({});
+  const [teams, setTeams] = useState<Record<string, { id: string; name: string }[]>>({});
+  const [boards, setBoards] = useState<Record<string, { id: string; name: string }[]>>({});
   const [orgPopoverOpen, setOrgPopoverOpen] = useState(false);
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
@@ -119,6 +121,78 @@ export function BreadcrumbCombobox() {
     }
   }, [pathname, projects]);
 
+  // Fetch teams for current project
+  useEffect(() => {
+    const fetchTeams = async (projectId: string) => {
+      if (!projectId || teams[projectId]) return;
+
+      try {
+        const token = await getSessionToken();
+        if (!token) return;
+
+        const response = await fetch(`/api/teams?projectId=${projectId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setTeams(prev => ({
+          ...prev,
+          [projectId]: data.teams || []
+        }));
+      } catch (err) {
+        console.error('[BreadcrumbCombobox] Error fetching teams:', err);
+      }
+    };
+
+    const pathSegments = pathname.split('/').filter(Boolean);
+    const projectsIndex = pathSegments.indexOf('projects');
+    if (projectsIndex !== -1 && pathSegments[projectsIndex + 1]) {
+      const projectId = pathSegments[projectsIndex + 1];
+      fetchTeams(projectId);
+    }
+  }, [pathname, teams]);
+
+  // Fetch boards for current team
+  useEffect(() => {
+    const fetchBoards = async (teamId: string) => {
+      if (!teamId || boards[teamId]) return;
+
+      try {
+        const token = await getSessionToken();
+        if (!token) return;
+
+        const response = await fetch(`/api/teams/${teamId}/boards`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setBoards(prev => ({
+          ...prev,
+          [teamId]: data.boards || []
+        }));
+      } catch (err) {
+        console.error('[BreadcrumbCombobox] Error fetching boards:', err);
+      }
+    };
+
+    const pathSegments = pathname.split('/').filter(Boolean);
+    const teamsIndex = pathSegments.indexOf('teams');
+    if (teamsIndex !== -1 && pathSegments[teamsIndex + 1]) {
+      const teamId = pathSegments[teamsIndex + 1];
+      fetchBoards(teamId);
+    }
+  }, [pathname, boards]);
+
   // Parse pathname to get breadcrumb items
   const breadcrumbItems: BreadcrumbItem[] = [];
 
@@ -182,14 +256,60 @@ export function BreadcrumbCombobox() {
       isProject: true // Mark this as the project breadcrumb
     });
 
-    // Sub-pages (teams, proposals, etc.)
-    const subPage = pathSegments[pathSegments.length - 1];
-    if (subPage !== currentProjectId && !['projects'].includes(subPage)) {
+    // Sub-pages (teams, boards, etc.)
+    const teamsIndex = pathSegments.indexOf('teams');
+    const boardsIndex = pathSegments.indexOf('boards');
+
+    if (teamsIndex !== -1 && pathSegments[teamsIndex + 1]) {
+      // This is a specific team page
+      const teamId = pathSegments[teamsIndex + 1];
       breadcrumbItems.push({
-        label: subPage.charAt(0).toUpperCase() + subPage.slice(1),
-        href: pathname,
-        current: true
+        label: 'Teams',
+        href: `/dashboard/organisation/${currentOrgId}/projects/${currentProjectId}/teams`,
       });
+
+      // If there's a team ID, fetch and display team name
+      if (!pathSegments[teamsIndex + 2]) {
+        // We're on the team overview page
+        const projectTeams = teams[currentProjectId] || [];
+        const team = projectTeams.find(t => t.id === teamId);
+        breadcrumbItems.push({
+          label: team?.name || teamId, // Show team name if available, otherwise ID
+          href: pathname,
+          current: true
+        });
+      } else if (pathSegments[teamsIndex + 2] === 'boards' && pathSegments[teamsIndex + 3]) {
+        // We're on a board page
+        const projectTeams = teams[currentProjectId] || [];
+        const team = projectTeams.find(t => t.id === teamId);
+        breadcrumbItems.push({
+          label: team?.name || teamId,
+          href: `/dashboard/organisation/${currentOrgId}/projects/${currentProjectId}/teams/${teamId}`,
+        });
+        breadcrumbItems.push({
+          label: 'Boards',
+          href: `/dashboard/organisation/${currentOrgId}/projects/${currentProjectId}/teams/${teamId}/boards`,
+        });
+
+        const boardId = pathSegments[teamsIndex + 3];
+        const teamBoards = boards[teamId] || [];
+        const board = teamBoards.find(b => b.id === boardId);
+        breadcrumbItems.push({
+          label: board?.name || boardId, // Show board name if available, otherwise ID
+          href: pathname,
+          current: true
+        });
+      }
+    } else {
+      // Regular sub-pages
+      const subPage = pathSegments[pathSegments.length - 1];
+      if (subPage !== currentProjectId && !['projects'].includes(subPage)) {
+        breadcrumbItems.push({
+          label: subPage.charAt(0).toUpperCase() + subPage.slice(1),
+          href: pathname,
+          current: true
+        });
+      }
     }
   }
 

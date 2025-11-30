@@ -14,7 +14,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const invite = await db.teamInvite.findUnique({
       where: { token },
       include: {
-        team: { select: { id: true, name: true, description: true } },
+        team: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            organisationId: true,
+            projects: {
+              select: {
+                id: true,
+                organisationId: true
+              },
+              take: 1
+            }
+          }
+        },
         inviter: { select: { email: true, displayName: true } }
       }
     });
@@ -42,10 +56,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { token } = await params;
-    
+
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -70,8 +84,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check if invite email matches user email
     if (invite.email !== user.email) {
-      return NextResponse.json({ 
-        error: 'This invite was sent to a different email address' 
+      return NextResponse.json({
+        error: 'This invite was sent to a different email address'
       }, { status: 400 });
     }
 
@@ -105,10 +119,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         where: { id: invite.id },
         data: { usedAt: new Date() }
       });
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         message: 'You are already a member of this team',
-        team: invite.team 
+        team: invite.team
       });
     }
 
@@ -137,9 +151,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
     ]);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Successfully joined team',
-      team: invite.team 
+      team: invite.team
     });
   } catch (error) {
     console.error('Accept invite error:', error);
