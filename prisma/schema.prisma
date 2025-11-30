@@ -40,6 +40,7 @@ model User {
   invites          TeamInvite[]     @relation("InvitedBy")
   teamMembers      TeamMember[]
   ownedTeams       Team[]           @relation("TeamOwner")
+  newsletters      Newsletter[]     @relation("NewsletterCreator")
 
   @@index([createdAt(sort: Desc)], map: "idx_users_created_at_desc")
   @@index([email], map: "idx_users_email")
@@ -1039,4 +1040,34 @@ enum FeatureType {
   TEAM_MEMBER_ADDED
   PROJECT_CREATED
   ORGANISATION_CREATED
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  subscribedAt   DateTime  @default(now()) @map("subscribed_at")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+  status         String    @default("active") // active, unsubscribed
+
+  @@index([email])
+  @@index([status])
+  @@map("newsletter_subscribers")
+}
+
+model Newsletter {
+  id             String    @id @default(cuid())
+  subject        String
+  content        String    @db.Text
+  htmlContent    String?   @db.Text @map("html_content")
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  sentAt         DateTime? @map("sent_at")
+  recipientCount Int?      @map("recipient_count")
+  status         String    @default("draft") // draft, sent
+
+  creator User @relation("NewsletterCreator", fields: [createdBy], references: [id])
+
+  @@index([createdBy])
+  @@index([status])
+  @@map("newsletters")
 }

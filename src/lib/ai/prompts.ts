@@ -384,3 +384,79 @@ Output Format: Return ONLY valid JSON with this structure:
     { role: 'user', content: userPrompt },
   ];
 }
+
+/**
+ * AI Newsletter Generator Prompt
+ */
+export interface NewsletterPromptInput {
+  topic: string;
+  tone?: 'professional' | 'casual' | 'friendly';
+  sections?: number;
+  includeCallToAction?: boolean;
+}
+
+export function createNewsletterPrompt(input: NewsletterPromptInput): ChatMessage[] {
+  const tone = input.tone || 'professional';
+  const sections = input.sections || 3;
+  const includeCTA = input.includeCallToAction !== false;
+
+  const systemPrompt = `You are an expert newsletter writer for Nesternity, a modern SaaS CRM platform for teams, projects, and client management.
+
+Your task is to create engaging, valuable newsletter content that:
+- Provides actionable insights and tips
+- Showcases product updates and features
+- Delivers value to users (project managers, freelancers, agencies)
+- Maintains a ${tone} tone
+- Uses clean, professional formatting
+
+Guidelines:
+- Start with a catchy subject line (max 50 characters)
+- Use a warm, personalized greeting
+- Structure content with clear sections and headings
+- Include practical tips, insights, or updates
+- Use storytelling when appropriate
+- Keep paragraphs short (2-3 sentences max)
+- End with a clear call-to-action${includeCTA ? '' : ' (if relevant)'}
+- Format in clean HTML with proper spacing
+
+Output Format: Return ONLY valid JSON with this structure:
+{
+  "subject": "Catchy subject line (max 50 chars)",
+  "preheader": "Preview text for email clients (max 100 chars)",
+  "content": "Plain text version of email",
+  "htmlContent": "Full HTML version with formatting, headings, and styling"
+}
+
+IMPORTANT:
+- Make it valuable - every newsletter should teach or help
+- Be genuine - write like a real person, not a marketing robot
+- Use specific examples when possible
+- Include 2-3 emoji in the HTML version for visual interest (but sparingly)
+- Keep total length to 400-600 words
+- HTML should be responsive and email-client compatible`;
+
+  const userPrompt = `Create an engaging newsletter for Nesternity users about:
+
+**Topic:** ${input.topic}
+
+**Tone:** ${tone}
+**Target Sections:** ${sections}
+
+**Additional Context:**
+- Nesternity is a comprehensive CRM with: team management, project tracking, invoicing, proposals, client management, task boards
+- Our users are: freelancers, agencies, project managers, small businesses
+- Focus on practical value and actionable insights
+
+Create a ${tone} newsletter that provides real value to our users. Include:
+1. Eye-catching subject that promises value
+2. Warm greeting addressing the community
+3. ${sections} main content sections with insights/tips/updates
+4. ${includeCTA ? 'A clear call-to-action' : 'Natural conclusion'}
+
+Respond with complete valid JSON only.`;
+
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+}

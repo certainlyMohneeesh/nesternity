@@ -5,20 +5,27 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Shield, 
-  UsersIcon, 
-  FolderKanban, 
-  Target, 
-  CreditCard, 
+import {
+  Users,
+  Shield,
+  UsersIcon,
+  FolderKanban,
+  Target,
+  CreditCard,
   TrendingUp,
   LogOut,
   RefreshCw,
   Database,
   UserCheck,
   CheckCircle2,
-  Clock
+  Clock,
+  Mail,
+  Activity,
+  Send,
+  Settings,
+  FileText,
+  BarChart3,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -61,22 +68,103 @@ interface AdminStats {
   }
 }
 
+interface AdminCard {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  href: string;
+  color: string;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
+  const adminCards: AdminCard[] = [
+    {
+      title: 'Newsletters',
+      description: 'Create and send newsletters to subscribers',
+      icon: <Mail className="w-8 h-8" />,
+      href: '/admin/newsletters',
+      color: 'text-blue-600 dark:text-blue-400'
+    },
+    {
+      title: 'Subscribers',
+      description: 'Manage newsletter subscriber list',
+      icon: <Users className="w-8 h-8" />,
+      href: '/admin/subscribers',
+      color: 'text-green-600 dark:text-green-400'
+    },
+    {
+      title: 'Subscriptions',
+      description: 'View and manage user subscriptions',
+      icon: <CreditCard className="w-8 h-8" />,
+      href: '/admin/subscriptions',
+      color: 'text-purple-600 dark:text-purple-400'
+    },
+    {
+      title: 'System Status',
+      description: 'Monitor system health and performance',
+      icon: <Activity className="w-8 h-8" />,
+      href: '/admin/system-status',
+      color: 'text-orange-600 dark:text-orange-400'
+    },
+    {
+      title: 'Test Email',
+      description: 'Send test emails to verify configuration',
+      icon: <Send className="w-8 h-8" />,
+      href: '/admin/test-email',
+      color: 'text-pink-600 dark:text-pink-400'
+    },
+    {
+      title: 'Troubleshooting',
+      description: 'Debug and fix system issues',
+      icon: <Settings className="w-8 h-8" />,
+      href: '/admin/troubleshooting',
+      color: 'text-red-600 dark:text-red-400'
+    },
+    {
+      title: 'Statistics',
+      description: 'View platform analytics and insights',
+      icon: <BarChart3 className="w-8 h-8" />,
+      href: '/admin/stats',
+      color: 'text-indigo-600 dark:text-indigo-400'
+    },
+    {
+      title: 'Plans',
+      description: 'Manage subscription plans and pricing',
+      icon: <FileText className="w-8 h-8" />,
+      href: '/admin/plans',
+      color: 'text-yellow-600 dark:text-yellow-400'
+    },
+    {
+      title: 'SQL Query',
+      description: 'Execute database queries for debugging',
+      icon: <Database className="w-8 h-8" />,
+      href: '/admin/sql-query',
+      color: 'text-cyan-600 dark:text-cyan-400'
+    },
+    {
+      title: 'Download Logs',
+      description: 'Download system and error logs',
+      icon: <Download className="w-8 h-8" />,
+      href: '/admin/download-logs',
+      color: 'text-teal-600 dark:text-teal-400'
+    }
+  ];
+
   const fetchStats = async () => {
     try {
       const response = await fetch('/api/admin/stats');
-      
+
       if (response.status === 401) {
         toast.error('Session expired. Please login again.');
         router.push('/admin/login');
         return;
       }
-      
+
       if (response.ok) {
         const data = await response.json();
         setStats(data.stats);
@@ -228,6 +316,35 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
+        {/* Admin Tools Grid */}
+        <div>
+          <h2 className="text-2xl font-semibold mb-4">Admin Tools</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {adminCards.map((card) => (
+              <Card
+                key={card.href}
+                className="hover:shadow-lg transition-shadow cursor-pointer group border-0 shadow-md"
+                onClick={() => router.push(card.href)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className={`${card.color} group-hover:scale-110 transition-transform`}>
+                      {card.icon}
+                    </div>
+                  </div>
+                  <CardTitle className="mt-4">{card.title}</CardTitle>
+                  <CardDescription>{card.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="ghost" className="w-full group-hover:bg-accent">
+                    Open →
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Detailed Stats */}
         <div className="grid gap-8 md:grid-cols-2">
           {/* Recent Users */}
@@ -321,7 +438,7 @@ export default function AdminDashboard() {
                   {stats.users.total + stats.teams.total + stats.tasks.total + stats.clients.total} total records
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -331,7 +448,7 @@ export default function AdminDashboard() {
                   {stats.tasks.completed} tasks completed
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-orange-600" />
