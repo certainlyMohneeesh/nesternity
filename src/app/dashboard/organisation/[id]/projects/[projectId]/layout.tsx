@@ -4,22 +4,23 @@ import { useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  Users2, 
-  FileText, 
-  FileSignature, 
-  Receipt, 
+import {
+  LayoutDashboard,
+  Users2,
+  FileText,
+  FileSignature,
+  Receipt,
   AlertCircle,
   ChevronRight
 } from "lucide-react";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 
 const projectNavLinks = [
   { href: "", label: "Dashboard", icon: LayoutDashboard },
   { href: "/teams", label: "Teams", icon: Users2 },
-  { href: "/proposals", label: "Proposals", icon: FileText },
-  { href: "/contracts", label: "Contracts", icon: FileSignature },
-  { href: "/invoices", label: "Invoices", icon: Receipt },
+  { href: "/proposals", label: "Proposals", icon: FileText, requiresFinancialAccess: true },
+  { href: "/contracts", label: "Contracts", icon: FileSignature, requiresFinancialAccess: true },
+  { href: "/invoices", label: "Invoices", icon: Receipt, requiresFinancialAccess: true },
   { href: "/issues", label: "Issues", icon: AlertCircle },
 ];
 
@@ -31,13 +32,24 @@ export default function ProjectLayout({
   const params = useParams();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
+  // Check if user has financial access
+  const { hasAccess: hasFinancialAccess, loading: accessLoading } = useFinancialAccess(params.id as string);
+
+  // Filter nav links based on access
+  const visibleNavLinks = projectNavLinks.filter(link => {
+    if (link.requiresFinancialAccess) {
+      return hasFinancialAccess;
+    }
+    return true;
+  });
+
   const baseHref = `/dashboard/organisation/${params.id}/projects/${params.projectId}`;
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)]">
       {/* Supabase-style Sidebar (appears on hover) */}
-      <div 
+      <div
         className={cn(
           "fixed left-0 top-14 h-[calc(100vh-3.5rem)] z-40 transition-all duration-200 ease-in-out",
           "bg-background border-r",
@@ -47,10 +59,10 @@ export default function ProjectLayout({
         onMouseLeave={() => setSidebarOpen(false)}
       >
         <nav className="flex flex-col gap-1 p-2">
-          {projectNavLinks.map((link) => {
+          {visibleNavLinks.map((link) => {
             const Icon = link.icon;
             const href = `${baseHref}${link.href}`;
-            const isActive = link.href === "" 
+            const isActive = link.href === ""
               ? pathname === baseHref
               : pathname.startsWith(href);
 

@@ -5,6 +5,8 @@ import { ContractsList } from "@/components/contracts/ContractsList";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import Link from "next/link";
+import { checkFinancialAccess } from "@/lib/access-control";
+import { AccessDenied } from "@/components/access/access-denied";
 
 type PageProps = {
   params: Promise<{ id: string; projectId: string }>;
@@ -19,6 +21,20 @@ export default async function ContractsPage({ params }: PageProps) {
 
   if (!user) {
     redirect("/auth/login?returnUrl=/dashboard/contracts");
+  }
+
+  // Check if user has financial access (only org owners)
+  const accessCheck = await checkFinancialAccess(user.id, organisationId);
+
+  if (!accessCheck.hasAccess) {
+    return (
+      <AccessDenied
+        reason={accessCheck.reason || undefined}
+        orgId={organisationId}
+        projectId={projectId}
+        resourceType="contracts"
+      />
+    );
   }
 
   // Fetch all accepted proposals (contracts) for this project

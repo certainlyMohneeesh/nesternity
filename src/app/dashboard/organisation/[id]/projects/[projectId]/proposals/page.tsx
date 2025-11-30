@@ -5,6 +5,8 @@ import { ProposalsList } from "@/components/proposals/ProposalsList";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { checkFinancialAccess } from "@/lib/access-control";
+import { AccessDenied } from "@/components/access/access-denied";
 
 
 export default async function ProposalsPage({
@@ -13,7 +15,7 @@ export default async function ProposalsPage({
   params: Promise<{ id: string; projectId: string }>;
 }) {
   const { id: orgId, projectId } = await params;
-  
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,6 +23,20 @@ export default async function ProposalsPage({
 
   if (!user) {
     redirect("/auth/login?returnUrl=/dashboard/proposals");
+  }
+
+  // Check if user has financial access (only org owners)
+  const accessCheck = await checkFinancialAccess(user.id, orgId);
+
+  if (!accessCheck.hasAccess) {
+    return (
+      <AccessDenied
+        reason={accessCheck.reason || undefined}
+        orgId={orgId}
+        projectId={projectId}
+        resourceType="proposals"
+      />
+    );
   }
 
   // Fetch all proposals for this user's clients filtered by organisation
@@ -71,10 +87,10 @@ export default async function ProposalsPage({
     acceptanceRate:
       proposals.filter((p: any) => p.status !== "DRAFT").length > 0
         ? (
-            (proposals.filter((p: any) => p.status === "ACCEPTED" || p.status === "CONVERTED_TO_INVOICE").length /
-              proposals.filter((p: any) => p.status !== "DRAFT").length) *
-            100
-          ).toFixed(1)
+          (proposals.filter((p: any) => p.status === "ACCEPTED" || p.status === "CONVERTED_TO_INVOICE").length /
+            proposals.filter((p: any) => p.status !== "DRAFT").length) *
+          100
+        ).toFixed(1)
         : "0.0",
   };
 

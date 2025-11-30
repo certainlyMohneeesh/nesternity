@@ -41,12 +41,8 @@ export async function GET(
       );
     }
 
-    if (organisation.ownerId !== user.id) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+    // Allow both organisation owners AND team members to see projects
+    const isOwner = organisation.ownerId === user.id;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -54,6 +50,17 @@ export async function GET(
     const where: any = {
       organisationId: orgId
     };
+
+    // If user is not the owner, filter to only projects where they're a team member
+    if (!isOwner) {
+      where.team = {
+        members: {
+          some: {
+            userId: user.id
+          }
+        }
+      };
+    }
 
     if (status) {
       where.status = status;
@@ -186,13 +193,14 @@ export async function POST(
 
     // If no teamId provided, create a default team for this project
     let projectTeamId = teamId;
-    
+
     if (!projectTeamId) {
       const defaultTeam = await prisma.team.create({
         data: {
           name: `${name} Team`,
           description: `Default team for ${name}`,
-          createdBy: user.id
+          createdBy: user.id,
+          organisationId: orgId  // ADD: Associate team with organisation
         }
       });
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       await testDatabaseConnection();
     } catch (dbError: any) {
       console.error('❌ Database connection test failed:', dbError);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Database connection failed',
         details: process.env.NODE_ENV === 'development' ? dbError?.message : 'Service temporarily unavailable'
       }, { status: 503 });
@@ -23,10 +23,10 @@ export async function GET(request: NextRequest) {
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     console.log('🔄 Auth header present:', !!authHeader);
     console.log('🔄 Token present:', !!token);
-    
+
     if (!token) {
       console.log('❌ No token provided');
       return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 });
@@ -42,47 +42,51 @@ export async function GET(request: NextRequest) {
       } else {
         console.log('🔄 Verifying token with Supabase...');
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
-        
+
         if (authError) {
           console.error('❌ Supabase auth error:', authError);
-          return NextResponse.json({ 
+          return NextResponse.json({
             error: 'Authentication failed',
-            details: authError.message 
+            details: authError.message
           }, { status: 401 });
         }
-        
+
         if (!authUser) {
           console.log('❌ No user found for token');
           return NextResponse.json({ error: 'User not found' }, { status: 401 });
         }
-        
+
         user = authUser;
         console.log('✅ User authenticated:', user.id);
       }
     } catch (authError: any) {
       console.error('❌ Token verification failed:', authError);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Authentication error',
         details: process.env.NODE_ENV === 'development' ? authError?.message : 'Authentication failed'
       }, { status: 401 });
     }
 
-    // Get organisationId from query params for filtering
+    // Get organisationId and projectId from query params for filtering
     const { searchParams } = new URL(request.url);
     const organisationId = searchParams.get('organisationId');
-    
-    console.log('🔄 Fetching teams for user:', user.id, organisationId ? `in org: ${organisationId}` : '(all orgs)');
-    
+    const projectId = searchParams.get('projectId');
+
+    console.log('🔄 Fetching teams for user:', user.id,
+      organisationId ? `in org: ${organisationId}` : '',
+      projectId ? `in project: ${projectId}` : '(all)'
+    );
+
     try {
       const whereClause: any = {
         OR: [
           { createdBy: user.id },
-          { 
-            members: { 
-              some: { 
+          {
+            members: {
+              some: {
                 userId: user.id
-              } 
-            } 
+              }
+            }
           }
         ]
       };
@@ -90,6 +94,15 @@ export async function GET(request: NextRequest) {
       // Filter by organisationId if provided
       if (organisationId) {
         whereClause.organisationId = organisationId;
+      }
+
+      // Filter by projectId if provided (teams associated with specific project)
+      if (projectId) {
+        whereClause.projects = {
+          some: {
+            id: projectId
+          }
+        };
       }
 
       const teams = await db.team.findMany({
@@ -107,7 +120,7 @@ export async function GET(request: NextRequest) {
             orderBy: { acceptedAt: 'asc' }
           },
           _count: {
-            select: { 
+            select: {
               members: true,
               boards: true,
               projects: true
@@ -118,11 +131,11 @@ export async function GET(request: NextRequest) {
       });
 
       console.log('✅ Teams fetched successfully:', teams.length);
-      
+
       return NextResponse.json({ teams });
     } catch (dbQueryError: any) {
       console.error('❌ Database query failed:', dbQueryError);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Database query failed',
         details: process.env.NODE_ENV === 'development' ? dbQueryError?.message : 'Failed to fetch teams'
       }, { status: 500 });
@@ -130,8 +143,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Unexpected error in teams API:', error);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error?.message : 'Something went wrong'
     }, { status: 500 });
@@ -144,14 +157,14 @@ export async function POST(request: NextRequest) {
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user with token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -168,11 +181,11 @@ export async function POST(request: NextRequest) {
       const organisation = await db.organisation.findUnique({
         where: { id: organisationId }
       });
-      
+
       if (!organisation) {
         return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
       }
-      
+
       // Verify user owns the organisation
       if (organisation.ownerId !== user.id) {
         return NextResponse.json({ error: 'Not authorized to create teams in this organisation' }, { status: 403 });
@@ -192,7 +205,7 @@ export async function POST(request: NextRequest) {
         }
       }
     });
-    
+
     if (existingUserWithEmail && existingUserWithEmail.id !== user.id) {
       // Only delete if user has no teams or memberships
       if (existingUserWithEmail._count.ownedTeams === 0 && existingUserWithEmail._count.teamMembers === 0) {
@@ -203,8 +216,8 @@ export async function POST(request: NextRequest) {
       } else {
         // User has data, don't delete - this shouldn't happen normally
         console.warn(`⚠️ Orphaned user ${existingUserWithEmail.email} has data, not deleting`);
-        return NextResponse.json({ 
-          error: 'Account conflict. Please contact support.' 
+        return NextResponse.json({
+          error: 'Account conflict. Please contact support.'
         }, { status: 409 });
       }
     }

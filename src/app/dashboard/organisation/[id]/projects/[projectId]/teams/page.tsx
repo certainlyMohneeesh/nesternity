@@ -49,7 +49,7 @@ export default function TeamsPage() {
   const params = useParams();
   const orgId = params.id as string;
   const projectId = params.projectId as string;
-  
+
   const { session, loading: sessionLoading } = useSession();
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<TeamOrTemp[]>([]);
@@ -59,7 +59,7 @@ export default function TeamsPage() {
   const [teamDescription, setTeamDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
 
   useEffect(() => {
     if (!sessionLoading) {
@@ -70,7 +70,7 @@ export default function TeamsPage() {
   async function loadUserAndTeams() {
     try {
       setLoading(true);
-      
+
       // Check if user is authenticated
       if (!session?.user) {
         window.location.href = '/auth/login';
@@ -90,15 +90,15 @@ export default function TeamsPage() {
 
   async function fetchTeams() {
     const token = await getSessionToken();
-    
+
     try {
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
-      // Add organisationId to filter teams by organisation
-      const response = await fetch(`/api/teams?organisationId=${orgId}`, {
+      // Filter teams by projectId to show only teams related to this project
+      const response = await fetch(`/api/teams?projectId=${projectId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ export default function TeamsPage() {
   function getRoleIcon(team: Team) {
     const userMember = team.members?.find(m => m.user.id === user?.id);
     const isOwner = team.createdBy === user?.id;
-    
+
     if (isOwner) {
       return <Crown className="h-4 w-4 text-yellow-500" />;
     } else if (userMember?.role === 'admin') {
@@ -210,7 +210,7 @@ export default function TeamsPage() {
   function getRoleBadge(team: Team) {
     const userMember = team.members?.find(m => m.user.id === user?.id);
     const isOwner = team.createdBy === user?.id;
-    
+
     if (isOwner) {
       return <Badge variant="default">Owner</Badge>;
     } else if (userMember?.role === 'admin') {
@@ -244,41 +244,41 @@ export default function TeamsPage() {
               </Button>
             </SheetTrigger>
             <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Create New Team</SheetTitle>
-            </SheetHeader>
-            <form onSubmit={handleCreateTeam} className="space-y-4 mt-6">
-              <div>
-                <Label htmlFor="teamName">Team Name</Label>
-                <Input
-                  id="teamName"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="Enter team name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="teamDescription">Description (Optional)</Label>
-                <Textarea
-                  id="teamDescription"
-                  value={teamDescription}
-                  onChange={(e) => setTeamDescription(e.target.value)}
-                  placeholder="Brief description of the team"
-                  rows={3}
-                />
-              </div>
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700">{error}</p>
+              <SheetHeader>
+                <SheetTitle>Create New Team</SheetTitle>
+              </SheetHeader>
+              <form onSubmit={handleCreateTeam} className="space-y-4 mt-6">
+                <div>
+                  <Label htmlFor="teamName">Team Name</Label>
+                  <Input
+                    id="teamName"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Enter team name"
+                    required
+                  />
                 </div>
-              )}
-              <Button type="submit" disabled={creating || !teamName.trim()} className="w-full">
-                {creating ? "Creating..." : "Create Team"}
-              </Button>
-            </form>
-          </SheetContent>
-        </Sheet>
+                <div>
+                  <Label htmlFor="teamDescription">Description (Optional)</Label>
+                  <Textarea
+                    id="teamDescription"
+                    value={teamDescription}
+                    onChange={(e) => setTeamDescription(e.target.value)}
+                    placeholder="Brief description of the team"
+                    rows={3}
+                  />
+                </div>
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                )}
+                <Button type="submit" disabled={creating || !teamName.trim()} className="w-full">
+                  {creating ? "Creating..." : "Create Team"}
+                </Button>
+              </form>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 

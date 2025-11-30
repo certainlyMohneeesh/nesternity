@@ -10,19 +10,19 @@ const supabase = createClient(
 // GET /api/organisations - List user's organisations
 export async function GET(request: NextRequest) {
   const requestId = `orgs_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  
+
   console.log(`[Organisations API] ========== REQUEST START [${requestId}] ==========`);
   console.log(`[Organisations API] Timestamp: ${new Date().toISOString()}`);
   console.log(`[Organisations API] Method: GET`);
   console.log(`[Organisations API] URL: ${request.url}`);
-  
+
   try {
     // Step 1: Check authorization header
     console.log(`[Organisations API] Step 1: Checking authorization header...`);
     const authHeader = request.headers.get('authorization');
     console.log(`[Organisations API] Auth header present: ${!!authHeader}`);
     console.log(`[Organisations API] Auth header value: ${authHeader ? authHeader.substring(0, 20) + '...' : 'null'}`);
-    
+
     if (!authHeader?.startsWith('Bearer ')) {
       console.log(`[Organisations API] ❌ No valid authorization header`);
       console.log(`[Organisations API] Headers received:`, Object.fromEntries(request.headers.entries()));
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     console.log(`[Organisations API] Token length: ${token?.length || 0}`);
     console.log(`[Organisations API] Token preview: ${token ? token.substring(0, 20) + '...' : 'null'}`);
-    
+
     // Step 3: Verify with Supabase
     console.log(`[Organisations API] Step 3: Verifying token with Supabase...`);
     const startAuth = Date.now();
@@ -78,8 +78,28 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type'); // 'OWNER' or 'CLIENT' or null for all
     console.log(`[Organisations API] Filter type: ${type || 'all'}`);
 
+    // Build where clause to include:
+    // 1. Organisations owned by user
+    // 2. Organisations where user is a team member on any project
     const where: any = {
-      ownerId: user.id
+      OR: [
+        // Direct ownership
+        { ownerId: user.id },
+        // Team membership (via projects)
+        {
+          projects: {
+            some: {
+              team: {
+                members: {
+                  some: {
+                    userId: user.id
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     };
 
     if (type && (type === 'OWNER' || type === 'CLIENT')) {
@@ -88,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     // Step 5: Query database
     console.log(`[Organisations API] Step 5: Querying database...`);
-    console.log(`[Organisations API] Query where:`, where);
+    console.log(`[Organisations API] Query where:`, JSON.stringify(where, null, 2));
     const startDb = Date.now();
     const organisations = await prisma.organisation.findMany({
       where,
@@ -199,13 +219,13 @@ export async function POST(request: NextRequest) {
       enterprise: -1 // unlimited
     };
 
-    const userLimit = subscription?.status === 'active' 
+    const userLimit = subscription?.status === 'active'
       ? (subscription.stripePriceId.includes('pro') ? limits.pro : limits.enterprise)
       : limits.free;
 
     if (userLimit !== -1 && userOrgsCount >= userLimit) {
       return NextResponse.json(
-        { 
+        {
           error: 'Organisation limit reached',
           message: `You have reached the maximum number of organisations (${userLimit}). Please upgrade your plan.`,
           limit: userLimit,
