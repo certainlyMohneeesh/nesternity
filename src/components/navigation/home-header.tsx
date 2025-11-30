@@ -59,7 +59,7 @@ export function HomeHeader() {
                                         <Button
                                             variant="default"
                                             size="sm"
-                                            className="bg-[#B59EF9] hover:bg-[#B59EF9]/90 text-black"
+                                            className="gap-2 text-sm px-3 py-4"
                                         >
                                             Dashboard
                                         </Button>
@@ -76,7 +76,7 @@ export function HomeHeader() {
                                     <Link href="/dashboard">
                                         <Button
                                             size="sm"
-                                            className="bg-[#B59EF9] hover:bg-[#B59EF9]/90 text-black"
+                                            className="gap-2 text-sm px-3 py-4"
                                         >
                                             Start your project
                                         </Button>
