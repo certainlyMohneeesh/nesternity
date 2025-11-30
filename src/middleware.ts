@@ -67,28 +67,30 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith('/proposals') ||
-      request.nextUrl.pathname.startsWith('/clients') ||
-      request.nextUrl.pathname.startsWith('/projects') ||
-      request.nextUrl.pathname.startsWith('/boards') ||
-      request.nextUrl.pathname.startsWith('/teams') ||
-      request.nextUrl.pathname.startsWith('/settings') ||
-      request.nextUrl.pathname === '/dashboard') {
-    
+  const isPublicProposalRoute = request.nextUrl.pathname.match(/^\/proposals\/[^/]+\/sign$/);
+
+  if ((request.nextUrl.pathname.startsWith('/proposals') && !isPublicProposalRoute) ||
+    request.nextUrl.pathname.startsWith('/clients') ||
+    request.nextUrl.pathname.startsWith('/projects') ||
+    request.nextUrl.pathname.startsWith('/boards') ||
+    request.nextUrl.pathname.startsWith('/teams') ||
+    request.nextUrl.pathname.startsWith('/settings') ||
+    request.nextUrl.pathname === '/dashboard') {
+
     if (!user) {
       console.log('❌ No user found, redirecting to login');
       const redirectUrl = new URL('/auth/login', request.url);
       redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
       return NextResponse.redirect(redirectUrl);
     }
-    
+
     console.log('✅ User authenticated:', user.email);
   }
 
   // Only protect admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const isAuthenticated = request.cookies.get('admin-auth')?.value === 'true';
-    
+
     if (!isAuthenticated) {
       console.log('❌ Admin not authenticated, redirecting to admin login');
       return NextResponse.redirect(new URL('/admin/login', request.url));
