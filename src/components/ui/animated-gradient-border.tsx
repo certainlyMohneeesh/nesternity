@@ -17,7 +17,7 @@ export function AnimatedGradientBorder({
     borderRadius = "0.5rem",
 }: AnimatedGradientBorderProps) {
     return (
-        <div className={`relative ${className}`} style={{ borderRadius }}>
+        <div className={`relative isolate ${className}`} style={{ borderRadius }}>
             {/* Animated gradient border (Underlay) */}
             {isAnimating && (
                 <>

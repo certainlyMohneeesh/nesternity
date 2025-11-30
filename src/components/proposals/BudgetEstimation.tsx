@@ -124,7 +124,7 @@ export function BudgetEstimation({
 
   return (
     <div className="space-y-4">
-      <AnimatedGradientBorder isAnimating={loading} className="rounded-lg">
+      <AnimatedGradientBorder isAnimating={loading} className="rounded-md" borderRadius="0.375rem">
         <Button
           type="button"
           onClick={handleEstimate}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ interface ProposalEditorProps {
 export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
   // Form state
   const [clientId, setClientId] = useState('');
@@ -123,6 +125,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
       toast.success('Proposal saved! 💾', {
         description: `Saved as ${data.proposal.status} for ${data.proposal.client.name}`,
       });
+      router.push(`/dashboard/organisation/${orgId}/projects/${projectId}/proposals`);
     } catch (error) {
       console.error('Error saving proposal:', error);
       toast.error('Save failed', {
@@ -255,7 +258,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
       </Card>
 
       {/* Proposal Preview */}
-      <AnimatedGradientBorder isAnimating={loading} className="rounded-lg">
+      <AnimatedGradientBorder isAnimating={loading} className="rounded-xl h-fit" borderRadius="0.75rem">
         <Card className={proposal ? "border-primary/20 border-0" : "border-0"}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -269,7 +272,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                 </CardDescription>
               </div>
               {proposal && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   Generated
                 </Badge>
@@ -328,11 +331,11 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="border-blue-200 bg-blue-50">
+                  <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-blue-100">
-                          <Clock className="h-5 w-5 text-blue-600" />
+                        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Timeline</p>
