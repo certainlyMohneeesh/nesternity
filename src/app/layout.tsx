@@ -15,7 +15,7 @@ export const metadata = {
   openGraph: {
     title: "Nesternity",
     description: "Modern SaaS CRM Dashboard for teams and projects.",
-    url: "https://nesternity.cyth.me",
+    url: "https://nesternity.cyth.app",
     siteName: "Nesternity",
     images: [
       {
@@ -41,7 +41,7 @@ export const metadata = {
     apple: "/nesternity_W.png",
   },
   alternates: {
-    canonical: "https://nesternity.cyth.me",
+    canonical: "https://nesternity.cyth.app",
   },
 };
 
@@ -64,8 +64,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "Nesternity CRM",
-              url: "https://nesternity.cyth.me",
-              logo: "https://nesternity.cyth.me/nesternity_l.png",
+              url: "https://nesternity.cyth.app",
+              logo: "https://nesternity.cyth.app/nesternity_l.png",
               sameAs: [
                 "https://twitter.com/nesternity",
                 "https://www.linkedin.com/company/nesternity",
