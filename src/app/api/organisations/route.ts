@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
 
     // Define limits based on subscription
     const limits = {
-      free: 2,
+      free: 10,
       pro: 10,
       enterprise: -1 // unlimited
     };
