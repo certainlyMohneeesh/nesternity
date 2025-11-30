@@ -80,11 +80,15 @@ interface RecurringInvoiceCardProps {
     }>;
   };
   onUpdate?: () => void;
+  orgId: string;
+  projectId: string;
 }
 
 export default function RecurringInvoiceCard({
   invoice,
   onUpdate,
+  orgId,
+  projectId,
 }: RecurringInvoiceCardProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -155,7 +159,7 @@ export default function RecurringInvoiceCard({
     } catch (error) {
       console.error("[RecurringInvoiceCard] Failed to toggle automation:", error);
       toast.error("Failed to update settings");
-      
+
       // Revert state
       if (field === "autoGenerateEnabled") {
         setAutoGenerateEnabled(!value);
@@ -192,7 +196,7 @@ export default function RecurringInvoiceCard({
         description: `Created ${data.invoice.invoiceNumber}`,
         action: {
           label: "View",
-          onClick: () => router.push(`/dashboard/invoices/${data.invoice.id}`),
+          onClick: () => router.push(`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/${data.invoice.id}`),
         },
       });
 
@@ -270,7 +274,7 @@ export default function RecurringInvoiceCard({
                   <Play className="h-4 w-4 mr-2" />
                   Generate Now
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}>
+                <DropdownMenuItem onClick={() => router.push(`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/${invoice.id}`)}>
                   <Eye className="h-4 w-4 mr-2" />
                   View Template
                 </DropdownMenuItem>
@@ -431,7 +435,7 @@ export default function RecurringInvoiceCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Recurring Invoice?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the recurring invoice template "{invoice.invoiceNumber}". 
+              This will delete the recurring invoice template "{invoice.invoiceNumber}".
               Previously generated invoices will not be affected. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

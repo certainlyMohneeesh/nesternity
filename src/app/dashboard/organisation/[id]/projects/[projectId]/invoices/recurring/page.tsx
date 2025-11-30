@@ -201,6 +201,8 @@ export default async function RecurringInvoicesPage({
                   taxRate: invoice.taxRate || 0,
                   discount: invoice.discount || 0,
                 }}
+                orgId={orgId}
+                projectId={projectId}
               />
             ))}
         </div>
