@@ -105,7 +105,6 @@ export default async function RecurringInvoicesPage({
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices`}>
-              <FileText className="h-4 w-4 mr-1" />
               Invoices
             </BreadcrumbLink>
           </BreadcrumbItem>
