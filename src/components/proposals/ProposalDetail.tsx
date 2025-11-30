@@ -127,7 +127,7 @@ export function ProposalDetail({ proposal: initialProposal, orgId, projectId }: 
       toast.error("Proposal must be sent first to generate a secure link");
       return;
     }
-    
+
     const signLink = `${window.location.origin}/proposals/${proposal.id}/sign?token=${token}`;
     try {
       await navigator.clipboard.writeText(signLink);
@@ -169,7 +169,7 @@ export function ProposalDetail({ proposal: initialProposal, orgId, projectId }: 
       }
 
       const data = await response.json();
-      
+
       setProposal({
         ...proposal,
         status: "SENT",
@@ -321,7 +321,7 @@ export function ProposalDetail({ proposal: initialProposal, orgId, projectId }: 
             )}
             {proposal.status === "ACCEPTED" && (
               <Button size="sm" asChild>
-                <a href={`/dashboard/contracts?from=proposal&id=${proposal.id}`}>
+                <a href={`/dashboard/organisation/${orgId}/projects/${projectId}/contracts?from=proposal&id=${proposal.id}`}>
                   <FileText className="mr-2 h-4 w-4" />
                   View as Contract
                 </a>
