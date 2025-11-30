@@ -43,10 +43,14 @@ interface RecurringInvoicesOverviewProps {
     taxRate: number;
     discount: number;
   }>;
+  orgId: string;
+  projectId: string;
 }
 
 export default function RecurringInvoicesOverview({
   invoices,
+  orgId,
+  projectId,
 }: RecurringInvoicesOverviewProps) {
   const router = useRouter();
 
@@ -104,7 +108,7 @@ export default function RecurringInvoicesOverview({
             <p className="text-sm text-muted-foreground mb-4">
               No recurring invoices set up yet
             </p>
-            <Link href="/dashboard/invoices/recurring/new">
+            <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/recurring/new`}>
               <Button size="sm">
                 Create Recurring Invoice
               </Button>
@@ -128,7 +132,7 @@ export default function RecurringInvoicesOverview({
               Automated billing overview
             </CardDescription>
           </div>
-          <Link href="/dashboard/invoices/recurring">
+          <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/recurring`}>
             <Button variant="ghost" size="sm">
               View All
               <ArrowRight className="h-4 w-4 ml-1" />
@@ -190,7 +194,7 @@ export default function RecurringInvoicesOverview({
                 <div
                   key={invoice.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}
+                  onClick={() => router.push(`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/${invoice.id}`)}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -236,7 +240,7 @@ export default function RecurringInvoicesOverview({
 
         {/* View All Link */}
         {invoices.length > 3 && (
-          <Link href="/dashboard/invoices/recurring">
+          <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/recurring`}>
             <Button variant="outline" className="w-full">
               View All {invoices.length} Recurring Invoices
             </Button>

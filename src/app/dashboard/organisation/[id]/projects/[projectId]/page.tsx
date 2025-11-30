@@ -371,7 +371,7 @@ export default function ProjectDashboard() {
       {(data.recurringInvoices && data.recurringInvoices.length > 0) || (data.clients && data.clients.length > 0) ? (
         <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
           {data.recurringInvoices && data.recurringInvoices.length > 0 && (
-            <RecurringInvoicesOverview invoices={data.recurringInvoices} />
+            <RecurringInvoicesOverview invoices={data.recurringInvoices} orgId={orgId} projectId={projectId} />
           )}
 
           {/* Scope Radar for first client with budget */}
