@@ -38,11 +38,15 @@ interface RecurringInvoiceFormProps {
     company: string | null;
   }>;
   userId: string;
+  orgId: string;
+  projectId: string;
 }
 
 export default function RecurringInvoiceForm({
   clients,
   userId,
+  orgId,
+  projectId,
 }: RecurringInvoiceFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,7 +61,7 @@ export default function RecurringInvoiceForm({
   const [discount, setDiscount] = useState(0);
   const [currency, setCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
-  
+
   // Automation settings
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true);
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
@@ -93,9 +97,9 @@ export default function RecurringInvoiceForm({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     console.log('[RecurringInvoiceForm] Submitting form');
-    
+
     if (!clientId) {
       toast.error("Please select a client");
       return;
@@ -154,7 +158,7 @@ export default function RecurringInvoiceForm({
         description: `Invoice ${data.invoice.invoiceNumber} will be generated ${recurrence.toLowerCase()}`,
       });
 
-      router.push("/dashboard/invoices/recurring");
+      router.push(`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/recurring`);
       router.refresh();
     } catch (error) {
       console.error("[RecurringInvoiceForm] Failed to create recurring invoice:", error);
@@ -360,8 +364,8 @@ export default function RecurringInvoiceForm({
                 placeholder={recurrence === "WEEKLY" ? "1-7 (Mon-Sun)" : "1-31"}
               />
               <p className="text-xs text-muted-foreground">
-                {recurrence === "WEEKLY" 
-                  ? "1 = Monday, 7 = Sunday" 
+                {recurrence === "WEEKLY"
+                  ? "1 = Monday, 7 = Sunday"
                   : "Leave empty to use current day"}
               </p>
             </div>

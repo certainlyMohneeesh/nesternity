@@ -21,7 +21,7 @@ export default async function NewRecurringInvoicePage({
   params: Promise<{ id: string; projectId: string }>;
 }) {
   const { id: orgId, projectId } = await params;
-  
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -133,7 +133,7 @@ export default async function NewRecurringInvoicePage({
       </div>
 
       {/* Form */}
-      <RecurringInvoiceForm clients={clients} userId={userId} />
+      <RecurringInvoiceForm clients={clients} userId={userId} orgId={orgId} projectId={projectId} />
     </div>
   );
 }
