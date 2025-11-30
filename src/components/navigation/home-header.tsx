@@ -59,7 +59,7 @@ export function HomeHeader() {
                                         <Button
                                             variant="default"
                                             size="sm"
-                                            className="bg-[#B59EF9] hover:bg-[#B59EF9]/90 text-white"
+                                            className="bg-[#B59EF9] hover:bg-[#B59EF9]/90 text-black"
                                         >
                                             Dashboard
                                         </Button>
@@ -76,7 +76,7 @@ export function HomeHeader() {
                                     <Link href="/dashboard">
                                         <Button
                                             size="sm"
-                                            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                                            className="bg-[#B59EF9] hover:bg-[#B59EF9]/90 text-black"
                                         >
                                             Start your project
                                         </Button>

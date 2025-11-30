@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import Link from "next/link";
 
-export default async function ContractsPage() {
+type PageProps = {
+  params: Promise<{ id: string; projectId: string }>;
+};
+
+export default async function ContractsPage({ params }: PageProps) {
+  const { id: organisationId, projectId } = await params;
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,12 +21,13 @@ export default async function ContractsPage() {
     redirect("/auth/login?returnUrl=/dashboard/contracts");
   }
 
-  // Fetch all accepted proposals (contracts)
+  // Fetch all accepted proposals (contracts) for this project
   const contracts = await prisma.proposal.findMany({
     where: {
       client: {
         createdBy: user.id,
       },
+      organisationId: organisationId,
       status: {
         in: ["ACCEPTED", "CONVERTED_TO_INVOICE"],
       },
@@ -82,7 +88,7 @@ export default async function ContractsPage() {
             View and manage your accepted proposals
           </p>
         </div>
-        <Link href="/dashboard/proposals">
+        <Link href={`/dashboard/organisation/${organisationId}/projects/${projectId}/proposals`}>
           <Button variant="outline">
             <FileText className="mr-2 h-4 w-4" />
             View All Proposals

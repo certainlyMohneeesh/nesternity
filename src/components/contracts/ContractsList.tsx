@@ -30,7 +30,7 @@ import {
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 type Contract = {
   id: string;
@@ -67,6 +67,7 @@ export function ContractsList({ contracts: initialContracts }: Props) {
   const [searchTerm, setSearchTerm] = useState("");
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const router = useRouter();
+  const params = useParams();
 
   // Filter contracts
   const filteredContracts = contracts.filter((contract) => {
@@ -98,10 +99,15 @@ export function ContractsList({ contracts: initialContracts }: Props) {
 
       // Navigate to the invoices page for this project
       const contract = contracts.find(c => c.id === contractId);
-      if (contract?.organisationId && contract?.project?.id) {
-        router.push(`/dashboard/organisation/${contract.organisationId}/projects/${contract.project.id}/invoices`);
+
+      // Use contract data if available, otherwise fall back to current URL params
+      const targetOrgId = contract?.organisationId || params.id;
+      const targetProjectId = contract?.project?.id || params.projectId;
+
+      if (targetOrgId && targetProjectId) {
+        router.push(`/dashboard/organisation/${targetOrgId}/projects/${targetProjectId}/invoices`);
       } else {
-        // Fallback if org/project missing (shouldn't happen for valid contracts)
+        // Fallback if org/project completely missing
         console.warn("Missing organisationId or projectId for redirect");
         router.push(`/dashboard/invoices`);
       }

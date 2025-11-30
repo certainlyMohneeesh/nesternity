@@ -21,6 +21,10 @@ import InteractiveDemo from "@/components/demo/InteractiveDemo";
 import NewsletterSignup from "@/components/newsletter/NewsletterSignup";
 import { HomeHeader } from "@/components/navigation/home-header";
 import { BentoGrid } from "@/components/home/bento-grid";
+import { ModeToggle } from "@/components/ui/mode-toggle";
+import { TestimonialsMarquee } from "@/components/home/testimonials-marquee";
+import { AIFeaturesGrid } from "@/components/home/ai-features-grid";
+import { Layout, Receipt, Monitor, Briefcase } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -29,7 +33,7 @@ export default function HomePage() {
       <HomeHeader />
 
       {/* Hero Section */}
-      <section className="py-20 md:py-32 px-6 text-center max-w-5xl mx-auto relative mt-16">
+      <section className="py-8 md:py-16 px-6 text-center max-w-5xl mx-auto relative mt-16">
         {/* Background overlay image */}
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
           <img
@@ -74,7 +78,7 @@ export default function HomePage() {
       </section>
 
       {/* Feature Grid - Supabase Style */}
-      <section className="py-20 px-6 bg-gradient-to-br from-background to-secondary/5">
+      <section className="py-8 px-6 bg-gradient-to-br from-background to-secondary/5">
         <div className="max-w-7xl mx-auto">
           {/* Bento Grid Features */}
           <BentoGrid />
@@ -82,81 +86,7 @@ export default function HomePage() {
       </section>
 
       {/* AI Features Section */}
-      <section className="py-24 px-6 bg-gradient-to-r from-primary/5 to-emerald-500/5">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <Badge variant="secondary" className="mb-4">
-              <Sparkles className="h-3 w-3 mr-1 inline" />
-              AI-Powered
-            </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Work smarter with
-              <span className="bg-gradient-to-r from-primary to-[#A459D1] bg-clip-text text-transparent"> AI assistance</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Let artificial intelligence handle the heavy lifting while you focus on what matters most
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm hover:shadow-xl transition-all">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center mb-4">
-                  <Brain className="h-6 w-6 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Smart Project Planning</CardTitle>
-                <CardDescription className="text-base">
-                  AI analyzes your project requirements and generates detailed plans, timelines, and task breakdowns automatically.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Automatic task generation based on project scope</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Intelligent timeline suggestions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Resource allocation recommendations</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm hover:shadow-xl transition-all">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Proposal Generator</CardTitle>
-                <CardDescription className="text-base">
-                  Create professional proposals in minutes. AI writes compelling content tailored to your client's needs.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Personalized proposal content</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Budget estimation and pricing suggestions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">Industry-specific templates</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      <AIFeaturesGrid />
 
       {/* Product Demo Section */}
       <section className="py-12 px-6 bg-gradient-to-br from-background to-muted/10">
@@ -198,46 +128,79 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Problem-Solution Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-muted/30 to-muted/10">
+      {/* Problem-Solution Section - Redesigned */}
+      <section className="py-12 px-6 bg-gradient-to-b from-background to-muted/20">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4">Why Nesternity?</h2>
-          <p className="text-xl text-muted-foreground text-center mb-16"> To transform scattered tools into one seamless experience</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🧠</span>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Nesternity?</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Stop juggling scattered tools. Transform chaos into one seamless, calm experience.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(200px,auto)]">
+            {/* Card 1 - Large Span */}
+            <Card className="md:col-span-2 border-0 shadow-lg bg-gradient-to-br from-red-500/5 to-orange-500/5 hover:shadow-xl transition-all duration-300 overflow-hidden relative group">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Workflow className="w-32 h-32" />
+              </div>
+              <CardHeader>
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center mb-4">
+                  <Layout className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
-                <CardTitle className="text-lg">Smart Boards</CardTitle>
+                <CardTitle className="text-2xl">Smart Boards & Kanban</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Plan projects with Kanban-style ease — assign, drag, and ship like a pro.</p>
+                <p className="text-lg text-muted-foreground">
+                  Plan projects with intuitive Kanban boards. Drag, drop, and ship without the mental overhead of complex project management tools.
+                </p>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 mx-auto bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🧾</span>
+
+            {/* Card 2 */}
+            <Card className="border-0 shadow-lg bg-background/60 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center mb-4">
+                  <Receipt className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                 </div>
-                <CardTitle className="text-lg">Instant Invoicing</CardTitle>
+                <CardTitle className="text-xl">Instant Invoicing</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Generate beautiful, exportable PDFs and track payments effortlessly.</p>
+                <p className="text-muted-foreground">
+                  Generate beautiful, exportable PDFs and track payments. Get paid faster with zero friction.
+                </p>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-lg bg-background/80 backdrop-blur-sm">
-              <CardHeader className="text-center">
-                <div className="w-16 h-16 mx-auto bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">🧍‍♂️</span>
+
+            {/* Card 3 */}
+            <Card className="border-0 shadow-lg bg-background/60 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center mb-4">
+                  <Monitor className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
-                <CardTitle className="text-lg">Client-Centric</CardTitle>
+                <CardTitle className="text-xl">Client Portal</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-center">Keep all client details, tasks, and communication in one elegant place.
-                  <br />
-                  <span className="font-medium">Your time is worth more than spreadsheets hell.</span>
-                  <br />
+                <p className="text-muted-foreground">
+                  Give clients a professional hub to view progress and invoices. Build trust through transparency.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Card 4 - Large Span */}
+            <Card className="md:col-span-2 border-0 shadow-lg bg-gradient-to-br from-blue-500/5 to-purple-500/5 hover:shadow-xl transition-all duration-300 overflow-hidden relative group">
+              <div className="absolute bottom-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Sparkles className="w-32 h-32" />
+              </div>
+              <CardHeader>
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mb-4">
+                  <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <CardTitle className="text-2xl">AI-Powered Clarity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg text-muted-foreground">
+                  Let AI handle the boring stuff. From drafting proposals to estimating budgets, Nesternity acts as your intelligent partner.
                 </p>
               </CardContent>
             </Card>
@@ -245,52 +208,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Everything you need to work smart</h2>
-            <p className="text-xl text-muted-foreground">Built specifically for solo professionals who value simplicity</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard
-              icon={<Users className="h-8 w-8 text-primary" />}
-              title="Client Capsule"
-              description="Track boards, projects, and issues all in one organized space. Never lose track of client details again."
-            />
-            <FeatureCard
-              icon={<Shield className="h-8 w-8 text-primary" />}
-              title="Invoice Composer"
-              description="Generate, customize, and e-sign invoices in minutes. Professional documents without the complexity."
-            />
-            <FeatureCard
-              icon={<Zap className="h-8 w-8 text-primary" />}
-              title="Lightweight & Blazing Fast"
-              description="Built with Next.js and optimized for speed. No bloat, just brilliance."
-            />
-            <FeatureCard
-              icon={<Star className="h-8 w-8 text-primary" />}
-              title="Visual Dashboard"
-              description="Stay on top of everything at a glance with beautiful, intuitive dashboards that actually make sense."
-            />
-            <FeatureCard
-              icon={<CheckCircle className="h-8 w-8 text-primary" />}
-              title="Activity Tracking"
-              description="From task edits to comment threads — know who did what, when."
-            />
-            <FeatureCard
-              icon={<ArrowRight className="h-8 w-8 text-primary" />}
-              title="Team Collaboration"
-              description="Invite team members. Share progress, get feedback, and stay aligned effortlessly."
-            />
-          </div>
+      {/* Testimonials Section - Infinite Marquee */}
+      <section className="py-8 px-0 overflow-hidden">
+        <div className="text-center mb-12 px-6">
+          <h2 className="text-4xl font-bold mb-4">Loved by Freelancers</h2>
+          <p className="text-xl text-muted-foreground">Join the community of professionals building their dreams</p>
         </div>
+        <TestimonialsMarquee />
       </section>
 
-      <section className="py-24 px-6 bg-gradient-to-r from-secondary/10 to-primary/5">
+      <section className="pt-0 pb-8 px-6 bg-gradient-to-r from-secondary/10 to-primary/5">
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex justify-center mb-6">
-            <span className="text-5xl">💼</span>
+            <Briefcase className="h-12 w-12 text-primary" />
           </div>
           <h2 className="text-4xl font-bold mb-4">Who It's For</h2>
           <p className="text-2xl font-semibold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -317,9 +247,10 @@ export default function HomePage() {
               <p className="text-muted-foreground mb-4 max-w-md">
                 Inspired by the idea of a nest: secure, supportive, and ever-growing. Nesternity empowers modern professionals to work smarter, not harder.
               </p>
-              <div className="flex space-x-4">
+              <div className="flex space-x-4 items-center">
                 <Badge variant="outline">🚀 Beta</Badge>
                 <Badge variant="outline">Built with Next.js</Badge>
+                <ModeToggle />
               </div>
             </div>
             <div>
