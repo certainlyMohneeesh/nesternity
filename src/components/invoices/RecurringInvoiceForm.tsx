@@ -115,6 +115,8 @@ export default function RecurringInvoiceForm({
     try {
       const payload = {
         clientId,
+        projectId,
+        organisationId: orgId,
         recurrence,
         items: items.map(item => ({
           description: item.description,

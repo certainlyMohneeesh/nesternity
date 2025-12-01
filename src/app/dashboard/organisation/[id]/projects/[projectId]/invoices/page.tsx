@@ -286,6 +286,7 @@ export default function InvoiceHistoryPage() {
               </DialogHeader>
               <InvoiceForm
                 organisationId={orgId}
+                projectId={projectId}
                 organisation={organisation}
                 onSuccess={handleFormSuccess}
               />

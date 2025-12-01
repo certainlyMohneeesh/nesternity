@@ -56,17 +56,18 @@ interface Organisation {
 interface InvoiceFormProps {
   teamId?: string // Optional team context
   organisationId?: string // Organisation ID for data scoping
+  projectId?: string // Project ID for project-level isolation
   organisation?: Organisation | null // Organisation details for auto-client creation
   clients?: Client[] // Optional pre-fetched clients (for backward compatibility)
   onSuccess?: () => void
 }
 
-export default function InvoiceForm({ teamId, organisationId, organisation, clients: propClients, onSuccess }: InvoiceFormProps) {
+export default function InvoiceForm({ teamId, organisationId, projectId, organisation, clients: propClients, onSuccess }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>(propClients || [])
   const [fetchingClients, setFetchingClients] = useState(false)
   const [creatingClient, setCreatingClient] = useState(false)
-  
+
   const {
     register,
     control,
@@ -127,7 +128,7 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
         params.append('organisationId', organisationId)
       }
 
-      const endpoint = teamId 
+      const endpoint = teamId
         ? `/api/teams/${teamId}/clients${params.toString() ? `?${params}` : ''}`
         : `/api/clients${params.toString() ? `?${params}` : ''}`
 
@@ -136,10 +137,10 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
           'Authorization': `Bearer ${session.access_token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        
+
         // Auto-create default client if none exist and we have organisation details
         if (data.length === 0 && organisationId && organisation) {
           console.log('[InvoiceForm] No clients found, auto-creating default client for organisation')
@@ -209,10 +210,11 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
         return
       }
 
-      // Include organisationId in the payload
+      // Include organisationId and projectId in the payload
       const payload = {
         ...data,
-        organisationId
+        organisationId,
+        projectId
       }
 
       const response = await fetch('/api/invoices', {
@@ -265,7 +267,7 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
                 <p className="text-sm text-red-500">{errors.invoiceNumber.message}</p>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="dueDate">Due Date *</Label>
               <Input
@@ -281,16 +283,16 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
 
           <div className="space-y-2">
             <Label htmlFor="clientId">Client *</Label>
-            <Select 
-              onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)} 
+            <Select
+              onValueChange={(value) => setValue('clientId', value === 'none' ? '' : value)}
               disabled={fetchingClients || creatingClient}
             >
               <SelectTrigger>
                 <SelectValue placeholder={
-                  creatingClient 
-                    ? "Creating default client..." 
-                    : fetchingClients 
-                      ? "Loading clients..." 
+                  creatingClient
+                    ? "Creating default client..."
+                    : fetchingClients
+                      ? "Loading clients..."
                       : "Select a client"
                 } />
               </SelectTrigger>
@@ -390,7 +392,7 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
                 placeholder="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="discount">Discount (%)</Label>
               <Input
@@ -449,7 +451,7 @@ export default function InvoiceForm({ teamId, organisationId, organisation, clie
                 Add a watermark text that will appear across the PDF background
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="eSignatureUrl">E-Signature URL (Optional)</Label>
               <Input
