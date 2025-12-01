@@ -28,7 +28,7 @@ import { Layout, Receipt, Monitor, Briefcase } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen w-full bg-gradient-to-br from-background via-background to-muted/20">
+    <main className="min-h-screen w-full bg-background">
       {/* Dynamic Navigation Header */}
       <HomeHeader />
 
@@ -78,7 +78,7 @@ export default function HomePage() {
       </section>
 
       {/* Feature Grid - Supabase Style */}
-      <section className="py-8 px-6 bg-gradient-to-br from-background to-secondary/5">
+      <section className="py-8 px-6">
         <div className="max-w-7xl mx-auto">
           {/* Bento Grid Features */}
           <BentoGrid />
@@ -89,7 +89,7 @@ export default function HomePage() {
       <AIFeaturesGrid />
 
       {/* Product Demo Section */}
-      <section className="py-12 px-6 bg-gradient-to-br from-background to-muted/10">
+      <section className="py-12 px-6">
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-4">
             ✨ Product Preview
@@ -111,7 +111,7 @@ export default function HomePage() {
       </section>
 
       {/* Call to Action After Demo */}
-      <section className="py-16 px-6 bg-gradient-to-r from-primary/5 to-purple-500/5">
+      <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-3xl font-bold mb-4">Ready to Build Your Next Project?</h3>
           <p className="text-xl text-muted-foreground mb-8">
@@ -129,7 +129,7 @@ export default function HomePage() {
       </section>
 
       {/* Problem-Solution Section - Redesigned */}
-      <section className="py-12 px-6 bg-gradient-to-b from-background to-muted/20">
+      <section className="py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Nesternity?</h2>
@@ -217,7 +217,7 @@ export default function HomePage() {
         <TestimonialsMarquee />
       </section>
 
-      <section className="pt-0 pb-8 px-6 bg-gradient-to-r from-secondary/10 to-primary/5">
+      <section className="py-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex justify-center mb-6">
             <Briefcase className="h-12 w-12 text-primary" />
@@ -236,7 +236,7 @@ export default function HomePage() {
       <NewsletterSignup />
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-muted/20">
+      <footer className="py-16 px-6 border-t border-border">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">

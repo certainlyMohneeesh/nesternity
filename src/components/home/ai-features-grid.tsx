@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 
 export function AIFeaturesGrid() {
     return (
-        <section className="py-8 px-6 bg-gradient-to-r from-primary/5 to-emerald-500/5">
+        <section className="py-8 px-6">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-8">
                     <motion.div
