@@ -31,7 +31,9 @@ import {
   ExternalLink,
   ListTodo,
   Zap,
-  BellRing
+  BellRing,
+  Copy,
+  CheckCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,7 +92,7 @@ function getNotificationCategory(actionType: string): NotificationCategory {
   if (['invite_sent', 'invite_received', 'invite_accepted', 'invite_cancelled', 'member_added'].includes(actionType)) {
     return 'invites';
   }
-  if (['task_created', 'task_updated', 'task_assigned', 'task_completed', 'task_moved'].includes(actionType)) {
+  if (['task_created', 'task_updated', 'task_assigned', 'task_assigned_to_me', 'task_completed', 'task_moved'].includes(actionType)) {
     return 'tasks';
   }
   if (['invoice_created', 'invoice_sent', 'invoice_paid', 'invoice_overdue', 'recurring_invoice_generated', 'recurring_invoice_failed'].includes(actionType)) {
@@ -110,13 +112,24 @@ function getNotificationRoute(notification: Notification): string | null {
   const actionType = activity.action_type;
   const metadata = activity.metadata as Record<string, unknown> | null;
   
-  // Team invites - route to join page with invite code
-  if (actionType === 'invite_received' && metadata?.inviteCode) {
-    return `/join?code=${metadata.inviteCode}`;
+  // First, check if action_url is already set (most reliable)
+  if (activity.action_url && activity.action_url !== '/dashboard') {
+    return activity.action_url;
+  }
+  
+  // Team invites - route to join page with invite code/token
+  const inviteCode = metadata?.inviteCode || metadata?.inviteToken;
+  if (actionType === 'invite_received' && inviteCode) {
+    return `/join?code=${inviteCode}`;
   }
   
   // Task assignments - route to team board
-  if (['task_assigned', 'task_created', 'task_updated', 'task_completed', 'task_moved'].includes(actionType)) {
+  if (['task_assigned', 'task_assigned_to_me', 'task_created', 'task_updated', 'task_completed', 'task_moved'].includes(actionType)) {
+    // Full path with organisation and project
+    if (metadata?.organisationId && metadata?.projectId && metadata?.teamId && metadata?.boardId) {
+      return `/dashboard/organisation/${metadata.organisationId}/projects/${metadata.projectId}/teams/${metadata.teamId}/boards/${metadata.boardId}`;
+    }
+    // Fallback paths
     if (metadata?.teamId && metadata?.boardId) {
       return `/dashboard/teams/${metadata.teamId}/board/${metadata.boardId}`;
     }
@@ -183,6 +196,20 @@ export default function NotificationCenter() {
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const previousNotificationIds = useRef<Set<string>>(new Set());
   const isFirstLoad = useRef(true);
+  
+  // Copy invite code state
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+
+  // Copy invite code to clipboard
+  async function handleCopyInviteCode(notificationId: string, inviteCode: string) {
+    try {
+      await navigator.clipboard.writeText(inviteCode);
+      setCopiedInviteId(notificationId);
+      setTimeout(() => setCopiedInviteId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy invite code:', err);
+    }
+  }
 
   // Check push notification permission on mount
   useEffect(() => {
@@ -350,6 +377,16 @@ export default function NotificationCenter() {
   }
 
   async function handleNotificationClick(notification: Notification) {
+    // Debug log for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[NotificationCenter] Notification clicked:', {
+        id: notification.id,
+        action_type: notification.activities?.action_type,
+        action_url: notification.activities?.action_url,
+        metadata: notification.activities?.metadata,
+      });
+    }
+    
     const route = getNotificationRoute(notification);
     const isUnread = !notification.read_at;
     
@@ -719,6 +756,19 @@ export default function NotificationCenter() {
                 const route = getNotificationRoute(notification);
                 const isActionable = !!route;
                 
+                // Debug log for development
+                if (process.env.NODE_ENV === 'development' && isUnread) {
+                  console.log('[NotificationCenter] Rendering notification:', {
+                    id: notification.id,
+                    action_type: activity?.action_type,
+                    action_url: activity?.action_url,
+                    route,
+                    isUnread,
+                    isTaskAssigned: ['task_assigned', 'task_assigned_to_me'].includes(activity?.action_type || ''),
+                    metadata: activity?.metadata,
+                  });
+                }
+                
                 return (
                   <div key={notification.id}>
                     <div
@@ -794,38 +844,93 @@ export default function NotificationCenter() {
                           </div>
                           
                           {/* Action Button for specific notification types */}
-                          {isUnread && activity?.action_type === 'invite_received' && route && (
-                            <div className="pt-2">
-                              <Button
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMarkAsRead(notification.id, route);
-                                }}
-                              >
-                                <UserPlus className="h-3 w-3 mr-1.5" />
-                                Join Team
-                              </Button>
-                            </div>
-                          )}
+                          {activity?.action_type === 'invite_received' && isUnread && (() => {
+                            const metadata = activity.metadata as Record<string, unknown> | null;
+                            // Check for both inviteCode and inviteToken (for backwards compatibility)
+                            const inviteCode = (metadata?.inviteCode || metadata?.inviteToken) as string | undefined;
+                            // Use route or fallback to action_url
+                            const inviteRoute = route || activity?.action_url;
+                            const hasValidRoute = inviteRoute && inviteRoute !== '/dashboard';
+                            
+                            // Only show buttons if we have at least one valid action
+                            if (!hasValidRoute && !inviteCode) return null;
+                            
+                            return (
+                              <div className="pt-2 flex items-center gap-2">
+                                {hasValidRoute && (
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMarkAsRead(notification.id, inviteRoute);
+                                    }}
+                                  >
+                                    <UserPlus className="h-3 w-3 mr-1.5" />
+                                    Join Team
+                                  </Button>
+                                )}
+                                {inviteCode && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyInviteCode(notification.id, inviteCode);
+                                    }}
+                                  >
+                                    {copiedInviteId === notification.id ? (
+                                      <>
+                                        <CheckCheck className="h-3 w-3 mr-1.5 text-green-600" />
+                                        Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="h-3 w-3 mr-1.5" />
+                                        Copy Code
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })()}
                           
-                          {isUnread && activity?.action_type === 'task_assigned' && route && (
-                            <div className="pt-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMarkAsRead(notification.id, route);
-                                }}
-                              >
-                                <ListTodo className="h-3 w-3 mr-1.5" />
-                                View Task
-                              </Button>
-                            </div>
-                          )}
+                          {isUnread && ['task_assigned', 'task_assigned_to_me'].includes(activity?.action_type || '') && (() => {
+                            // Use route or fallback to action_url from activity, or metadata actionUrl
+                            const metadata = activity?.metadata as Record<string, unknown> | null;
+                            const taskRoute = route || activity?.action_url || (metadata?.actionUrl as string);
+                            
+                            // Debug in development
+                            if (process.env.NODE_ENV === 'development') {
+                              console.log('[NotificationCenter] Task button check:', {
+                                route,
+                                action_url: activity?.action_url,
+                                metadata_actionUrl: metadata?.actionUrl,
+                                taskRoute,
+                                willShowButton: !!taskRoute && taskRoute !== '/dashboard'
+                              });
+                            }
+                            
+                            if (!taskRoute || taskRoute === '/dashboard') return null;
+                            return (
+                              <div className="pt-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMarkAsRead(notification.id, taskRoute);
+                                  }}
+                                >
+                                  <ListTodo className="h-3 w-3 mr-1.5" />
+                                  View Task
+                                </Button>
+                              </div>
+                            );
+                          })()}
                           
                           {isUnread && ['budget_warning', 'budget_exceeded', 'scope_creep_detected'].includes(activity?.action_type || '') && route && (
                             <div className="pt-2">

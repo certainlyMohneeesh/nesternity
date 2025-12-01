@@ -209,12 +209,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Send notification if task is assigned to someone else
     if (assignedTo && assignedTo !== user.id) {
       try {
-        // Get board info for the notification
+        // Get board info for the notification - include organisationId and projectId directly
         const boardInfo = await (db as any).board.findUnique({
           where: { id: boardId },
-          include: {
+          select: {
+            name: true,
+            organisationId: true,
+            projectId: true,
             team: {
-              include: {
+              select: {
                 organisation: { select: { id: true } },
                 projects: { 
                   take: 1, 
@@ -226,9 +229,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         });
 
-        const organisationId = boardInfo?.team?.organisation?.id || 
+        // Prioritize board's own organisationId and projectId
+        const organisationId = boardInfo?.organisationId || 
+                                boardInfo?.team?.organisation?.id || 
                                 boardInfo?.team?.projects?.[0]?.organisationId;
         const projectId = boardInfo?.projectId || boardInfo?.team?.projects?.[0]?.id;
+
+        console.log('[TaskAPI] Notification metadata:', { 
+          organisationId, 
+          projectId, 
+          teamId, 
+          boardId,
+          boardOrganisationId: boardInfo?.organisationId,
+          boardProjectId: boardInfo?.projectId
+        });
 
         await createTaskAssignmentNotification(
           assignedTo,

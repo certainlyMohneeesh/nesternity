@@ -146,6 +146,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invite already exists for this email' }, { status: 400 });
     }
 
+    // Check for any existing invite (expired or cancelled) and delete it to avoid unique constraint
+    const oldInvite = await db.teamInvite.findFirst({
+      where: {
+        teamId,
+        email
+      }
+    });
+
+    if (oldInvite) {
+      // Delete the old invite to allow creating a new one (resend functionality)
+      await db.teamInvite.delete({
+        where: { id: oldInvite.id }
+      });
+    }
+
     // Generate invite token
     const token_invite = nanoid(32);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -331,6 +346,142 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Cancel invite error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// Resend invite (refresh token and expiry)
+export async function PATCH(request: NextRequest) {
+  try {
+    // Get auth token from request headers
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user with token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { inviteId } = body;
+
+    if (!inviteId) {
+      return NextResponse.json({ error: 'Invite ID is required' }, { status: 400 });
+    }
+
+    // Get invite and check permissions
+    const invite = await db.teamInvite.findUnique({
+      where: { id: inviteId },
+      include: {
+        team: true
+      }
+    });
+
+    if (!invite) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+    }
+
+    // Check if invite was already used
+    if (invite.usedAt) {
+      return NextResponse.json({ error: 'Invite has already been used' }, { status: 400 });
+    }
+
+    // Check if user has permission to resend
+    const hasPermission = invite.team.createdBy === user.id || 
+      await db.teamMember.findFirst({
+        where: {
+          teamId: invite.teamId,
+          userId: user.id,
+          role: 'admin'
+        }
+      });
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    }
+
+    // Generate new token and expiry
+    const newToken = nanoid(32);
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Update invite with new token and expiry
+    const updatedInvite = await db.teamInvite.update({
+      where: { id: inviteId },
+      data: {
+        token: newToken,
+        expiresAt: newExpiresAt,
+        invitedBy: user.id // Update who resent it
+      }
+    });
+
+    // Send email if Resend is configured
+    let emailSent = false;
+    if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
+      try {
+        const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${newToken}`;
+        
+        await resend.emails.send({
+          from: process.env.RESEND_FROM_EMAIL,
+          to: invite.email,
+          subject: `Reminder: You're invited to join ${invite.team.name}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Reminder: You're invited to join ${invite.team.name}</h2>
+              <p>This is a reminder that you've been invited to join the team "${invite.team.name}" on Nesternity CRM.</p>
+              <p>Click the link below to accept the invitation:</p>
+              <a href="${inviteUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
+              <p>Or copy and paste this link in your browser:</p>
+              <p style="background-color: #f8f9fa; padding: 8px; border-radius: 4px; font-family: monospace;">${inviteUrl}</p>
+              <p>This invitation will expire in 7 days.</p>
+              <p>If you don't have an account yet, you'll be able to create one when accepting the invitation.</p>
+            </div>
+          `,
+        });
+        emailSent = true;
+      } catch (emailError) {
+        console.error('Failed to send email:', emailError);
+      }
+    }
+
+    // Get user info for notification
+    const inviter = await db.user.findUnique({
+      where: { id: user.id },
+      select: { displayName: true, email: true }
+    });
+
+    // Create notification for resent invite (for the invited user)
+    await createInviteReceivedNotification(
+      invite.email,
+      invite.teamId,
+      invite.team.name,
+      inviter?.displayName || inviter?.email || 'Someone',
+      newToken,
+      invite.role,
+      invite.team.organisationId || undefined,
+    ).catch(err => console.error('Failed to create invite received notification:', err));
+
+    return NextResponse.json({ 
+      invite: {
+        id: updatedInvite.id,
+        email: updatedInvite.email,
+        role: updatedInvite.role,
+        token: updatedInvite.token,
+        teamId: updatedInvite.teamId,
+        createdAt: updatedInvite.createdAt.toISOString(),
+        expiresAt: updatedInvite.expiresAt.toISOString(),
+        status: 'pending'
+      },
+      emailSent,
+      message: 'Invite resent successfully'
+    });
+  } catch (error) {
+    console.error('Resend invite error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
