@@ -72,15 +72,48 @@ export default function RecurringInvoicesOverview({
       const discount = subtotal * (inv.discount / 100);
       const total = subtotal + tax - discount;
 
-      // Normalize to monthly value
-      const multiplier = {
-        WEEKLY: 4.33,
-        MONTHLY: 1,
-        QUARTERLY: 0.33,
-        YEARLY: 0.083,
-      }[inv.recurrence] || 1;
+      let monthlyValue = 0;
 
-      const monthlyValue = total * multiplier;
+      // Check if invoice has limited occurrences
+      if (inv.maxOccurrences) {
+        const remainingOccurrences = inv.maxOccurrences - inv.occurrenceCount;
+
+        if (remainingOccurrences > 0) {
+          // For limited invoices, only count recurring value if they'll repeat this month
+          // Otherwise this inflates the "monthly" value misleadingly
+          const daysToComplete = {
+            WEEKLY: remainingOccurrences * 7,
+            MONTHLY: remainingOccurrences * 30,
+            QUARTERLY: remainingOccurrences * 90,
+            YEARLY: remainingOccurrences * 365,
+          }[inv.recurrence] || 30;
+
+          if (daysToComplete <= 30) {
+            // Will complete within a month - count total remaining value
+            monthlyValue = total * remainingOccurrences;
+          } else {
+            // Spreads across multiple months - use standard monthly equivalent
+            const multiplier = {
+              WEEKLY: 4.33,
+              MONTHLY: 1,
+              QUARTERLY: 0.33,
+              YEARLY: 0.083,
+            }[inv.recurrence] || 1;
+            monthlyValue = total * multiplier;
+          }
+        }
+        // else: no remaining occurrences, monthlyValue stays 0
+      } else {
+        // Unlimited recurring invoice - use standard monthly equivalent
+        const multiplier = {
+          WEEKLY: 4.33,
+          MONTHLY: 1,
+          QUARTERLY: 0.33,
+          YEARLY: 0.083,
+        }[inv.recurrence] || 1;
+        monthlyValue = total * multiplier;
+      }
+
       const currency = inv.currency || 'USD';
       acc[currency] = (acc[currency] || 0) + monthlyValue;
 
