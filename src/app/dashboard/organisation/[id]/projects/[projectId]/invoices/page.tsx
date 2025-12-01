@@ -97,14 +97,10 @@ export default function InvoiceHistoryPage() {
 
       const params = new URLSearchParams()
 
-      // Prefer clientId for project-specific invoices, fall back to organisationId
-      if (filterClientId) {
-        console.log('[InvoicesPage] Using clientId filter:', filterClientId)
-        params.append('clientId', filterClientId)
-      } else {
-        console.log('[InvoicesPage] Using organisationId filter:', orgId)
-        params.append('organisationId', orgId)
-      }
+      // Use projectId for project-specific invoice filtering
+      console.log('[InvoicesPage] Using projectId filter:', projectId)
+      params.append('projectId', projectId)
+      params.append('organisationId', orgId)
 
       if (statusFilter !== 'all') {
         params.append('status', statusFilter)

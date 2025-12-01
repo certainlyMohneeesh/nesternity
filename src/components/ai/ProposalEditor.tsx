@@ -105,6 +105,8 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
         },
         body: JSON.stringify({
           clientId,
+          projectId,
+          organisationId: orgId,
           title: proposal.title,
           brief,
           deliverables: proposal.deliverables,
@@ -190,32 +192,32 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
             />
           </div>
 
+          {/* AI Budget Estimation - Full Width */}
+          {brief && deliverables && (
+            <>
+              <BudgetEstimation
+                title={`AI Proposal for ${selectedClient?.name || 'Client'}`}
+                brief={brief}
+                deliverables={deliverables.split('\n').filter(d => d.trim()).map(d => ({
+                  item: d,
+                  description: d,
+                  timeline: timeline || 'TBD'
+                }))}
+                timeline={timeline ? [{
+                  name: 'Project Timeline',
+                  duration: timeline,
+                  deliverables: []
+                }] : []}
+                currency="INR"
+                onEstimationComplete={(estimatedBudget) => setBudget(estimatedBudget.toString())}
+              />
+              <Separator className="my-2" />
+            </>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="budget">Budget (INR)</Label>
-
-              {/* AI Budget Estimation */}
-              {brief && deliverables && (
-                <>
-                  <BudgetEstimation
-                    title={`AI Proposal for ${selectedClient?.name || 'Client'}`}
-                    brief={brief}
-                    deliverables={deliverables.split('\n').filter(d => d.trim()).map(d => ({
-                      item: d,
-                      description: d,
-                      timeline: timeline || 'TBD'
-                    }))}
-                    timeline={timeline ? [{
-                      name: 'Project Timeline',
-                      duration: timeline,
-                      deliverables: []
-                    }] : []}
-                    currency="INR"
-                    onEstimationComplete={(estimatedBudget) => setBudget(estimatedBudget.toString())}
-                  />
-                  <Separator className="my-2" />
-                </>
-              )}
 
               <Input
                 id="budget"

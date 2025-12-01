@@ -13,6 +13,7 @@ import { FeatureType } from '@prisma/client'
 interface SaveProposalRequest {
   clientId: string;
   projectId?: string;
+  organisationId?: string;
   title: string;
   brief: string;
   deliverables: Array<{
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     const {
       clientId,
       projectId,
+      organisationId: providedOrgId,
       title,
       brief,
       deliverables,
@@ -118,15 +120,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Create proposal in database
-    // Get organisationId from project or client
-    let organisationId = null;
-    if (projectId) {
+    // Get organisationId from request, project, or client (in that order)
+    let organisationId = providedOrgId;
+    if (!organisationId && projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
         select: { organisationId: true }
       });
-      organisationId = project?.organisationId;
-    } else if (client.organisationId) {
+      organisationId = project?.organisationId ?? undefined;
+    }
+    if (!organisationId && client.organisationId) {
       organisationId = client.organisationId;
     }
 
@@ -201,7 +204,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Proposal save error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to save proposal',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -297,7 +300,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('❌ Proposals fetch error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch proposals',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

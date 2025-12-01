@@ -29,8 +29,9 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const clientId = searchParams.get('clientId');
     const organisationId = searchParams.get('organisationId');
+    const projectId = searchParams.get('projectId');
 
-    console.log('[InvoicesAPI] Query params:', { status, clientId, organisationId });
+    console.log('[InvoicesAPI] Query params:', { status, clientId, organisationId, projectId });
 
     const where: any = {
       // Remove issuedById filter to show all invoices for the organisation
@@ -47,6 +48,10 @@ export async function GET(req: NextRequest) {
 
     if (organisationId) {
       where.organisationId = organisationId;
+    }
+
+    if (projectId) {
+      where.projectId = projectId;
     }
 
     console.log('[InvoicesAPI] Where clause:', JSON.stringify(where, null, 2));
@@ -127,6 +132,7 @@ export async function POST(req: NextRequest) {
       watermarkText,
       eSignatureUrl,
       organisationId,
+      projectId,
     } = body;
 
     if (!invoiceNumber || !clientId || !dueDate || !items || items.length === 0) {
@@ -204,6 +210,7 @@ export async function POST(req: NextRequest) {
         clientId,
         issuedById: user.id,
         organisationId: organisationId || client.organisationId || null,
+        projectId: projectId || null,
         dueDate: new Date(dueDate),
         notes,
         taxRate: taxRate || 0,

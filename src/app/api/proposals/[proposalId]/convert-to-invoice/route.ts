@@ -138,6 +138,7 @@ export async function POST(
         clientId: proposal.clientId,
         issuedById: user.id,
         organisationId: proposal.organisationId, // Add organisationId from proposal
+        projectId: proposal.projectId, // Add projectId from proposal
         dueDate,
         notes: proposal.paymentTerms
           ? `Converted from proposal: ${proposal.title}\n\nPayment Terms:\n${proposal.paymentTerms}`

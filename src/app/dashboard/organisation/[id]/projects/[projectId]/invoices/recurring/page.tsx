@@ -32,13 +32,15 @@ export default async function RecurringInvoicesPage({
   }
 
   const userId = user.id;
-  console.log('[RecurringInvoicesPage] Fetching recurring invoices for user:', userId);
+  console.log('[RecurringInvoicesPage] Fetching recurring invoices for projectId:', projectId);
 
-  // Fetch all recurring invoices for the user
+  // Fetch recurring invoices filtered by project
   const recurringInvoices = await prisma.invoice.findMany({
     where: {
       issuedById: userId,
       isRecurring: true,
+      projectId: projectId,
+      organisationId: orgId,
     },
     include: {
       items: true,

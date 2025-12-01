@@ -39,10 +39,11 @@ export default async function ProposalsPage({
     );
   }
 
-  // Fetch all proposals for this user's clients filtered by organisation
+  // Fetch all proposals for this specific project
   const proposals = await prisma.proposal.findMany({
     where: {
       organisationId: orgId,
+      projectId: projectId,
       client: {
         createdBy: user.id,
       },

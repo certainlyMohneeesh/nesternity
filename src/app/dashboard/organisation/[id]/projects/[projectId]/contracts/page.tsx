@@ -44,6 +44,7 @@ export default async function ContractsPage({ params }: PageProps) {
         createdBy: user.id,
       },
       organisationId: organisationId,
+      projectId: projectId,
       status: {
         in: ["ACCEPTED", "CONVERTED_TO_INVOICE"],
       },

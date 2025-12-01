@@ -148,7 +148,7 @@ export function BudgetEstimation({
 
       {estimation && (
         <Card className="border-primary/50">
-          <CardContent className="pt-6 space-y-4">
+          <CardContent className="pt-6 max-h-[500px] overflow-y-auto space-y-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="font-semibold text-sm sm:text-base">AI Budget Estimation</h4>
@@ -174,44 +174,47 @@ export function BudgetEstimation({
               </div>
             </div>
 
-            {showDetails && (
-              <>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Rationale
-                  </p>
-                  <p className="text-xs sm:text-sm leading-relaxed break-words">{estimation.rationale}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowDetails(!showDetails)}
-                    className="text-xs sm:text-sm text-primary hover:underline flex items-center gap-1"
-                  >
-                    <TrendingUp className="h-3 w-3" />
-                    View Cost Breakdown
-                  </button>
-
-                  <div className="space-y-2 bg-muted/30 rounded-lg p-3">
-                    {estimation.breakdown.map((item, index) => (
-                      <div key={index} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 text-sm">
-                        <div className="space-y-0.5 flex-1 min-w-0">
-                          <p className="font-medium text-sm break-words">{item.category}</p>
-                          <p className="text-xs text-muted-foreground break-words leading-relaxed">{item.reasoning}</p>
-                        </div>
-                        <p className="font-semibold text-sm sm:text-base shrink-0 self-start sm:ml-4">
-                          {currencySymbol}{item.amount.toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
+            {
+              showDetails && (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Rationale
+                    </p>
+                    <p className="text-xs sm:text-sm leading-relaxed break-words">{estimation.rationale}</p>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDetails(!showDetails)}
+                      className="text-xs sm:text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      <TrendingUp className="h-3 w-3" />
+                      View Cost Breakdown
+                    </button>
+
+                    <div className="space-y-2 bg-muted/30 rounded-lg p-3">
+                      {estimation.breakdown.map((item, index) => (
+                        <div key={index} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 text-sm">
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <p className="font-medium text-sm break-words">{item.category}</p>
+                            <p className="text-xs text-muted-foreground break-words leading-relaxed">{item.reasoning}</p>
+                          </div>
+                          <p className="font-semibold text-sm sm:text-base shrink-0 self-start sm:ml-4">
+                            {currencySymbol}{item.amount.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )
+            }
+          </CardContent >
+        </Card >
+      )
+      }
+    </div >
   );
 }

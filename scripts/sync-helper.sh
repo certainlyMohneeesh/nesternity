@@ -6,6 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SYNC_SCRIPT="$SCRIPT_DIR/sync-users.js"
 
 # Colors for output
@@ -76,7 +77,7 @@ check_prerequisites() {
         exit 1
     fi
 
-    if [ ! -f "$SCRIPT_DIR/package.json" ]; then
+    if [ ! -f "$PROJECT_ROOT/package.json" ]; then
         print_error "package.json not found. Please run from the project root."
         exit 1
     fi

@@ -20,7 +20,7 @@ interface RecurringInvoiceRequest {
   discount?: number;
   currency?: string;
   notes?: string;
-  
+
   // Automation settings
   autoSendEnabled: boolean;
   sendDayOfPeriod?: number; // Day of month (1-31) or week (1-7)
@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
       recipientEmails = [],
       maxOccurrences,
     } = body;
+
+    // Extract projectId and organisationId from body as well
+    const { projectId, organisationId } = body as any;
 
     // 3. Validate
     if (!clientId || !items || items.length === 0 || !recurrence) {
@@ -129,6 +132,8 @@ export async function POST(request: NextRequest) {
         invoiceNumber,
         clientId,
         issuedById: user.id,
+        organisationId: organisationId || client.organisationId || null,
+        projectId: projectId || null,
         issuedDate: now,
         dueDate,
         status: 'PENDING',

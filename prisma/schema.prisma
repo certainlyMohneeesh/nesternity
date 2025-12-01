@@ -133,6 +133,7 @@ model Invoice {
   clientId                  String             @map("client_id")
   issuedById                String             @map("issued_by_id")
   organisationId            String?            @map("organisation_id")
+  projectId                 String?            @map("project_id")
   dueDate                   DateTime           @map("due_date")
   issuedDate                DateTime           @default(now()) @map("issued_date")
   status                    InvoiceStatus      @default(PENDING)
@@ -168,6 +169,7 @@ model Invoice {
   client                    Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   issuedBy                  User               @relation("IssuedBy", fields: [issuedById], references: [id])
   organisation              Organisation?      @relation("OrganisationInvoices", fields: [organisationId], references: [id], onDelete: Cascade)
+  project                   Project?           @relation("ProjectInvoices", fields: [projectId], references: [id])
 
   @@index([clientId], map: "idx_invoices_client_id")
   @@index([clientId, status, dueDate], map: "idx_invoices_client_status")
@@ -181,6 +183,8 @@ model Invoice {
   @@index([parentInvoiceId], map: "idx_invoices_parent_id")
   @@index([organisationId], map: "idx_invoices_organisation_id")
   @@index([organisationId, status, issuedDate(sort: Desc)], map: "idx_invoices_org_status_date")
+  @@index([projectId], map: "idx_invoices_project_id")
+  @@index([organisationId, projectId, status], map: "idx_invoices_org_project_status")
   @@map("invoices")
 }
 
@@ -448,6 +452,7 @@ model Project {
   startDate      DateTime?     @map("start_date")
   boards         Board[]       @relation("ProjectBoards")
   estimations    Estimation[]  @relation("ProjectEstimations")
+  invoices       Invoice[]     @relation("ProjectInvoices")
   issues         Issue[]
   client         Client?       @relation("ClientProjects", fields: [clientId], references: [id])
   organisation   Organisation? @relation("OrganisationProjects", fields: [organisationId], references: [id], onDelete: Cascade)
