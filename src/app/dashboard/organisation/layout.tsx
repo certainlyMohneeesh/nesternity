@@ -1,5 +1,6 @@
 import { BreadcrumbCombobox } from "@/components/navigation/breadcrumb-combobox";
 import { UserNav } from "@/components/navigation/user-nav";
+import NotificationCenter from "@/components/notifications/notification-center";
 
 export default function OrganisationLayout({
   children,
@@ -17,8 +18,9 @@ export default function OrganisationLayout({
           </div>
         </div>
 
-        {/* Place the UserNav outside the centered container so it sits flush to the right edge of the viewport */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 md:right-8">
+        {/* Place the NotificationCenter and UserNav outside the centered container so they sit flush to the right edge of the viewport */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 md:right-8 flex items-center gap-2">
+          <NotificationCenter />
           <UserNav />
         </div>
       </header>

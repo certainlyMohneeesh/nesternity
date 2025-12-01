@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Resend } from 'resend';
+import { createInviteReceivedNotification } from '@/lib/notifications';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -161,6 +162,17 @@ export async function POST(request: NextRequest) {
         details: { email, role }
       }
     });
+
+    // Create notification for the invited user (if they exist in the system)
+    // This appears in their inbox with a direct link to accept
+    await createInviteReceivedNotification(
+      email,
+      teamId,
+      team.name,
+      invite.inviter.displayName || invite.inviter.email,
+      token,
+      role,
+    ).catch(err => console.error('Failed to create invite received notification:', err));
 
     return NextResponse.json({ invite });
   } catch (error) {

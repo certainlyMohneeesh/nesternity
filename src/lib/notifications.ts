@@ -1,5 +1,6 @@
 // Notification types and API client functions
 // Uses Prisma (PostgreSQL) for database, not Supabase DB
+// Enhanced for Notion-like Inbox functionality
 
 import { db } from '@/lib/db';
 import { getCurrencySymbol } from '@/lib/utils';
@@ -19,6 +20,9 @@ export interface Activity {
     display_name?: string;
     email: string;
   };
+  // Enhanced fields for actionable notifications
+  action_url?: string;
+  action_label?: string;
 }
 
 export interface Notification {
@@ -29,6 +33,16 @@ export interface Notification {
   created_at: string;
   activities?: Activity;
 }
+
+// Notification categories for filtering
+export type NotificationCategory = 
+  | 'invite'
+  | 'task'
+  | 'invoice'
+  | 'budget'
+  | 'proposal'
+  | 'team'
+  | 'all';
 
 export async function createActivity(
   teamId: string,
@@ -233,6 +247,7 @@ export const ACTIVITY_TYPES = {
   TASK_CREATED: 'task_created',
   TASK_UPDATED: 'task_updated',
   TASK_ASSIGNED: 'task_assigned',
+  TASK_ASSIGNED_TO_ME: 'task_assigned_to_me', // Personal notification for assignee
   TASK_COMPLETED: 'task_completed',
   TASK_MOVED: 'task_moved',
   
@@ -240,6 +255,7 @@ export const ACTIVITY_TYPES = {
   MEMBER_ADDED: 'member_added',
   MEMBER_REMOVED: 'member_removed',
   INVITE_SENT: 'invite_sent',
+  INVITE_RECEIVED: 'invite_received', // NEW: Personal notification for invitee
   INVITE_ACCEPTED: 'invite_accepted',
   INVITE_CANCELLED: 'invite_cancelled',
   
@@ -488,5 +504,384 @@ export async function createInviteNotification(
   } catch (error) {
     console.error('[Notifications] Unexpected error creating invite notification:', error);
     return { success: false, error: 'Failed to create notification' };
+  }
+}
+
+/**
+ * Create a personal notification for a specific user (not tied to team activity feed)
+ * Used for: invite notifications to invitee, task assignment notifications to assignee
+ */
+export async function createPersonalNotification(
+  targetUserId: string,
+  actionType: ActivityType,
+  title: string,
+  description?: string,
+  actionUrl?: string,
+  actionLabel?: string,
+  metadata: Record<string, any> = {}
+): Promise<{ success: boolean; notificationId?: string; error?: string }> {
+  try {
+    console.log('[Notifications] Creating personal notification for user:', targetUserId);
+
+    // For personal notifications, we need a teamId for the Activity
+    // We'll use a special system team or the team from metadata
+    const teamId = metadata.teamId;
+    
+    if (!teamId) {
+      // Try to find a team the user belongs to
+      const userTeam = await db.teamMember.findFirst({
+        where: { userId: targetUserId },
+        select: { teamId: true },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      if (!userTeam) {
+        // Try teams the user owns
+        const ownedTeam = await db.team.findFirst({
+          where: { createdBy: targetUserId },
+          select: { id: true },
+          orderBy: { createdAt: 'asc' }
+        });
+
+        if (!ownedTeam) {
+          console.warn('[Notifications] Cannot create personal notification: user has no teams');
+          return { success: false, error: 'User has no teams for notification context' };
+        }
+        metadata.teamId = ownedTeam.id;
+      } else {
+        metadata.teamId = userTeam.teamId;
+      }
+    }
+
+    // Create activity with enhanced metadata
+    const activityDetails: any = {
+      ...(metadata || {}),
+      description,
+      actionUrl,
+      actionLabel,
+    };
+
+    const activity = await db.activity.create({
+      data: {
+        teamId: metadata.teamId,
+        userId: targetUserId, // The target user
+        type: actionType,
+        title,
+        details: activityDetails
+      }
+    });
+
+    // Create notification directly for the target user
+    const notification = await db.notification.create({
+      data: {
+        userId: targetUserId,
+        activityId: activity.id,
+      }
+    });
+
+    console.log('[Notifications] Personal notification created:', notification.id);
+    return { success: true, notificationId: notification.id };
+
+  } catch (error: any) {
+    console.error('[Notifications] Error creating personal notification:', error);
+    return { success: false, error: error?.message || 'Failed to create notification' };
+  }
+}
+
+/**
+ * Create invite received notification for the invited user
+ * This creates a direct notification that appears in the invitee's inbox
+ */
+export async function createInviteReceivedNotification(
+  inviteeEmail: string,
+  teamId: string,
+  teamName: string,
+  inviterName: string,
+  inviteToken: string,
+  role: string,
+  organisationId?: string,
+  projectId?: string
+): Promise<{ success: boolean; notificationId?: string; error?: string }> {
+  try {
+    console.log('[Notifications] Creating invite received notification for:', inviteeEmail);
+
+    // Find user by email
+    const invitee = await db.user.findUnique({
+      where: { email: inviteeEmail }
+    });
+
+    if (!invitee) {
+      console.log('[Notifications] User not found for email:', inviteeEmail, '- will see notification when they register');
+      return { success: true }; // Not an error, user will see it when they register
+    }
+
+    // Build action URL
+    const actionUrl = `/invite/${inviteToken}`;
+    
+    return await createPersonalNotification(
+      invitee.id,
+      ACTIVITY_TYPES.INVITE_RECEIVED,
+      `You're invited to join ${teamName}`,
+      `${inviterName} invited you to join as ${role}`,
+      actionUrl,
+      'Accept Invite',
+      {
+        teamId,
+        teamName,
+        inviterName,
+        inviteToken,
+        role,
+        inviteeEmail,
+        organisationId,
+        projectId,
+      }
+    );
+
+  } catch (error: any) {
+    console.error('[Notifications] Error creating invite received notification:', error);
+    return { success: false, error: error?.message || 'Failed to create notification' };
+  }
+}
+
+/**
+ * Create task assignment notification for the assigned user
+ */
+export async function createTaskAssignmentNotification(
+  assigneeId: string,
+  assignerId: string,
+  taskId: string,
+  taskTitle: string,
+  taskDescription: string,
+  boardId: string,
+  boardName: string,
+  teamId: string,
+  priority?: string,
+  dueDate?: Date,
+  organisationId?: string,
+  projectId?: string
+): Promise<{ success: boolean; notificationId?: string; error?: string }> {
+  try {
+    console.log('[Notifications] Creating task assignment notification for:', assigneeId);
+
+    // Get assigner details
+    const assigner = await db.user.findUnique({
+      where: { id: assignerId },
+      select: { displayName: true, email: true }
+    });
+    const assignerName = assigner?.displayName || assigner?.email || 'Someone';
+
+    // Build action URL - deep link to the board
+    let actionUrl = `/dashboard`;
+    if (organisationId && projectId) {
+      actionUrl = `/dashboard/organisation/${organisationId}/projects/${projectId}/teams/${teamId}/boards/${boardId}`;
+    }
+
+    // Build description with details
+    let description = `${assignerName} assigned you to this task`;
+    if (priority) {
+      description += ` • ${priority} priority`;
+    }
+    if (dueDate) {
+      description += ` • Due ${dueDate.toLocaleDateString()}`;
+    }
+
+    return await createPersonalNotification(
+      assigneeId,
+      ACTIVITY_TYPES.TASK_ASSIGNED_TO_ME,
+      `You were assigned to: ${taskTitle}`,
+      description,
+      actionUrl,
+      'View Task',
+      {
+        teamId,
+        taskId,
+        taskTitle,
+        taskDescription,
+        boardId,
+        boardName,
+        assignerId,
+        assignerName,
+        priority,
+        dueDate: dueDate?.toISOString(),
+        organisationId,
+        projectId,
+      }
+    );
+
+  } catch (error: any) {
+    console.error('[Notifications] Error creating task assignment notification:', error);
+    return { success: false, error: error?.message || 'Failed to create notification' };
+  }
+}
+
+/**
+ * Create recurring invoice notification for the invoice creator
+ */
+export async function createRecurringInvoiceNotification(
+  userId: string,
+  actionType: ActivityType,
+  invoiceNumber: string,
+  clientName: string,
+  amount: number,
+  currency: string,
+  invoiceId: string,
+  teamId: string,
+  organisationId?: string,
+  projectId?: string,
+  error?: string
+): Promise<{ success: boolean; notificationId?: string; error?: string }> {
+  try {
+    console.log('[Notifications] Creating recurring invoice notification for:', userId);
+
+    const currencySymbol = getCurrencySymbol(currency);
+    
+    const isFailure = actionType === ACTIVITY_TYPES.RECURRING_INVOICE_FAILED;
+    const title = isFailure
+      ? `❌ Failed to generate recurring invoice`
+      : `Recurring invoice ${invoiceNumber} generated`;
+    
+    const description = isFailure
+      ? `Check recurring invoice settings for ${clientName}${error ? ` • Error: ${error}` : ''}`
+      : `${currencySymbol}${amount.toLocaleString()} • ${clientName}`;
+
+    // Build action URL
+    let actionUrl = `/dashboard`;
+    if (organisationId) {
+      actionUrl = projectId
+        ? `/dashboard/organisation/${organisationId}/projects/${projectId}/invoices`
+        : `/dashboard/organisation/${organisationId}/invoices`;
+    }
+
+    return await createPersonalNotification(
+      userId,
+      actionType,
+      title,
+      description,
+      actionUrl,
+      isFailure ? 'Check Settings' : 'View Invoice',
+      {
+        teamId,
+        invoiceId,
+        invoiceNumber,
+        clientName,
+        amount,
+        currency,
+        organisationId,
+        projectId,
+        error,
+      }
+    );
+
+  } catch (err: any) {
+    console.error('[Notifications] Error creating recurring invoice notification:', err);
+    return { success: false, error: err?.message || 'Failed to create notification' };
+  }
+}
+
+/**
+ * Create scope radar notification for project owner and team admins
+ */
+export async function createScopeRadarNotificationForTeam(
+  projectId: string,
+  actionType: ActivityType,
+  projectName: string,
+  riskLevel: 'low' | 'medium' | 'high' | 'critical',
+  budgetInfo?: {
+    original: number;
+    current: number;
+    overrun: number;
+    currency: string;
+  },
+  organisationId?: string,
+  scopeRadarId?: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    console.log('[Notifications] Creating scope radar notifications for project:', projectId);
+
+    // Get project with team info
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      include: {
+        team: {
+          include: {
+            owner: true,
+            members: {
+              where: { role: 'admin' },
+              include: { user: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!project || !project.team) {
+      return { success: false, count: 0, error: 'Project or team not found' };
+    }
+
+    const riskEmoji = { low: '🟢', medium: '🟡', high: '🟠', critical: '🔴' };
+    
+    const titles: Record<string, string> = {
+      [ACTIVITY_TYPES.SCOPE_CREEP_DETECTED]: `${riskEmoji[riskLevel]} Scope creep in ${projectName}`,
+      [ACTIVITY_TYPES.BUDGET_WARNING]: `⚠️ Budget warning: ${projectName}`,
+      [ACTIVITY_TYPES.BUDGET_EXCEEDED]: `🚨 Budget exceeded: ${projectName}`,
+      [ACTIVITY_TYPES.CHANGE_ORDER_REQUIRED]: `📋 Change order needed: ${projectName}`,
+    };
+
+    let description = '';
+    if (budgetInfo) {
+      const { original, current, overrun, currency } = budgetInfo;
+      const currencySymbol = getCurrencySymbol(currency);
+      if (overrun > 0) {
+        description = `Over by ${currencySymbol}${overrun.toLocaleString()} (${Math.round((overrun / original) * 100)}%)`;
+      } else {
+        const remaining = original - current;
+        const percentSpent = Math.round((current / original) * 100);
+        description = `${currencySymbol}${remaining.toLocaleString()} remaining (${percentSpent}% spent)`;
+      }
+    }
+
+    // Build action URL
+    let actionUrl = `/dashboard`;
+    if (organisationId) {
+      actionUrl = `/dashboard/organisation/${organisationId}/projects/${projectId}`;
+    }
+
+    // Collect unique users to notify (owner + admins)
+    const usersToNotify = new Set<string>();
+    usersToNotify.add(project.team.createdBy); // Owner
+    project.team.members.forEach(member => {
+      usersToNotify.add(member.userId);
+    });
+
+    let successCount = 0;
+
+    for (const userId of usersToNotify) {
+      const result = await createPersonalNotification(
+        userId,
+        actionType,
+        titles[actionType] || 'Project alert',
+        description,
+        actionUrl,
+        'View Project',
+        {
+          teamId: project.teamId,
+          projectId,
+          projectName,
+          riskLevel,
+          budgetInfo,
+          organisationId,
+          scopeRadarId,
+        }
+      );
+
+      if (result.success) successCount++;
+    }
+
+    console.log(`[Notifications] Created ${successCount}/${usersToNotify.size} scope radar notifications`);
+    return { success: true, count: successCount };
+
+  } catch (error: any) {
+    console.error('[Notifications] Error creating scope radar notifications:', error);
+    return { success: false, count: 0, error: error?.message || 'Failed to create notifications' };
   }
 }

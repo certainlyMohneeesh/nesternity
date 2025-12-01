@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { checkTeamAccess } from '@/lib/team-auth';
+import { createTaskAssignmentNotification } from '@/lib/notifications';
 
 interface RouteParams {
   params: Promise<{ teamId: string; boardId: string }>
@@ -204,6 +205,50 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
       }
     });
+
+    // Send notification if task is assigned to someone else
+    if (assignedTo && assignedTo !== user.id) {
+      try {
+        // Get board info for the notification
+        const boardInfo = await (db as any).board.findUnique({
+          where: { id: boardId },
+          include: {
+            team: {
+              include: {
+                organisation: { select: { id: true } },
+                projects: { 
+                  take: 1, 
+                  orderBy: { createdAt: 'desc' },
+                  select: { id: true, organisationId: true }
+                }
+              }
+            }
+          }
+        });
+
+        const organisationId = boardInfo?.team?.organisation?.id || 
+                                boardInfo?.team?.projects?.[0]?.organisationId;
+        const projectId = boardInfo?.projectId || boardInfo?.team?.projects?.[0]?.id;
+
+        await createTaskAssignmentNotification(
+          assignedTo,
+          user.id,
+          task.id,
+          title,
+          description || '',
+          boardId,
+          boardInfo?.name || 'Board',
+          teamId,
+          priority,
+          dueDate ? new Date(dueDate) : undefined,
+          organisationId,
+          projectId
+        );
+        console.log(`[TaskAPI] Assignment notification sent to user: ${assignedTo}`);
+      } catch (notifError) {
+        console.error('[TaskAPI] Failed to send assignment notification:', notifError);
+      }
+    }
 
     return NextResponse.json({ task });
   } catch (error) {

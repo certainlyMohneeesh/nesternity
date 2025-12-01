@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { addDays, addWeeks, addMonths, addYears, isPast, isToday } from 'date-fns';
 import { generateRecurringInvoiceEmail } from '@/lib/ai/email-templates';
-import { createInvoiceNotification, ACTIVITY_TYPES } from '@/lib/notifications';
+import { createRecurringInvoiceNotification, ACTIVITY_TYPES } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -210,39 +210,36 @@ export async function GET(request: NextRequest) {
             emailSent = true;
             console.log(`📧 Email sent to ${parentInvoice.client.email}`);
 
-            // Create notification (only if we have a team)
-            if (userTeam) {
-              await createInvoiceNotification(
-                parentInvoice.issuedById,
-                ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED,
-                newInvoiceNumber,
-                parentInvoice.client.name,
-                finalTotal,
-                newInvoice.currency,
-                { 
-                  invoiceId: newInvoice.id,
-                  teamId: userTeam.id
-                }
-              );
-            }
+            // Create notification (using the new helper)
+            await createRecurringInvoiceNotification(
+              parentInvoice.issuedById,
+              ACTIVITY_TYPES.RECURRING_INVOICE_GENERATED,
+              newInvoiceNumber,
+              parentInvoice.client.name,
+              finalTotal,
+              newInvoice.currency,
+              newInvoice.id,
+              userTeam?.id || '',
+              parentInvoice.organisationId || undefined,
+              parentInvoice.projectId || undefined,
+            );
           } catch (emailError) {
             console.error(`❌ Email failed:`, emailError);
             
-            // Create failure notification (only if we have a team)
-            if (userTeam) {
-              await createInvoiceNotification(
-                parentInvoice.issuedById,
-                ACTIVITY_TYPES.RECURRING_INVOICE_FAILED,
-                newInvoiceNumber,
-                parentInvoice.client.name,
-                0,
-                newInvoice.currency,
-                { 
-                  error: emailError instanceof Error ? emailError.message : 'Unknown error',
-                  teamId: userTeam.id
-                }
-              );
-            }
+            // Create failure notification (using the new helper)
+            await createRecurringInvoiceNotification(
+              parentInvoice.issuedById,
+              ACTIVITY_TYPES.RECURRING_INVOICE_FAILED,
+              newInvoiceNumber,
+              parentInvoice.client.name,
+              0,
+              newInvoice.currency,
+              newInvoice.id,
+              userTeam?.id || '',
+              parentInvoice.organisationId || undefined,
+              parentInvoice.projectId || undefined,
+              emailError instanceof Error ? emailError.message : 'Unknown error',
+            );
           }
         }
 

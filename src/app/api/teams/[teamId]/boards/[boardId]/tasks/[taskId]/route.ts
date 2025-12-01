@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { checkTeamAccess } from '@/lib/team-auth';
+import { createTaskAssignmentNotification } from '@/lib/notifications';
 
 interface RouteParams {
   params: Promise<{ teamId: string; boardId: string; taskId: string }>
@@ -143,6 +144,50 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           }
         }
       });
+
+      // Send notification to the newly assigned user
+      if (assignedTo && assignedTo !== user.id) {
+        try {
+          // Get board and team info for the notification
+          const boardInfo = await (db as any).board.findUnique({
+            where: { id: boardId },
+            include: {
+              team: {
+                include: {
+                  organisation: { select: { id: true } },
+                  projects: { 
+                    take: 1, 
+                    orderBy: { createdAt: 'desc' },
+                    select: { id: true, organisationId: true }
+                  }
+                }
+              }
+            }
+          });
+
+          const organisationId = boardInfo?.team?.organisation?.id || 
+                                  boardInfo?.team?.projects?.[0]?.organisationId;
+          const projectId = boardInfo?.projectId || boardInfo?.team?.projects?.[0]?.id;
+
+          await createTaskAssignmentNotification(
+            assignedTo,
+            user.id,
+            taskId,
+            updatedTask.title,
+            updatedTask.description || '',
+            boardId,
+            boardInfo?.name || 'Board',
+            teamId,
+            updatedTask.priority,
+            updatedTask.dueDate,
+            organisationId,
+            projectId
+          );
+          console.log(`[TaskAPI] Assignment notification sent to user: ${assignedTo}`);
+        } catch (notifError) {
+          console.error('[TaskAPI] Failed to send assignment notification:', notifError);
+        }
+      }
     }
 
     if (status !== undefined && status !== existingTask.status) {

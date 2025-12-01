@@ -13,6 +13,7 @@ import { FeatureType } from '@prisma/client'
 import { createScopeAnalysisPrompt } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
 import { prisma } from '@/lib/db';
+import { createScopeRadarNotificationForTeam, ACTIVITY_TYPES } from '@/lib/notifications';
 
 interface ScopeScanRequest {
   projectId: string;
@@ -188,6 +189,34 @@ export async function POST(request: NextRequest) {
       console.warn('Failed to increment usage for scope radar check:', err)
     }
     console.log(`⚠️  Risk Level: ${result.data.riskLevel}, Creep Risk: ${result.data.creepRisk}`);
+
+    // Send notifications if scope creep risk is medium or high
+    if (result.data.riskLevel !== 'low') {
+      try {
+        const riskLevel = result.data.riskLevel === 'high' ? 'high' : 'medium';
+        const notificationType = result.data.riskLevel === 'high' 
+          ? ACTIVITY_TYPES.CHANGE_ORDER_REQUIRED 
+          : ACTIVITY_TYPES.SCOPE_CREEP_DETECTED;
+
+        await createScopeRadarNotificationForTeam(
+          projectId,
+          notificationType,
+          project.name,
+          riskLevel,
+          result.data.estimatedImpact ? {
+            original: project.budget || 0,
+            current: (project.budget || 0) + result.data.estimatedImpact.additionalCost,
+            overrun: result.data.estimatedImpact.additionalCost,
+            currency: project.currency || 'INR',
+          } : undefined,
+          project.organisationId || undefined,
+          scopeRadar.id
+        );
+        console.log(`📧 Scope creep notifications sent for risk level: ${riskLevel}`);
+      } catch (notifError) {
+        console.error('Failed to send scope creep notifications:', notifError);
+      }
+    }
 
     return NextResponse.json({
       analysis: {

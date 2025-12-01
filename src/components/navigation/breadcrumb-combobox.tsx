@@ -345,144 +345,144 @@ export function BreadcrumbCombobox() {
       </button>
       <span className="text-muted-foreground">/</span>
 
-      {breadcrumbItems.map((item, index) => (
-        <div key={item.href} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {index > 0 && <span className="text-muted-foreground">/</span>}
+        {breadcrumbItems.map((item, index) => (
+          <div key={item.href} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            {index > 0 && <span className="text-muted-foreground">/</span>}
 
-          {/* Organisation breadcrumb with combobox */}
-          {item.isOrganisation && currentOrgId ? (
-            <Popover open={orgPopoverOpen} onOpenChange={setOrgPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  role="combobox"
-                  aria-expanded={orgPopoverOpen}
-                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
-                >
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="hidden sm:inline">{item.icon}</span>
-                    <span className={cn(
-                      "font-medium truncate max-w-[80px] sm:max-w-none",
-                      item.current ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {item.label}
-                    </span>
-                  </div>
-                  <ChevronDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search organisations..." />
-                  <CommandEmpty>No organisation found.</CommandEmpty>
-                  <CommandGroup heading="Your Organisations">
-                    {organisations
-                      .filter(org => org.type === 'OWNER')
-                      .map((org) => (
+            {/* Organisation breadcrumb with combobox */}
+            {item.isOrganisation && currentOrgId ? (
+              <Popover open={orgPopoverOpen} onOpenChange={setOrgPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    role="combobox"
+                    aria-expanded={orgPopoverOpen}
+                    className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
+                  >
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="hidden sm:inline">{item.icon}</span>
+                      <span className={cn(
+                        "font-medium truncate max-w-[80px] sm:max-w-none",
+                        item.current ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <ChevronDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search organisations..." />
+                    <CommandEmpty>No organisation found.</CommandEmpty>
+                    <CommandGroup heading="Your Organisations">
+                      {organisations
+                        .filter(org => org.type === 'OWNER')
+                        .map((org) => (
+                          <CommandItem
+                            key={org.id}
+                            value={org.id}
+                            onSelect={() => handleOrgSwitch(org.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedOrgId === org.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <Building2 className="mr-2 h-4 w-4" />
+                            {org.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandGroup heading="Client Organisations">
+                      {organisations
+                        .filter(org => org.type === 'CLIENT')
+                        .map((org) => (
+                          <CommandItem
+                            key={org.id}
+                            value={org.id}
+                            onSelect={() => handleOrgSwitch(org.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedOrgId === org.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <Building2 className="mr-2 h-4 w-4" />
+                            {org.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : item.isProject && currentProjectId ? (
+              <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    role="combobox"
+                    aria-expanded={projectPopoverOpen}
+                    className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
+                  >
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="hidden sm:inline">{item.icon}</span>
+                      <span className={cn(
+                        "font-medium truncate max-w-[80px] sm:max-w-none",
+                        item.current ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <ChevronDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search projects..." />
+                    <CommandEmpty>No project found.</CommandEmpty>
+                    <CommandGroup heading="Projects">
+                      {(projects[currentOrgId] || []).map((project) => (
                         <CommandItem
-                          key={org.id}
-                          value={org.id}
-                          onSelect={() => handleOrgSwitch(org.id)}
+                          key={project.id}
+                          value={project.id}
+                          onSelect={() => handleProjectSwitch(project.id)}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              selectedOrgId === org.id ? "opacity-100" : "opacity-0"
+                              selectedProjectId === project.id ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <Building2 className="mr-2 h-4 w-4" />
-                          {org.name}
+                          <FolderKanban className="mr-2 h-4 w-4" />
+                          {project.name}
                         </CommandItem>
                       ))}
-                  </CommandGroup>
-                  <CommandGroup heading="Client Organisations">
-                    {organisations
-                      .filter(org => org.type === 'CLIENT')
-                      .map((org) => (
-                        <CommandItem
-                          key={org.id}
-                          value={org.id}
-                          onSelect={() => handleOrgSwitch(org.id)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedOrgId === org.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <Building2 className="mr-2 h-4 w-4" />
-                          {org.name}
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          ) : item.isProject && currentProjectId ? (
-            <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  role="combobox"
-                  aria-expanded={projectPopoverOpen}
-                  className="justify-between px-1 sm:px-2 h-7 sm:h-8 hover:bg-accent"
-                >
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <span className="hidden sm:inline">{item.icon}</span>
-                    <span className={cn(
-                      "font-medium truncate max-w-[80px] sm:max-w-none",
-                      item.current ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {item.label}
-                    </span>
-                  </div>
-                  <ChevronDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search projects..." />
-                  <CommandEmpty>No project found.</CommandEmpty>
-                  <CommandGroup heading="Projects">
-                    {(projects[currentOrgId] || []).map((project) => (
-                      <CommandItem
-                        key={project.id}
-                        value={project.id}
-                        onSelect={() => handleProjectSwitch(project.id)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedProjectId === project.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <FolderKanban className="mr-2 h-4 w-4" />
-                        {project.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <Button
-              variant="ghost"
-              onClick={() => router.push(item.href)}
-              className="justify-start px-1 sm:px-2 h-7 sm:h-8 hover:bg-gray-100"
-            >
-              <div className="flex items-center gap-1 sm:gap-2">
-                <span className="hidden sm:inline">{item.icon}</span>
-                <span className={cn(
-                  "font-medium truncate max-w-[80px] sm:max-w-none",
-                  item.current ? "text-gray-900" : "text-gray-600"
-                )}>
-                  {item.label}
-                </span>
-              </div>
-            </Button>
-          )}
-        </div>
-      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => router.push(item.href)}
+                className="justify-start px-1 sm:px-2 h-7 sm:h-8 hover:bg-gray-100"
+              >
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="hidden sm:inline">{item.icon}</span>
+                  <span className={cn(
+                    "font-medium truncate max-w-[80px] sm:max-w-none",
+                    item.current ? "text-gray-900" : "text-gray-600"
+                  )}>
+                    {item.label}
+                  </span>
+                </div>
+              </Button>
+            )}
+          </div>
+        ))}
     </div>
   );
 }
