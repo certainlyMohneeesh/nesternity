@@ -2,26 +2,19 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel, FieldContent, FieldSet } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
 
 export function PreferencesForm({ settings, onSave, saving }: any) {
   const [form, setForm] = useState({
-    theme: 'light', // Force light as the only option
+    // theme: 'light', // Force light as the only option
     weekStart: settings.weekStart,
     timezone: settings.timezone,
   });
-  const { setTheme } = useTheme();
-
-  useEffect(() => {
-    setTheme('light');
-  }, [setTheme]);
 
   return (
     <FieldSet>
       <div className="grid grid-cols-2 gap-4">
-        <Field>
+        {/* <Field>
           <FieldLabel>Theme</FieldLabel>
           <FieldContent>
             <Select value="light" disabled>
@@ -38,7 +31,7 @@ export function PreferencesForm({ settings, onSave, saving }: any) {
             </Select>
             <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground">Dark mode coming soon</span>
           </FieldContent>
-        </Field>
+        </Field> */}
         <Field>
           <FieldLabel>Week starts on</FieldLabel>
           <FieldContent>

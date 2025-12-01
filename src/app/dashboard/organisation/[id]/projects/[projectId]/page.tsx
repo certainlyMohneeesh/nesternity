@@ -391,27 +391,27 @@ export default function ProjectDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
               Recently Completed Tasks
             </CardTitle>
             <CardDescription className="text-xs sm:text-sm">Tasks you've completed recently</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4">
             {data.recentCompletedTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between gap-2 bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3">
+              <div key={task.id} className="flex items-center justify-between gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 rounded-lg p-2 sm:p-3">
                 <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-green-900 truncate max-w-[150px] sm:max-w-[200px]">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100 truncate max-w-[150px] sm:max-w-[200px]">
                       {task.title}
                     </p>
-                    <p className="text-xs text-green-700 truncate">
+                    <p className="text-xs text-green-700 dark:text-green-300 truncate">
                       {task.list.board.team.name} • {task.list.board.name} • {task.list.name}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300 flex-shrink-0">
+                  <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700 flex-shrink-0">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     <span className="hidden sm:inline">{new Date(task.completedAt).toLocaleDateString()}</span>
                     <span className="sm:hidden">{new Date(task.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
