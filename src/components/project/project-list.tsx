@@ -153,6 +153,11 @@ export function ProjectList({ organisationId }: ProjectListProps) {
     const [showSlider, setShowSlider] = useState(false);
     const currencySymbol = getCurrencySymbol(project.currency || 'INR');
 
+    // Update budget when project.budget changes
+    useEffect(() => {
+      setBudget(project.budget || 0);
+    }, [project.budget]);
+
     const handleBudgetChange = async (value: number[]) => {
       const newBudget = value[0];
       setBudget(newBudget);
@@ -230,11 +235,11 @@ export function ProjectList({ organisationId }: ProjectListProps) {
             {/* Budget Section */}
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1 text-sm font-medium">
-                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <DollarSign className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                   <span>Budget</span>
                 </div>
-                <span className="text-sm font-bold">
+                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                   {currencySymbol}{budget.toLocaleString()}
                 </span>
               </div>
@@ -279,7 +284,7 @@ export function ProjectList({ organisationId }: ProjectListProps) {
 
             {/* Dates */}
             {(project.startDate || project.endDate) && (
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                 {project.startDate && (
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />

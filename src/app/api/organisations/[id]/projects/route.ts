@@ -180,6 +180,8 @@ export async function POST(
       status,
       startDate,
       endDate,
+      budget,
+      currency,
       teamId
     } = body;
 
@@ -225,6 +227,8 @@ export async function POST(
         status: status || 'PLANNING',
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
+        budget: budget ? Number(budget) : null,
+        currency: currency || 'INR',
         organisationId: orgId,
         teamId: projectTeamId
       },
