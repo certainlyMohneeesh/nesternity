@@ -182,8 +182,8 @@ export function OrganisationList() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2 text-sm text-gray-600">
+        <CardContent>
+          <div className="space-y-2 text-sm text-muted-foreground">
           {org.phone && (
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4" />
@@ -215,8 +215,8 @@ export function OrganisationList() {
           
           {org.budget && (
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              <span className="font-medium text-gray-900">
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-foreground">
                 Budget: {formatCurrency(org.budget, org.currency)}
               </span>
             </div>
