@@ -150,17 +150,33 @@ export function ProjectList({ organisationId }: ProjectListProps) {
   const ProjectCard = ({ project }: { project: Project }) => {
     const progress = getProgress(project);
     const [budget, setBudget] = useState(project.budget || 0);
+    const [sliderValue, setSliderValue] = useState(project.budget || 0);
     const [showSlider, setShowSlider] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
     const currencySymbol = getCurrencySymbol(project.currency || 'INR');
+
+    // Calculate dynamic max based on initial budget (2.5x or minimum 10,000)
+    const initialBudget = project.budget || 0;
+    const dynamicMax = Math.max(initialBudget * 2.5, 100000);
+    // Calculate step size based on max (for smooth sliding)
+    const stepSize = dynamicMax <= 10000 ? 100 : dynamicMax <= 100000 ? 500 : 1000;
 
     // Update budget when project.budget changes
     useEffect(() => {
       setBudget(project.budget || 0);
+      setSliderValue(project.budget || 0);
     }, [project.budget]);
 
-    const handleBudgetChange = async (value: number[]) => {
+    // Handle real-time slider value change (just visual update)
+    const handleSliderChange = (value: number[]) => {
+      setSliderValue(value[0]);
+    };
+
+    // Handle final commit when user releases the slider
+    const handleBudgetCommit = async (value: number[]) => {
       const newBudget = value[0];
       setBudget(newBudget);
+      setIsUpdating(true);
 
       try {
         const token = await getSessionToken();
@@ -178,10 +194,15 @@ export function ProjectList({ organisationId }: ProjectListProps) {
         if (!response.ok) {
           throw new Error('Failed to update budget');
         }
-        // Optional: Show success toast only on final commit or debounce
+        toast.success('Budget updated successfully');
       } catch (error) {
         console.error('Error updating budget:', error);
         toast.error('Failed to update budget');
+        // Revert on error
+        setBudget(project.budget || 0);
+        setSliderValue(project.budget || 0);
+      } finally {
+        setIsUpdating(false);
       }
     };
 
@@ -240,7 +261,7 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                   <span>Budget</span>
                 </div>
                 <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {currencySymbol}{budget.toLocaleString()}
+                  {currencySymbol}{(showSlider ? sliderValue : budget).toLocaleString()}
                 </span>
               </div>
 
@@ -252,27 +273,55 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                     className="w-full text-xs h-7"
                     onClick={() => setShowSlider(true)}
                   >
-                    Change Budget
+                    Adjust Budget
                   </Button>
                 ) : (
-                  <div className="px-1 py-2">
+                  <div className="space-y-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                    {/* Min/Max labels */}
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>{currencySymbol}0</span>
+                      <span>{currencySymbol}{dynamicMax.toLocaleString()}</span>
+                    </div>
+                    
+                    {/* Slider */}
                     <Slider
-                      defaultValue={[budget]}
-                      max={1000000000} // This should ideally be dynamic or higher
-                      step={100}
-                      onValueCommit={(value) => {
-                        handleBudgetChange(value);
-                        // Keep slider open or close it? User request implies "shows the budget slider", 
-                        // maybe it stays open or toggles. Let's keep it open for adjustment.
-                      }}
+                      value={[sliderValue]}
+                      min={0}
+                      max={dynamicMax}
+                      step={stepSize}
+                      onValueChange={handleSliderChange}
+                      onValueCommit={handleBudgetCommit}
+                      disabled={isUpdating}
                       className="py-2"
                     />
-                    <div className="flex justify-end mt-1">
+                    
+                    {/* Current value display */}
+                    <div className="text-center">
+                      <span className="text-lg font-bold text-primary">
+                        {currencySymbol}{sliderValue.toLocaleString()}
+                      </span>
+                      {sliderValue !== budget && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          (was {currencySymbol}{budget.toLocaleString()})
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1">
+                      {isUpdating && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Saving...
+                        </span>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-[10px] h-5 px-2 text-gray-500"
-                        onClick={() => setShowSlider(false)}
+                        className="text-xs h-6 px-2 ml-auto"
+                        onClick={() => {
+                          setSliderValue(budget);
+                          setShowSlider(false);
+                        }}
                       >
                         Done
                       </Button>
