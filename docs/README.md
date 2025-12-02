@@ -2,7 +2,7 @@
 
 <img src="https://github.com/user-attachments/assets/386145f5-ebe0-4509-a72c-164005123716" alt="Nesternity Logo" width="200" />
 
-# 🪺 Nesternity
+# Nesternity
 
 **The Freelancer's Nest for Clients, Teams & Clarity**
 
