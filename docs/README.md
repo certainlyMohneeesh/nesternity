@@ -1,371 +1,279 @@
-**A blazing-fast, feature-rich team collaboration platform built with modern web technologies**
+# 🪺 Nesternity
 
-[Demo](https://nesternity.vercel.app) • [Documentation](#documentation) • [Developer Guide](DEVELOPER_GUIDE.md) • [Features](#features) • [Getting Started](#getting-started)
+**The Freelancer's Nest for Clients, Teams & Clarity**
 
-# 🚀 Nesternity - Modern Team Collaboration & the calmest CRM out there
+A modern, AI-powered workspace for managing clients, projects, tasks, and invoices — all from one calm, intuitive hub.
 
-<div align="center">
+[![Next.js](https://img.shields.io/badge/Next.js-15.3.4-black?style=flat&logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://typescriptlang.org)
+[![Prisma](https://img.shields.io/badge/Prisma-6.11-2D3748?style=flat&logo=prisma)](https://prisma.io)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat)](./LICENSE)
 
-![Nesternity](https://img.shields.io/badge/Nesternity-CRM%20Platform-blue?style=for-the-badge)
-![Next.js](https://img.shields.io/badge/Next.js-15.3.4-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
-![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma)
-![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)
-
-**A blazing-fast, feature-rich team collaboration platform built with modern web technologies**
-
-[Demo](https://nesternity.vercel.app) • [Documentation](#documentation) • [Features](#features) • [Getting Started](#getting-started)
-
-</div>
+[Live Demo](https://nesternity.vercel.app) • [Documentation](./DEVELOPER_GUIDE.md) • [Getting Started](#-quick-start)
 
 ---
 
-## ✨ Features
+## ✨ What is Nesternity?
 
-### 🎯 **Core Platform Features**
-- **Team Management** - Create teams, invite members, manage roles and permissions
-- **Project Boards** - Interactive Kanban boards with drag-and-drop functionality
-- **Task Management** - Create, assign, and track tasks with priorities and due dates
-- **Issue Tracking** - Comprehensive issue management with status tracking
-- **Activity Feed** - Real-time activity tracking across all team actions
-- **User Profiles** - Customizable user profiles with avatar support
+Nesternity is an all-in-one workspace designed for **freelancers, agencies, and small teams** to manage their entire operation from one place. Stop juggling between scattered tools — Nesternity brings everything together with AI-powered intelligence.
 
-### 💼 **Business Features**
-- **Invoice Generation** - Professional PDF invoice creation with multiple download options
-- **Payment Processing** - Integrated Stripe payments for invoices and subscriptions
-- **Subscription Management** - Tiered pricing plans (Free, Standard, Pro)
-- **Client Management** - Comprehensive client information and project association
-- **Email System** - Automated email notifications and team invitations
+### Core Features
 
-### 🚀 **Technical Excellence**
-- **Blazing Fast Performance** - Optimized with Turbopack and advanced caching
-- **Real-time Updates** - Live collaboration features
-- **Mobile Responsive** - Works seamlessly on all devices
-- **Type Safety** - Full TypeScript implementation
-- **Security First** - Comprehensive authentication and authorization
-- **Production Ready** - Enterprise-grade architecture and deployment
+- **🎯 Project Management** - Kanban boards with drag-and-drop tasks
+- **💼 Client & Team Management** - Organizations, projects, and role-based access
+- **📄 Smart Proposals** - AI-generated proposals with budget estimation
+- **🧾 Invoice System** - Professional PDF invoices with recurring billing
+- **🔔 Notion-like Notifications** - Real-time updates with actionable items
+- **🤖 AI Assistance** - Budget estimation, scope monitoring, and proposal generation
+- **📊 Scope Sentinel** - Automatic scope creep detection and budget alerts
+- **🔒 E-Signatures** - Digital contract signing with embedded signatures
+- **💳 Payment Integration** - Razorpay subscriptions and invoice payments
 
 ---
 
-## 🧭 Product Flow (User Journey)
+## 🚀 Quick Start
 
-This section outlines a typical flow in Nesternity from organisation creation to invoicing and billing. Each step includes the path to the related UI/page or API for quick reference.
+### Prerequisites
 
-1) Create an Organisation (Your Organisation or Client Organisation)
-	- Create an organisation using the organisation page and modal UI.
-	- Files: `src/app/dashboard/organisation/page.tsx`, `src/components/organisation/organisation-modal.tsx`, `src/components/organisation/organisation-list.tsx`
+- Node.js 18+
+- PostgreSQL database (recommended: [Neon](https://neon.tech))
+- pnpm (`npm install -g pnpm`)
 
-2) Create a Project within an Organisation
-	- After creating a project, users are redirected to the Project Dashboard.
-	- Files: `src/app/dashboard/organisation/[id]/projects/*`, `src/components/projects/ProjectForm.tsx`
+### Installation
 
-3) Project Dashboard: Teams, Boards & Tasks (Kanban)
-	- Project dashboard includes Teams, Boards (Kanban), Tasks, and Issue tracking. Team members can be assigned to tasks inside boards.
-	- Files: `src/app/dashboard/organisation/[id]/projects/[projectId]/layout.tsx`, `src/components/boards/*`, `src/components/tasks/*`, `src/components/teams/*`
-
-4) Proposals (AI-assisted) -> Contracts
-	- Generate AI-produced proposals, send to clients, and convert an accepted proposal into a contract.
-	- Files: `src/components/ai/ProposalEditor.tsx`, `src/app/dashboard/organisation/[id]/projects/[projectId]/proposals/*`
-
-5) Contracts -> Invoice
-	- Convert a signed contract into an invoice directly from the Contracts interface.
-	- Files: `src/app/dashboard/organisation/[id]/projects/[projectId]/contracts/*`, `src/components/contracts/*`
-
-6) Create Invoices (manual & recurring)
-	- Create one-off invoices with the InvoiceForm, or create recurring invoices via the recurring invoice flows.
-	- Files: `src/components/invoices/InvoiceForm.tsx`, `src/components/invoices/RecurringInvoiceForm.tsx`, `src/app/dashboard/organisation/[id]/projects/[projectId]/invoices/recurring/*`
-
-7) Razorpay Subscription & Billing
-	- Razorpay subscription features, plan tiers, and billing flows are detailed in `RAZORPAY_SUBSCRIPTION_SYSTEM.md`. Razorpay subscription data is stored in Prisma and is accessible via endpoints like `GET /api/razorpay/subscription`.
-	- Files: `RAZORPAY_SUBSCRIPTION_SYSTEM.md`, `src/app/api/razorpay/*`, `src/app/api/payment-settings/route.ts`
-
-8) AI Budget Estimator & AI Scope Sentinel
-	- AI Budget Estimator estimates cost/effort for a project via AI-backed endpoints.
-	- AI Scope Sentinel provides a Scope Radar that highlights scope change risks (used during recurring invoice flows and contract checks).
-	- Files: `src/app/api/ai/estimate-budget/route.ts`, `src/components/proposals/BudgetEstimation.tsx`, `src/components/dashboard/ScopeRadarWidget.tsx`, `RECURRING_INVOICES_SCOPE_SENTINEL.md`
-
----
-
-If you want an in-depth developer walkthrough (with per-file descriptions and how-to's), check out `DEVELOPER_GUIDE.md`.
-
----
-
-## 🏗️ **Architecture**
-
-### **Tech Stack**
-```
-Frontend:  Next.js 15.3.4 + React 19 + TypeScript + Tailwind CSS
-Backend:   Next.js API Routes + Prisma ORM + PostgreSQL
-Auth:      Supabase Authentication
-Payments:  Stripe Integration (Invoices + Subscriptions)
-Storage:   Supabase Storage (File uploads, PDFs)
-Email:     Resend + Supabase Auth
-UI:        Radix UI + Shadcn/ui Components
-```
-
-### **Performance Optimizations**
-- **Turbopack** bundling for 10x faster builds
-- **Advanced caching** with LRU memory and storage cache
-- **Request deduplication** and background refresh
-- **Optimized database queries** with proper indexing
-- **Bundle optimization** with tree shaking and code splitting
-
----
-
-## 🚀 **Getting Started**
-
-### **Prerequisites**
-- Node.js 18+ and pnpm
-- PostgreSQL database (we recommend [Neon](https://console.neon.tech/) for quick setup)
-- Supabase project for authentication
-- Stripe account for payments (optional)
-
-### **Quick Setup**
-
-1. **Clone and Install**
 ```bash
-git clone https://github.com/yourusername/nesternity.git
+# Clone repository
+git clone https://github.com/certainlyMohneeesh/nesternity.git
 cd nesternity
-pnpm install
-```
 
-2. **Environment Setup**
-```bash
+# Install dependencies
+pnpm install
+
+# Setup environment
 cp .env.example .env.local
 # Edit .env.local with your credentials
+
+# Setup database
+pnpm prisma:dev
+
+# Start development server
+pnpm dev
 ```
 
-3. **Database Setup**
-```bash
-# Run automated setup
-./setup.sh
-
-# Or manually:
-pnpm prisma:dev    # Run migrations
-pnpm dev          # Start development server
-```
-
-4. **Visit** `http://localhost:3000`
-
-### **Environment Variables**
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/nesternity"
-
-# Supabase (Authentication)
-NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-
-# Stripe (Payments) - Optional
-STRIPE_SECRET_KEY="sk_test_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-
-# Email (Resend) - Optional
-RESEND_API_KEY="re_..."
-RESEND_FROM_EMAIL="noreply@yourdomain.com"
-
-# Newsletter (Google Sheets) - Optional
-GOOGLE_SHEET_ID="your-google-sheet-id"
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY="your-recaptcha-site-key"
-RECAPTCHA_SECRET_KEY="your-recaptcha-secret-key"
-```
+Visit `http://localhost:3000` 🎉
 
 ---
 
-## 📁 **Project Structure**
+## 🏗️ Tech Stack
+
+**Frontend**
+- Next.js 15.3 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Shadcn/ui + Radix UI
+- Framer Motion
+
+**Backend**
+- Next.js API Routes
+- Prisma ORM
+- PostgreSQL
+- Supabase Auth
+
+**AI & Integrations**
+- Google Gemini AI
+- Razorpay Payments
+- Resend Email
+- React PDF
+
+---
+
+## 📁 Project Structure
 
 ```
 nesternity/
 ├── src/
-│   ├── app/                    # Next.js 15 App Router
-│   │   ├── api/               # API routes
-│   │   ├── dashboard/         # Main dashboard pages
-│   │   ├── auth/             # Authentication pages
-│   │   └── (landing)/        # Marketing pages
-│   ├── components/           # Reusable UI components
-│   │   ├── ui/              # Base UI components (Shadcn)
-│   │   ├── boards/          # Kanban board components
-│   │   ├── invoices/        # Invoice management
-│   │   ├── teams/           # Team management
-│   │   └── auth/            # Authentication components
-│   ├── lib/                 # Utility functions and configurations
-│   │   ├── db.ts           # Database connection
-│   │   ├── api-client.ts   # API client with caching
-│   │   └── auth.ts         # Authentication helpers
-│   ├── hooks/              # Custom React hooks
-│   └── styles/             # Global styles and themes
-├── prisma/                 # Database schema and migrations
-├── public/                 # Static assets
-└── docs/                   # Documentation files
+│   ├── app/
+│   │   ├── api/              # API routes
+│   │   │   ├── ai/           # AI features (proposals, budget, scope)
+│   │   │   ├── notifications/ # Notification system
+│   │   │   ├── razorpay/     # Payment & subscriptions
+│   │   │   └── ...
+│   │   └── dashboard/        # Main app pages
+│   ├── components/
+│   │   ├── ai/               # AI components
+│   │   ├── notifications/    # Notification center
+│   │   ├── boards/           # Kanban boards
+│   │   ├── invoices/         # Invoice management
+│   │   └── ui/               # Base UI components
+│   ├── lib/
+│   │   ├── ai/               # AI adapter & prompts
+│   │   ├── notifications.ts  # Notification helpers
+│   │   └── db.ts             # Database client
+│   └── hooks/                # Custom React hooks
+├── prisma/                   # Database schema & migrations
+└── docs/                     # Documentation
 ```
 
 ---
 
-## 🎯 **Key Features Deep Dive**
+## 🎯 Key Features
 
-### **Interactive Dashboard**
-- Real-time activity feed
-- Team performance metrics
-- Quick action buttons
-- Responsive design with mobile support
+### AI-Powered Workflow
 
-### **Advanced Board Management**
-- Drag-and-drop task management using `@dnd-kit`
-- Real-time collaboration
-- Custom columns and swimlanes
-- Task filtering and search
+**Smart Proposals**
+- Generate professional proposals from client briefs
+- Automatic budget estimation based on scope
+- Integrated timeline and deliverable planning
 
-### **Professional Invoice System**
-- PDF generation with React PDF
-- Multiple download options (client/server-side)
+**Budget Estimation**
+- AI analyzes project scope and suggests realistic budgets
+- Category-wise breakdown (design, development, QA, etc.)
+- Historical data-based recommendations
+
+**Scope Sentinel**
+- Automatic scope creep detection
+- Budget monitoring with risk alerts
+- AI-generated change order drafts
+- Client warning email templates
+
+### Notification System
+
+Notion-like inbox with:
+- Team invite notifications
+- Task assignment alerts
+- Scope radar warnings
+- Invoice status updates
+- Browser push notifications
+- Actionable buttons (View Task, Join Team, Copy Code)
+
+### Professional Invoicing
+
+- Beautiful PDF generation
+- Recurring invoice support
+- Multiple download options
+- Razorpay payment integration
 - Automatic tax calculations
-- Payment link generation
-- Stripe integration for payments
+- Client payment tracking
 
-### **Team Collaboration**
+### Collaboration Tools
+
 - Role-based permissions (Admin, Member, Viewer)
 - Team invitations via email
-- Real-time activity tracking
-- Member management interface
-
-### **Payment & Subscriptions**
-- Stripe integration for secure payments
-- Multiple subscription tiers
-- Invoice payment processing
-- Webhook handling for real-time updates
+- Real-time activity feed
+- Kanban boards with @dnd-kit
+- E-signature support for contracts
 
 ---
 
-## 🧪 **Development Commands**
+## 🔧 Development
 
 ```bash
 # Development
-pnpm dev              # Start dev server with Turbopack
-pnpm dev:slow         # Start dev server with Webpack
+pnpm dev              # Start dev server (Turbopack)
+pnpm build            # Production build
+pnpm start            # Start production server
 
 # Database
-pnpm prisma:dev       # Run migrations + generate client
+pnpm prisma:dev       # Run migrations
 pnpm prisma:studio    # Open Prisma Studio
 pnpm prisma:reset     # Reset database
 
-# Build & Deploy
-pnpm build            # Production build
-pnpm start            # Start production server
+# Code Quality
 pnpm lint             # Run ESLint
-pnpm type-check       # Run TypeScript check
-
-# Testing
-pnpm test             # Run tests
-pnpm test:watch       # Run tests in watch mode
+pnpm type-check       # TypeScript check
 ```
 
 ---
 
-## 📋 **Available Integrations**
+## 🌐 Environment Variables
 
-### **Payment Processing**
-- **Stripe** - Credit card payments, subscriptions, webhooks
-- **Invoice payments** - Direct payment links
-- **Subscription management** - Automated billing cycles
+```env
+# Database
+DATABASE_URL="postgresql://..."
 
-### **Email Services**
-- **Resend** - Transactional emails with custom domains
-- **Supabase Auth** - Built-in authentication emails
-- **Newsletter** - Google Sheets integration with reCAPTCHA
+# Supabase Auth
+NEXT_PUBLIC_SUPABASE_URL="..."
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
+SUPABASE_SERVICE_ROLE_KEY="..."
 
-### **Storage & CDN**
-- **Supabase Storage** - File uploads and CDN delivery
-- **PDF Generation** - Server-side and client-side options
+# AI (Google Gemini)
+GOOGLE_GEMINI_API_KEY="..."
 
-### **Analytics & Monitoring**
-- **Performance monitoring** - Core Web Vitals tracking
-- **Error handling** - Comprehensive error boundaries
-- **Activity logging** - Detailed audit trails
+# Razorpay Payments
+RAZORPAY_KEY_ID="..."
+RAZORPAY_KEY_SECRET="..."
+
+# Email (Resend)
+RESEND_API_KEY="..."
+
+# Optional: Newsletter
+GOOGLE_SHEET_ID="..."
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY="..."
+```
+
+See `.env.example` for complete list.
 
 ---
 
-## 🚀 **Deployment**
+## 📖 Documentation
 
-### **Vercel (Recommended)**
+- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Complete development setup
+- **[AI Features](./AI_FEATURES_IMPLEMENTATION.md)** - AI system documentation
+- **[Notification System](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md)** - Notification architecture
+- **[Scope Sentinel](./RECURRING_INVOICES_SCOPE_SENTINEL.md)** - Scope monitoring guide
+- **[Razorpay Setup](./RAZORPAY_SUBSCRIPTION_SYSTEM.md)** - Payment integration
+
+---
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+
 ```bash
-# Deploy to Vercel
 vercel
-
-# Or connect your GitHub repo for automatic deployments
 ```
 
-### **Docker**
-```bash
-# Build Docker image
-docker build -t nesternity .
+Or connect your GitHub repo for automatic deployments.
 
-# Run container
-docker run -p 3000:3000 nesternity
-```
+### Environment Setup
 
-### **Railway/Render**
-1. Connect your GitHub repository
-2. Set environment variables
-3. Deploy automatically
+1. Add all environment variables in Vercel dashboard
+2. Ensure PostgreSQL database is accessible
+3. Run build command: `pnpm build`
 
 ---
 
-## 📖 **Documentation**
+## 🤝 Contributing
 
-Comprehensive documentation is available in the `/docs` folder:
-
-- **[Setup Guide](./DEVELOPMENT_WORKFLOW.md)** - Complete development setup
-- **[Stripe Integration](./STRIPE_SETUP.md)** - Payment system configuration
-- **[Email Setup](./EMAIL_SETUP.md)** - Email service configuration
-- **[Newsletter Setup](./NEWSLETTER_SETUP.md)** - Google Sheets integration
-- **[Performance Guide](./PRISMA_OPTIMIZATION.md)** - Performance optimization
-- **[API Documentation](./docs/api.md)** - API endpoints reference
-
----
-
-## 🤝 **Contributing**
-
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ---
 
-## 📄 **License**
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
----
-
-## 🎉 **Success Stories**
-
-> "Nesternity transformed how our team collaborates. The intuitive interface and powerful features helped us increase productivity by 40%." - **Sarah Johnson, Project Manager**
-
-> "The invoice system saved us hours every week. Professional PDFs generated automatically with seamless payment integration." - **Mike Chen, Freelancer**
+MIT License - see [LICENSE](./LICENSE) file for details.
 
 ---
 
-## 🆘 **Support & Community**
+## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/nesternity/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/nesternity/discussions)
+- **Issues**: [GitHub Issues](https://github.com/certainlyMohneeesh/nesternity/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/certainlyMohneeesh/nesternity/discussions)
 - **Email**: support@nesternity.com
-- **Documentation**: [docs.nesternity.com](https://docs.nesternity.com)
 
 ---
 
 <div align="center">
 
-**Built with ❤️ by the Nesternity Team**
+**Built with ❤️ by [Cythical Labs](https://cyth.dev)**
 
-[Website](https://nesternity.com) • [Twitter](https://twitter.com/nesternity) • [LinkedIn](https://linkedin.com/company/nesternity)
-
-⭐ **Star us on GitHub if you find Nesternity useful!**
+⭐ Star us on GitHub if you find Nesternity useful!
 
 </div>
