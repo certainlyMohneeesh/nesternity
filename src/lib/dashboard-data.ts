@@ -153,12 +153,55 @@ export async function getDashboardData({ userId, organisationId, projectId }: Da
   ]);
 
   // Fetch recurring invoices and clients
-  const [recurringInvoices, clients] = await Promise.all([
-    prisma.invoice.findMany({
-      where: {
-        issuedById: userId,
-        isRecurring: true,
+  // Build invoice filter based on project/org parameters
+  const invoiceWhere: any = {
+    issuedById: userId,
+    isRecurring: true,
+  };
+
+  // Filter by projectId if provided
+  if (projectId) {
+    invoiceWhere.projectId = projectId;
+  } 
+  // Otherwise filter by organisationId if provided
+  else if (organisationId) {
+    invoiceWhere.organisationId = organisationId;
+  }
+
+  // Build client filter based on project/org parameters
+  const clientWhere: any = {
+    createdBy: userId,
+  };
+
+  // For organisation-level filtering only (not project)
+  // For project-level, we'll fetch the project's client separately
+  if (!projectId && organisationId) {
+    clientWhere.organisationId = organisationId;
+  }
+
+  // Define the client shape that the dashboard expects
+  const clientSelect = {
+    id: true,
+    name: true,
+    email: true,
+    company: true,
+    budget: true,
+    projects: {
+      select: {
+        id: true,
+        name: true,
       },
+      orderBy: {
+        createdAt: 'desc' as const,
+      },
+      take: 1,
+    },
+  };
+
+  // Fetch recurring invoices, clients, project details, and project invoices in parallel
+  const [recurringInvoices, generalClients, projectDetails, projectInvoiceClient] = await Promise.all([
+    prisma.invoice.findMany({
+      where: invoiceWhere,
       include: {
         items: {
           select: {
@@ -178,28 +221,67 @@ export async function getDashboardData({ userId, organisationId, projectId }: Da
       },
       take: 10,
     }),
+    // Fetch general clients (for org-level or when no project specified)
     prisma.client.findMany({
-      where: {
-        createdBy: userId,
-      },
-      include: {
-        projects: {
-          select: {
-            id: true,
-            name: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 1, // Get the most recent project for each client
-        },
-      },
+      where: clientWhere,
+      select: clientSelect,
       orderBy: {
         createdAt: "desc",
       },
       take: 5,
     }),
+    // If projectId is provided, fetch the project with its linked client
+    projectId
+      ? prisma.project.findUnique({
+          where: { id: projectId },
+          select: {
+            id: true,
+            clientId: true,
+            client: {
+              select: clientSelect,
+            },
+          },
+        })
+      : null,
+    // If projectId is provided, also check if there are any invoices for this project
+    // and get the client from those invoices (for ScopeRadarWidget)
+    projectId
+      ? prisma.invoice.findFirst({
+          where: {
+            projectId: projectId,
+          },
+          select: {
+            client: {
+              select: clientSelect,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+      : null,
   ]);
+
+  // Determine clients to return:
+  // Priority for project dashboard:
+  // 1. Project's directly linked client (Project.clientId)
+  // 2. Client from any invoice belonging to this project
+  // 3. Empty (no client available)
+  let clients: typeof generalClients = [];
+  
+  if (projectId) {
+    if (projectDetails?.client) {
+      // Project has a directly linked client
+      clients = [projectDetails.client];
+    } else if (projectInvoiceClient?.client) {
+      // Project has invoices with a client - use that client for ScopeRadarWidget
+      clients = [projectInvoiceClient.client];
+    }
+    // If neither, clients stays empty
+  } else {
+    // No project specified - use general clients
+    clients = generalClients;
+  }
 
   return {
     teams,

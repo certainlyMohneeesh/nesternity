@@ -368,23 +368,21 @@ export default function ProjectDashboard() {
       </div>
 
       {/* Recurring Invoices & Budget Monitor */}
-      {(data.recurringInvoices && data.recurringInvoices.length > 0) || (data.clients && data.clients.length > 0) ? (
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
-          {data.recurringInvoices && data.recurringInvoices.length > 0 && (
-            <RecurringInvoicesOverview invoices={data.recurringInvoices} orgId={orgId} projectId={projectId} />
-          )}
+      {/* Show this section if project has recurring invoices OR has any invoices (for budget monitoring) */}
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
+        {/* Recurring Invoices Overview */}
+        {data.recurringInvoices && data.recurringInvoices.length > 0 && (
+          <RecurringInvoicesOverview invoices={data.recurringInvoices} orgId={orgId} projectId={projectId} />
+        )}
 
-          {/* Scope Radar for first client with budget */}
-          {data.clients && data.clients.length > 0 && (
-            <ScopeRadarWidget
-              clientId={data.clients[0].id}
-              projectId={projectId}
-              userId={session?.user?.id || ""}
-              compact={false}
-            />
-          )}
-        </div>
-      ) : null}
+        {/* Budget Monitor - Always show for projects (uses project budget) */}
+        <ScopeRadarWidget
+          projectId={projectId}
+          clientId={data.clients?.[0]?.id}
+          userId={session?.user?.id || ""}
+          compact={false}
+        />
+      </div>
 
       {/* Recent Completed Tasks */}
       {data.recentCompletedTasks.length > 0 && (

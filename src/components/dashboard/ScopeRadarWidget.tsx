@@ -40,8 +40,8 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
 interface ScopeRadarWidgetProps {
-  projectId?: string;
-  clientId: string;
+  projectId: string;  // projectId is now required
+  clientId?: string;  // clientId is now optional
   userId: string;
   compact?: boolean;
 }
@@ -178,10 +178,17 @@ export default function ScopeRadarWidget({
   const fetchBudgetData = async () => {
     try {
       setLoading(true);
-      console.log('[ScopeRadarWidget] Fetching cached budget data for:', { clientId, projectId });
+      console.log('[ScopeRadarWidget] Fetching cached budget data for:', { projectId, clientId });
+
+      // Prioritize projectId over clientId (new architecture)
+      const queryParams = new URLSearchParams();
+      queryParams.append('projectId', projectId);
+      if (clientId) {
+        queryParams.append('clientId', clientId);
+      }
 
       const response = await fetch(
-        `/api/ai/scope-sentinel/budget-check?clientId=${clientId}${projectId ? `&projectId=${projectId}` : ""}`
+        `/api/ai/scope-sentinel/budget-check?${queryParams.toString()}`
       );
 
       console.log('[ScopeRadarWidget] Response status:', response.status);
@@ -240,14 +247,15 @@ export default function ScopeRadarWidget({
   const checkBudget = async (showToast = true) => {
     try {
       setChecking(true);
-      console.log('[ScopeRadarWidget] Running budget check for:', { clientId, projectId });
+      console.log('[ScopeRadarWidget] Running budget check for:', { projectId, clientId });
 
+      // Send projectId as primary identifier (new architecture)
       const response = await fetch("/api/ai/scope-sentinel/budget-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientId,
           projectId,
+          clientId: clientId || undefined, // Optional now
         }),
       });
 
@@ -258,7 +266,7 @@ export default function ScopeRadarWidget({
         // Show user-friendly error message
         if (errorData.message?.includes('No budget found')) {
           toast.error("No budget configured", {
-            description: "Please set a client budget or create an accepted proposal first",
+            description: "Please set a project budget or create an accepted proposal first",
           });
         } else {
           toast.error("Failed to analyze budget", {
@@ -392,8 +400,10 @@ export default function ScopeRadarWidget({
 
   // Only fetch cached data on mount, don't auto-trigger expensive AI checks
   useEffect(() => {
-    fetchBudgetData();
-  }, [clientId, projectId]);
+    if (projectId) {
+      fetchBudgetData();
+    }
+  }, [projectId, clientId]);
 
   // Format currency helper
   const formatBudgetCurrency = (amount: number) => {

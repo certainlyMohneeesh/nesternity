@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       console.log(`[BudgetCheckAPI] Fetching by projectId: ${projectId}`);
 
       // Fetch project with client and proposals
-      project = await prisma.project.findUnique({ // Fetching project data
+      project = await prisma.project.findUnique({
         where: { id: projectId },
         include: {
           client: {
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         client = project.client;
         console.log(`[BudgetCheckAPI] Found project client: ${client?.name}`);
       } else {
-        console.log(`[BudgetCheckAPI] Project has no client, will use project budget and organisationId`);
+        console.log(`[BudgetCheckAPI] Project has no client, will use project budget`);
       }
       proposals = project.proposals;
     } else if (clientId) {
@@ -145,16 +145,27 @@ export async function POST(request: NextRequest) {
       console.log(`[BudgetCheckAPI] Found client: ${client.name}`);
     }
 
-    // Client is optional when we have projectId
-    // If no client and no projectId, then error
-    if (!client && !projectId) {
-      console.error('[BudgetCheckAPI] Neither client nor project found');
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
-    }
-
-    // 4. Get all invoices - by clientId if available, otherwise by organisationId
+    // 4. Get all invoices - prioritize projectId, then clientId, then organisationId
     let invoices: any[] = [];
-    if (client) {
+    
+    if (projectId) {
+      // New architecture: fetch invoices by projectId directly
+      console.log(`[BudgetCheckAPI] Fetching invoices for project: ${projectId}`);
+      invoices = await prisma.invoice.findMany({
+        where: {
+          projectId: projectId,
+          status: {
+            in: ['PENDING', 'PAID'],
+          },
+        },
+        include: {
+          items: true,
+        },
+        orderBy: {
+          issuedDate: 'desc',
+        },
+      });
+    } else if (client) {
       console.log(`[BudgetCheckAPI] Fetching invoices for client: ${client.id}`);
       invoices = await prisma.invoice.findMany({
         where: {
@@ -170,52 +181,48 @@ export async function POST(request: NextRequest) {
           issuedDate: 'desc',
         },
       });
-    } else if (project?.organisationId) {
-      console.log(`[BudgetCheckAPI] Fetching invoices for organisation: ${project.organisationId}`);
-      invoices = await prisma.invoice.findMany({
-        where: {
-          organisationId: project.organisationId,
-          status: {
-            in: ['PENDING', 'PAID'],
-          },
-        },
-        include: {
-          items: true,
-        },
-        orderBy: {
-          issuedDate: 'desc',
-        },
-      });
-    } else {
-      console.warn('[BudgetCheckAPI] No client or organisation found');
-      invoices = [];
     }
 
     console.log(`[BudgetCheckAPI] Found ${invoices.length} invoices`);
 
     // 5. Calculate budget baseline
+    // Priority: 1. Project Budget (always preferred when projectId exists), 2. Accepted Proposal, 3. Client Budget
     let originalBudget = 0;
-    // Default currency to INR if not found in client or project
-    let currency = client?.currency || project?.currency || 'INR';
+    let currency = 'INR'; // Default currency
+    let budgetSource = 'none';
 
-    // Priority: 1. Project Budget (if projectId exists), 2. Accepted Proposal, 3. Client Budget
-    if (projectId && project?.budget) {
+    if (projectId && project?.budget && project.budget > 0) {
+      // Project has its own budget - use it (new architecture)
       originalBudget = project.budget;
-      currency = project.currency || currency;
-      console.log(`[BudgetCheckAPI] Using project budget: ${currency} ${originalBudget}`);
-    } else if (proposals.length > 0) {
+      currency = project.currency || 'INR';
+      budgetSource = 'project';
+      console.log(`[BudgetCheckAPI] Using PROJECT budget: ${currency} ${originalBudget}`);
+    } else if (proposals.length > 0 && proposals[0].pricing > 0) {
+      // Use accepted proposal pricing as budget
       originalBudget = proposals[0].pricing;
-      currency = proposals[0].currency || currency;
-      console.log(`[BudgetCheckAPI] Using proposal budget: ${currency} ${originalBudget}`);
-    } else if (client?.budget) {
+      currency = proposals[0].currency || project?.currency || 'INR';
+      budgetSource = 'proposal';
+      console.log(`[BudgetCheckAPI] Using PROPOSAL budget: ${currency} ${originalBudget}`);
+    } else if (client?.budget && client.budget > 0) {
+      // Fallback to client budget (old architecture)
       originalBudget = client.budget;
-      console.log(`[BudgetCheckAPI] Using client budget: ${currency} ${originalBudget}`);
-    } else {
-      console.warn('[BudgetCheckAPI] No budget found for client');
+      currency = client.currency || 'INR';
+      budgetSource = 'client';
+      console.log(`[BudgetCheckAPI] Using CLIENT budget: ${currency} ${originalBudget}`);
+    }
+
+    // If no budget found from any source
+    if (originalBudget <= 0) {
+      console.warn('[BudgetCheckAPI] No budget found from any source');
       return NextResponse.json(
         {
           error: 'No budget found',
-          message: 'Set client budget or create accepted proposal first',
+          message: 'Set project budget, create accepted proposal, or set client budget first',
+          budgetSources: {
+            project: project?.budget || null,
+            proposal: proposals[0]?.pricing || null,
+            client: client?.budget || null,
+          }
         },
         { status: 400 }
       );
