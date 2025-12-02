@@ -35,7 +35,7 @@ model User {
   taskActivities   TaskActivity[]   @relation("TaskActivityUser")
   taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
   taskComments     TaskComment[]    @relation("TaskCommentAuthor")
-  assignedTasks    Task[]           @relation("TaskAssignee")
+  taskAssignments  TaskAssignee[]   @relation("TaskAssignees")
   createdTasks     Task[]           @relation("TaskCreator")
   invites          TeamInvite[]     @relation("InvitedBy")
   teamMembers      TeamMember[]
@@ -347,7 +347,6 @@ model Task {
   title          String
   boardId        String           @map("board_id")
   listId         String           @map("list_id")
-  assignedTo     String?          @map("assigned_to")
   createdBy      String           @map("created_by")
   priority       TaskPriority     @default(MEDIUM)
   status         TaskStatus       @default(TODO)
@@ -365,19 +364,31 @@ model Task {
   activities     TaskActivity[]
   attachments    TaskAttachment[]
   comments       TaskComment[]
-  assignee       User?            @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  assignees      TaskAssignee[]   @relation("TaskAssignees")
   board          Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
   creator        User             @relation("TaskCreator", fields: [createdBy], references: [id])
   list           BoardList        @relation(fields: [listId], references: [id], onDelete: Cascade)
 
-  @@index([assignedTo], map: "idx_tasks_assigned_to")
-  @@index([assignedTo, status, dueDate], map: "idx_tasks_assignee_status")
   @@index([boardId], map: "idx_tasks_board_id")
   @@index([boardId, listId, position], map: "idx_tasks_board_list_position")
   @@index([listId], map: "idx_tasks_list_id")
   @@index([priority], map: "idx_tasks_priority")
   @@index([status], map: "idx_tasks_status")
   @@map("tasks")
+}
+
+model TaskAssignee {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  task       Task     @relation("TaskAssignees", fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation("TaskAssignees", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([taskId], map: "idx_task_assignees_task_id")
+  @@index([userId], map: "idx_task_assignees_user_id")
+  @@map("task_assignees")
 }
 
 model TaskComment {

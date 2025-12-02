@@ -43,6 +43,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       include: {
         list: {
           select: { id: true, name: true }
+        },
+        assignees: {
+          select: { userId: true }
         }
       }
     });
@@ -57,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       description, 
       listId, 
       position, 
-      assignedTo, 
+      assignedToIds, // Changed: now accepts array of user IDs
       priority, 
       status, 
       dueDate, 
@@ -86,13 +89,44 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (description !== undefined) taskUpdateData.description = description;
     if (listId !== undefined) taskUpdateData.listId = listId;
     if (position !== undefined) taskUpdateData.position = position;
-    if (assignedTo !== undefined) taskUpdateData.assignedTo = assignedTo;
     if (priority !== undefined) taskUpdateData.priority = priority;
     if (status !== undefined) taskUpdateData.status = status;
     if (dueDate !== undefined) taskUpdateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (estimatedHours !== undefined) taskUpdateData.estimatedHours = estimatedHours;
     if (tags !== undefined) taskUpdateData.tags = tags;
     if (archived !== undefined) taskUpdateData.archived = archived;
+
+    // Handle assignee updates
+    const existingAssigneeIds = existingTask.assignees.map((a: { userId: string }) => a.userId);
+    const newAssigneeIds = assignedToIds || [];
+    
+    // Determine added and removed assignees
+    const addedAssignees = newAssigneeIds.filter((id: string) => !existingAssigneeIds.includes(id));
+    const removedAssignees = existingAssigneeIds.filter((id: string) => !newAssigneeIds.includes(id));
+
+    // Update assignees if provided
+    if (assignedToIds !== undefined) {
+      // Delete removed assignees
+      if (removedAssignees.length > 0) {
+        await (db as any).taskAssignee.deleteMany({
+          where: {
+            taskId,
+            userId: { in: removedAssignees }
+          }
+        });
+      }
+
+      // Add new assignees
+      if (addedAssignees.length > 0) {
+        await (db as any).taskAssignee.createMany({
+          data: addedAssignees.map((userId: string) => ({
+            taskId,
+            userId
+          })),
+          skipDuplicates: true
+        });
+      }
+    }
 
     // Update the task
     const updatedTask = await (db as any).task.update({
@@ -102,8 +136,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         list: {
           select: { id: true, name: true, color: true }
         },
-        assignee: {
-          select: { id: true, email: true, displayName: true, avatarUrl: true }
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, email: true, displayName: true, avatarUrl: true }
+            }
+          },
+          orderBy: { assignedAt: 'asc' }
         },
         creator: {
           select: { id: true, email: true, displayName: true }
@@ -133,20 +172,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    if (assignedTo !== undefined && assignedTo !== existingTask.assignedTo) {
+    // Log assignee changes and send notifications
+    if (assignedToIds !== undefined && (addedAssignees.length > 0 || removedAssignees.length > 0)) {
       await (db as any).taskActivity.create({
         data: {
           taskId,
           userId: user.id,
-          action: assignedTo ? 'TASK_ASSIGNED' : 'TASK_UNASSIGNED',
+          action: addedAssignees.length > 0 ? 'TASK_ASSIGNED' : 'TASK_UNASSIGNED',
           details: {
-            assignedTo
+            addedAssignees,
+            removedAssignees
           }
         }
       });
 
-      // Send notification to the newly assigned user
-      if (assignedTo && assignedTo !== user.id) {
+      // Send notifications to newly assigned users (except the updater)
+      if (addedAssignees.length > 0) {
         try {
           // Get board and team info for the notification
           const boardInfo = await (db as any).board.findUnique({
@@ -169,21 +210,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                                   boardInfo?.team?.projects?.[0]?.organisationId;
           const projectId = boardInfo?.projectId || boardInfo?.team?.projects?.[0]?.id;
 
-          await createTaskAssignmentNotification(
-            assignedTo,
-            user.id,
-            taskId,
-            updatedTask.title,
-            updatedTask.description || '',
-            boardId,
-            boardInfo?.name || 'Board',
-            teamId,
-            updatedTask.priority,
-            updatedTask.dueDate,
-            organisationId,
-            projectId
-          );
-          console.log(`[TaskAPI] Assignment notification sent to user: ${assignedTo}`);
+          for (const assigneeId of addedAssignees) {
+            if (assigneeId !== user.id) {
+              await createTaskAssignmentNotification(
+                assigneeId,
+                user.id,
+                taskId,
+                updatedTask.title,
+                updatedTask.description || '',
+                boardId,
+                boardInfo?.name || 'Board',
+                teamId,
+                updatedTask.priority,
+                updatedTask.dueDate,
+                organisationId,
+                projectId
+              );
+              console.log(`[TaskAPI] Assignment notification sent to user: ${assigneeId}`);
+            }
+          }
         } catch (notifError) {
           console.error('[TaskAPI] Failed to send assignment notification:', notifError);
         }

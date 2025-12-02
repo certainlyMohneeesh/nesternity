@@ -47,8 +47,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             tasks: {
               orderBy: { position: 'asc' },
               include: {
-                assignee: {
-                  select: { id: true, email: true, displayName: true, avatarUrl: true }
+                assignees: {
+                  include: {
+                    user: {
+                      select: { id: true, email: true, displayName: true, avatarUrl: true }
+                    }
+                  },
+                  orderBy: { assignedAt: 'asc' }
                 },
                 creator: {
                   select: { id: true, email: true, displayName: true }

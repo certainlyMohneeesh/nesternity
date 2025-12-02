@@ -84,11 +84,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
             position: true,
           },
         },
-        assignee: {
-          select: {
-            id: true,
-            email: true,
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true,
+                avatarUrl: true,
+              },
+            },
           },
+          orderBy: { assignedAt: 'asc' },
         },
         _count: {
           select: {

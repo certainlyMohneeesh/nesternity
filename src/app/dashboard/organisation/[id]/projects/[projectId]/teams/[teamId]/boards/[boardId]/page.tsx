@@ -16,6 +16,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/auth/session-context";
 import { api, APIError } from "@/lib/api-client";
@@ -64,21 +71,28 @@ interface List {
   };
 }
 
+interface TaskAssignee {
+  id: string;
+  userId: string;
+  assignedAt: string;
+  user: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+}
+
 interface Task {
   id: string;
   title: string;
   description: string;
   listId: string;
-  assignedTo: string | null;
   status: string;
   priority: string;
   dueDate: string | null;
   position: number;
-  assignee?: {
-    displayName: string;
-    id: string;
-    email: string;
-  };
+  assignees: TaskAssignee[];
   list: {
     id: string;
     name: string;
@@ -93,6 +107,7 @@ interface TeamMember {
     displayName: string;
     id: string;
     email: string;
+    avatarUrl?: string;
   };
 }
 
@@ -139,12 +154,16 @@ function SortableTask({
   task,
   index,
   onDelete,
-  onComplete
+  onComplete,
+  teamMembers,
+  onAssigneesChange
 }: {
   task: Task;
   index: number;
   onDelete: (taskId: string, taskTitle: string) => void;
   onComplete: (taskId: string, taskTitle: string) => void;
+  teamMembers: TeamMember[];
+  onAssigneesChange: (taskId: string, assigneeIds: string[]) => void;
 }) {
   const {
     attributes,
@@ -165,6 +184,29 @@ function SortableTask({
     LOW: "border-l-4 border-l-green-500 dark:border-l-green-400",
     MEDIUM: "border-l-4 border-l-yellow-500 dark:border-l-yellow-400",
     HIGH: "border-l-4 border-l-red-500 dark:border-l-red-400"
+  };
+
+  const getInitials = (name: string | null | undefined, email: string) => {
+    if (name) {
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return email.charAt(0).toUpperCase();
+  };
+
+  // Generate a fallback avatar URL using UI Avatars service
+  const getAvatarUrl = (avatarUrl: string | null | undefined, name: string | null | undefined, email: string) => {
+    if (avatarUrl) return avatarUrl;
+    const displayName = name || email.split('@')[0];
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&color=fff&size=64`;
+  };
+
+  const currentAssigneeIds = task.assignees?.map(a => a.userId) || [];
+
+  const handleToggleAssignee = (userId: string) => {
+    const newAssigneeIds = currentAssigneeIds.includes(userId)
+      ? currentAssigneeIds.filter(id => id !== userId)
+      : [...currentAssigneeIds, userId];
+    onAssigneesChange(task.id, newAssigneeIds);
   };
 
   return (
@@ -236,11 +278,73 @@ function SortableTask({
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-medium capitalize">{task.priority.toLowerCase()}</span>
-          {task.assignee && (
-            <span className="bg-muted dark:bg-gray-700 px-2 py-1 rounded text-xs">
-              {task.assignee.displayName || task.assignee.email}
-            </span>
-          )}
+          
+          {/* Assignees avatars with popover for editing */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button 
+                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {task.assignees && task.assignees.length > 0 ? (
+                  <div className="flex -space-x-2">
+                    {task.assignees.slice(0, 3).map((assignee) => (
+                      <Avatar key={assignee.userId} className="h-6 w-6 border-2 border-white dark:border-gray-800">
+                        <AvatarImage src={getAvatarUrl(assignee.user.avatarUrl, assignee.user.displayName, assignee.user.email)} />
+                        <AvatarFallback className="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                          {getInitials(assignee.user.displayName, assignee.user.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {task.assignees.length > 3 && (
+                      <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center text-[10px] font-medium">
+                        +{task.assignees.length - 3}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-xs">Assign</span>
+                  </div>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm mb-2">Assign members</h4>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {teamMembers.map((member) => (
+                    <label
+                      key={member.userId}
+                      className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={currentAssigneeIds.includes(member.userId)}
+                        onCheckedChange={() => handleToggleAssignee(member.userId)}
+                      />
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={getAvatarUrl(member.user.avatarUrl, member.user.displayName, member.user.email)} />
+                        <AvatarFallback className="text-[10px]">
+                          {getInitials(member.user.displayName, member.user.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">
+                        {member.user.displayName || member.user.email}
+                      </span>
+                    </label>
+                  ))}
+                  {teamMembers.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No team members available
+                    </p>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {task.dueDate && (
@@ -261,6 +365,20 @@ function DroppableList({ list, children }: { list: List; children: React.ReactNo
       {children}
     </div>
   );
+}
+
+// Helper functions for avatars
+function getInitialsHelper(name: string | null | undefined, email: string) {
+  if (name) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+  return email.charAt(0).toUpperCase();
+}
+
+function getAvatarUrlHelper(avatarUrl: string | null | undefined, name: string | null | undefined, email: string) {
+  if (avatarUrl) return avatarUrl;
+  const displayName = name || email.split('@')[0];
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&color=fff&size=64`;
 }
 
 export default function BoardViewPage({ params }: { params: Promise<{ teamId: string; boardId: string }> }) {
@@ -307,7 +425,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     title: "",
     description: "",
     listId: "",
-    assignedTo: "",
+    assignedToIds: [] as string[],
     priority: "MEDIUM",
     dueDate: ""
   });
@@ -414,7 +532,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
       title: newTask.title,
       description: newTask.description,
       listId: newTask.listId,
-      assignedTo: newTask.assignedTo || null,
+      assignedToIds: newTask.assignedToIds.length > 0 ? newTask.assignedToIds : undefined,
       priority: newTask.priority,
       dueDate: newTask.dueDate || null
     };
@@ -426,7 +544,7 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
           title: "",
           description: "",
           listId: "",
-          assignedTo: "",
+          assignedToIds: [],
           priority: "MEDIUM",
           dueDate: ""
         });
@@ -497,6 +615,16 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
     }, {
       onSuccess: () => {
         toast.success(`Task "${taskTitle}" completed successfully! 🎉`);
+      }
+    });
+  }
+
+  // Update task assignees
+  function handleAssigneesChange(taskId: string, assigneeIds: string[]) {
+    updateTaskMutation.mutate({
+      taskId,
+      updates: {
+        assignedToIds: assigneeIds
       }
     });
   }
@@ -618,29 +746,51 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                       </div>
                       <div>
                         <Label>Assign To</Label>
-                        <Select
-                          value={newTask.assignedTo || "unassigned"}
-                          onValueChange={value => setNewTask(t => ({ ...t, assignedTo: value === "unassigned" ? "" : value }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Unassigned" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {teamMembers.length === 0 ? (
-                              <SelectItem value="loading" disabled>Loading team members...</SelectItem>
-                            ) : (
-                              teamMembers.map((member: TeamMember) => (
-                                <SelectItem key={member.userId} value={member.userId}>
-                                  {member.user?.displayName || member.user?.email || member.userId}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Team members loaded: {teamMembers.length}
+                        <div className="border rounded-md p-2 mt-1 max-h-40 overflow-y-auto space-y-1">
+                          {teamMembers.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-2">
+                              Loading team members...
+                            </p>
+                          ) : (
+                            teamMembers.map((member: TeamMember) => (
+                              <label
+                                key={member.userId}
+                                className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                              >
+                                <Checkbox
+                                  checked={newTask.assignedToIds.includes(member.userId)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setNewTask(t => ({
+                                        ...t,
+                                        assignedToIds: [...t.assignedToIds, member.userId]
+                                      }));
+                                    } else {
+                                      setNewTask(t => ({
+                                        ...t,
+                                        assignedToIds: t.assignedToIds.filter(id => id !== member.userId)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={getAvatarUrlHelper(member.user.avatarUrl, member.user.displayName, member.user.email)} />
+                                  <AvatarFallback className="text-[10px]">
+                                    {getInitialsHelper(member.user.displayName, member.user.email)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm truncate">
+                                  {member.user.displayName || member.user.email}
+                                </span>
+                              </label>
+                            ))
+                          )}
                         </div>
+                        {newTask.assignedToIds.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {newTask.assignedToIds.length} member{newTask.assignedToIds.length > 1 ? 's' : ''} selected
+                          </div>
+                        )}
                       </div>
                       <div>
                         <Label>Priority</Label>
@@ -697,6 +847,8 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                           index={index}
                           onDelete={handleDeleteTask}
                           onComplete={handleCompleteTask}
+                          teamMembers={teamMembers}
+                          onAssigneesChange={handleAssigneesChange}
                         />
                       ))
                     )}
@@ -740,6 +892,8 @@ export default function BoardViewPage({ params }: { params: Promise<{ teamId: st
                 index={0}
                 onDelete={handleDeleteTask}
                 onComplete={handleCompleteTask}
+                teamMembers={teamMembers}
+                onAssigneesChange={handleAssigneesChange}
               />
             </div>
           ) : null}

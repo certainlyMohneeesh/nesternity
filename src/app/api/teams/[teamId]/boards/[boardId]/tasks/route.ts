@@ -46,10 +46,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const where: any = {
       boardId,
       ...(listId && { listId }),
-      ...(assignedTo && { assignedTo }),
       ...(priority && { priority }),
       ...(status && { status })
     };
+
+    // Filter by assignee using the junction table
+    if (assignedTo) {
+      where.assignees = {
+        some: {
+          userId: assignedTo
+        }
+      };
+    }
 
     // Handle archived filter - default to false if not specified
     if (archived === 'true') {
@@ -68,8 +76,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         list: {
           select: { id: true, name: true, color: true }
         },
-        assignee: {
-          select: { id: true, email: true, displayName: true, avatarUrl: true }
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, email: true, displayName: true, avatarUrl: true }
+            }
+          },
+          orderBy: { assignedAt: 'asc' }
         },
         creator: {
           select: { id: true, email: true, displayName: true }
@@ -124,7 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       title, 
       description, 
       listId, 
-      assignedTo, 
+      assignedToIds, // Changed: now accepts array of user IDs
       priority, 
       dueDate, 
       estimatedHours,
@@ -161,28 +174,40 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const position = (lastTask?.position || 0) + 1;
 
-    // Create the task
+    // Create the task with assignees
     const task = await (db as any).task.create({
       data: {
         title,
         description,
         boardId,
         listId,
-        assignedTo,
         createdBy: user.id,
         priority: priority || 'MEDIUM',
         status: 'TODO',
         position,
         dueDate: dueDate ? new Date(dueDate) : null,
         estimatedHours,
-        tags: tags || []
+        tags: tags || [],
+        // Create assignee records if assignedToIds provided
+        ...(assignedToIds && assignedToIds.length > 0 && {
+          assignees: {
+            create: assignedToIds.map((userId: string) => ({
+              userId
+            }))
+          }
+        })
       },
       include: {
         list: {
           select: { id: true, name: true, color: true }
         },
-        assignee: {
-          select: { id: true, email: true, displayName: true, avatarUrl: true }
+        assignees: {
+          include: {
+            user: {
+              select: { id: true, email: true, displayName: true, avatarUrl: true }
+            }
+          },
+          orderBy: { assignedAt: 'asc' }
         },
         creator: {
           select: { id: true, email: true, displayName: true }
@@ -206,10 +231,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Send notification if task is assigned to someone else
-    if (assignedTo && assignedTo !== user.id) {
+    // Send notifications to all assigned users (except the creator)
+    if (assignedToIds && assignedToIds.length > 0) {
       try {
-        // Get board info for the notification - include organisationId and projectId directly
+        // Get board info for the notification
         const boardInfo = await (db as any).board.findUnique({
           where: { id: boardId },
           select: {
@@ -229,36 +254,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         });
 
-        // Prioritize board's own organisationId and projectId
         const organisationId = boardInfo?.organisationId || 
                                 boardInfo?.team?.organisation?.id || 
                                 boardInfo?.team?.projects?.[0]?.organisationId;
         const projectId = boardInfo?.projectId || boardInfo?.team?.projects?.[0]?.id;
 
-        console.log('[TaskAPI] Notification metadata:', { 
-          organisationId, 
-          projectId, 
-          teamId, 
-          boardId,
-          boardOrganisationId: boardInfo?.organisationId,
-          boardProjectId: boardInfo?.projectId
-        });
-
-        await createTaskAssignmentNotification(
-          assignedTo,
-          user.id,
-          task.id,
-          title,
-          description || '',
-          boardId,
-          boardInfo?.name || 'Board',
-          teamId,
-          priority,
-          dueDate ? new Date(dueDate) : undefined,
-          organisationId,
-          projectId
-        );
-        console.log(`[TaskAPI] Assignment notification sent to user: ${assignedTo}`);
+        // Send notification to each assignee (except creator)
+        for (const assigneeId of assignedToIds) {
+          if (assigneeId !== user.id) {
+            await createTaskAssignmentNotification(
+              assigneeId,
+              user.id,
+              task.id,
+              title,
+              description || '',
+              boardId,
+              boardInfo?.name || 'Board',
+              teamId,
+              priority,
+              dueDate ? new Date(dueDate) : undefined,
+              organisationId,
+              projectId
+            );
+            console.log(`[TaskAPI] Assignment notification sent to user: ${assigneeId}`);
+          }
+        }
       } catch (notifError) {
         console.error('[TaskAPI] Failed to send assignment notification:', notifError);
       }

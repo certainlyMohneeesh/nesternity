@@ -13,21 +13,28 @@ interface List {
   };
 }
 
+interface TaskAssignee {
+  id: string;
+  userId: string;
+  assignedAt: string;
+  user: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+}
+
 interface Task {
   id: string;
   title: string;
   description: string;
   listId: string;
-  assignedTo: string | null;
   status: string;
   priority: string;
   dueDate: string | null;
   position: number;
-  assignee?: { 
-    displayName: string; 
-    id: string; 
-    email: string;
-  };
+  assignees: TaskAssignee[];
   list: {
     id: string;
     name: string;
@@ -42,6 +49,7 @@ interface TeamMember {
     displayName: string; 
     id: string; 
     email: string;
+    avatarUrl?: string;
   };
 }
 
@@ -89,7 +97,7 @@ export function useBoardTasks(teamId: string, boardId: string, enabled = true) {
       return response.tasks || [];
     },
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always refetch for real-time updates
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 }
@@ -116,7 +124,7 @@ export function useCreateTask(teamId: string, boardId: string) {
       title: string;
       description: string;
       listId: string;
-      assignedTo: string | null;
+      assignedToIds?: string[];
       priority: string;
       dueDate: string | null;
     }) => {
@@ -136,7 +144,7 @@ export function useCreateTask(teamId: string, boardId: string) {
         title: newTask.title,
         description: newTask.description,
         listId: newTask.listId,
-        assignedTo: newTask.assignedTo,
+        assignees: [],
         status: "TODO",
         priority: newTask.priority,
         dueDate: newTask.dueDate,
@@ -159,13 +167,8 @@ export function useCreateTask(teamId: string, boardId: string) {
       toast.error(err instanceof APIError ? err.message : "Failed to create task");
     },
     onSuccess: (data, variables, context) => {
-      // Replace optimistic task with real task
-      queryClient.setQueryData<Task[]>(
-        boardQueryKeys.tasks(teamId, boardId),
-        (old) => old?.map(task => 
-          task.id === context?.optimisticTask.id ? data : task
-        ) || []
-      );
+      // Invalidate to get fresh data with all relations
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.tasks(teamId, boardId) });
       toast.success("Task created successfully");
     },
   });
@@ -176,8 +179,8 @@ export function useUpdateTask(teamId: string, boardId: string) {
   
   return useMutation({
     mutationFn: async ({ taskId, updates }: { taskId: string; updates: any }) => {
-      await api.updateTask(teamId, boardId, taskId, updates);
-      return { taskId, updates };
+      const response = await api.updateTask(teamId, boardId, taskId, updates);
+      return response.task; // Return the updated task from server
     },
     onMutate: async ({ taskId, updates }) => {
       // Cancel any outgoing refetches
@@ -186,13 +189,21 @@ export function useUpdateTask(teamId: string, boardId: string) {
       // Snapshot the previous value
       const previousTasks = queryClient.getQueryData<Task[]>(boardQueryKeys.tasks(teamId, boardId));
       
-      // Optimistically update task
-      queryClient.setQueryData<Task[]>(
-        boardQueryKeys.tasks(teamId, boardId),
-        (old) => old?.map(task => 
-          task.id === taskId ? { ...task, ...updates } : task
-        ) || []
-      );
+      // For archived tasks (completed/deleted), remove from UI immediately
+      if (updates.archived === true) {
+        queryClient.setQueryData<Task[]>(
+          boardQueryKeys.tasks(teamId, boardId),
+          (old) => old?.filter(task => task.id !== taskId) || []
+        );
+      } else {
+        // Optimistically update task for other updates
+        queryClient.setQueryData<Task[]>(
+          boardQueryKeys.tasks(teamId, boardId),
+          (old) => old?.map(task => 
+            task.id === taskId ? { ...task, ...updates } : task
+          ) || []
+        );
+      }
       
       return { previousTasks };
     },
@@ -202,6 +213,10 @@ export function useUpdateTask(teamId: string, boardId: string) {
         queryClient.setQueryData(boardQueryKeys.tasks(teamId, boardId), context.previousTasks);
       }
       toast.error(err instanceof APIError ? err.message : "Failed to update task");
+    },
+    onSuccess: (data, variables) => {
+      // Always invalidate to ensure UI is in sync with server
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.tasks(teamId, boardId) });
     },
   });
 }
@@ -221,7 +236,7 @@ export function useDeleteTask(teamId: string, boardId: string) {
       // Snapshot the previous value
       const previousTasks = queryClient.getQueryData<Task[]>(boardQueryKeys.tasks(teamId, boardId));
       
-      // Optimistically remove task
+      // Optimistically remove task from UI
       queryClient.setQueryData<Task[]>(
         boardQueryKeys.tasks(teamId, boardId),
         (old) => old?.filter(task => task.id !== taskId) || []
@@ -236,7 +251,9 @@ export function useDeleteTask(teamId: string, boardId: string) {
       }
       toast.error(err instanceof APIError ? err.message : "Failed to delete task");
     },
-    onSuccess: (taskId) => {
+    onSuccess: () => {
+      // Invalidate to ensure UI is in sync
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.tasks(teamId, boardId) });
       toast.success("Task deleted successfully");
     },
   });
