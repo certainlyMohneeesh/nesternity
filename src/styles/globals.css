@@ -177,6 +177,36 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Cursor pointer for all clickable elements */
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  a,
+  label[for],
+  select,
+  summary,
+  [tabindex]:not([tabindex="-1"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="image"],
+  input[type="range"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  /* Ensure disabled elements show not-allowed cursor */
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+
   h1,
   h2,
   h3,
