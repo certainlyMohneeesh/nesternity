@@ -258,7 +258,7 @@ export function ProjectList({ organisationId }: ProjectListProps) {
                   <div className="px-1 py-2">
                     <Slider
                       defaultValue={[budget]}
-                      max={1000000} // This should ideally be dynamic or higher
+                      max={1000000000} // This should ideally be dynamic or higher
                       step={100}
                       onValueCommit={(value) => {
                         handleBudgetChange(value);
