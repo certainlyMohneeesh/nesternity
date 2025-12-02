@@ -23,7 +23,7 @@ const projectNavLinks = [
   { href: "/contracts", label: "Contracts", icon: FileSignature, requiresFinancialAccess: true },
   { href: "/invoices", label: "Invoices", icon: Receipt, requiresFinancialAccess: true },
   { href: "/issues", label: "Issues", icon: AlertCircle },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Project Settings", icon: Settings },
 ];
 
 export default function ProjectLayout({
