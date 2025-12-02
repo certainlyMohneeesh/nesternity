@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { getSessionToken } from '@/lib/supabase/client-session';
 import { getCurrencySymbol } from '@/lib/utils';
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 
 interface Project {
   id: string;
@@ -38,6 +39,9 @@ export function ProjectList({ organisationId }: ProjectListProps) {
   const [showModal, setShowModal] = useState(false);
   const [canCreateMore, setCanCreateMore] = useState(true);
   const [limits, setLimits] = useState({ current: 0, limit: 0 });
+  
+  // Check if user has financial access (org owner)
+  const { hasAccess: hasFinancialAccess, loading: accessLoading } = useFinancialAccess(organisationId);
 
   const fetchProjects = async () => {
     console.log('[ProjectList] ========== FETCH START ==========');
@@ -253,83 +257,85 @@ export function ProjectList({ organisationId }: ProjectListProps) {
               </div>
             )}
 
-            {/* Budget Section */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <DollarSign className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span>Budget</span>
-                </div>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {currencySymbol}{(showSlider ? sliderValue : budget).toLocaleString()}
-                </span>
-              </div>
-
-              <div onClick={(e) => e.stopPropagation()}>
-                {!showSlider ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs h-7"
-                    onClick={() => setShowSlider(true)}
-                  >
-                    Adjust Budget
-                  </Button>
-                ) : (
-                  <div className="space-y-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                    {/* Min/Max labels */}
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>{currencySymbol}0</span>
-                      <span>{currencySymbol}{dynamicMax.toLocaleString()}</span>
-                    </div>
-                    
-                    {/* Slider */}
-                    <Slider
-                      value={[sliderValue]}
-                      min={0}
-                      max={dynamicMax}
-                      step={stepSize}
-                      onValueChange={handleSliderChange}
-                      onValueCommit={handleBudgetCommit}
-                      disabled={isUpdating}
-                      className="py-2"
-                    />
-                    
-                    {/* Current value display */}
-                    <div className="text-center">
-                      <span className="text-lg font-bold text-primary">
-                        {currencySymbol}{sliderValue.toLocaleString()}
-                      </span>
-                      {sliderValue !== budget && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          (was {currencySymbol}{budget.toLocaleString()})
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-1">
-                      {isUpdating && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Saving...
-                        </span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs h-6 px-2 ml-auto"
-                        onClick={() => {
-                          setSliderValue(budget);
-                          setShowSlider(false);
-                        }}
-                      >
-                        Done
-                      </Button>
-                    </div>
+            {/* Budget Section - Only visible to org owners */}
+            {hasFinancialAccess && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <DollarSign className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span>Budget</span>
                   </div>
-                )}
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    {currencySymbol}{(showSlider ? sliderValue : budget).toLocaleString()}
+                  </span>
+                </div>
+
+                <div onClick={(e) => e.stopPropagation()}>
+                  {!showSlider ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs h-7"
+                      onClick={() => setShowSlider(true)}
+                    >
+                      Adjust Budget
+                    </Button>
+                  ) : (
+                    <div className="space-y-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                      {/* Min/Max labels */}
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>{currencySymbol}0</span>
+                        <span>{currencySymbol}{dynamicMax.toLocaleString()}</span>
+                      </div>
+                      
+                      {/* Slider */}
+                      <Slider
+                        value={[sliderValue]}
+                        min={0}
+                        max={dynamicMax}
+                        step={stepSize}
+                        onValueChange={handleSliderChange}
+                        onValueCommit={handleBudgetCommit}
+                        disabled={isUpdating}
+                        className="py-2"
+                      />
+                      
+                      {/* Current value display */}
+                      <div className="text-center">
+                        <span className="text-lg font-bold text-primary">
+                          {currencySymbol}{sliderValue.toLocaleString()}
+                        </span>
+                        {sliderValue !== budget && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            (was {currencySymbol}{budget.toLocaleString()})
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center pt-1">
+                        {isUpdating && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Saving...
+                          </span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-6 px-2 ml-auto"
+                          onClick={() => {
+                            setSliderValue(budget);
+                            setShowSlider(false);
+                          }}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Dates */}
             {(project.startDate || project.endDate) && (

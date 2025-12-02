@@ -12,6 +12,7 @@ import { useSession } from "@/components/auth/session-context";
 import { toast } from "sonner";
 import RecurringInvoicesOverview from "@/components/dashboard/RecurringInvoicesOverview";
 import ScopeRadarWidget from "@/components/dashboard/ScopeRadarWidget";
+import { useFinancialAccess } from "@/hooks/use-financial-access";
 import {
   Users,
   Calendar,
@@ -37,6 +38,9 @@ export default function ProjectDashboard() {
   const projectId = params.projectId as string;
 
   const { session, loading: sessionLoading } = useSession();
+  
+  // Check if user has financial access (org owner only)
+  const { hasAccess: hasFinancialAccess, loading: accessLoading } = useFinancialAccess(orgId);
 
   // React Query hook for dashboard data filtered by organisation and project
   const {
@@ -158,35 +162,40 @@ export default function ProjectDashboard() {
               </Button>
             </Link>
 
-            <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals`}>
-              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
-                <FileText className="h-4 w-4 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="font-medium text-sm sm:text-base">Proposals</div>
-                  <div className="text-xs text-muted-foreground hidden sm:block">View proposals</div>
-                </div>
-              </Button>
-            </Link>
+            {/* Financial Quick Actions - Only visible to org owners */}
+            {hasFinancialAccess && (
+              <>
+                <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/proposals`}>
+                  <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
+                    <FileText className="h-4 w-4 flex-shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium text-sm sm:text-base">Proposals</div>
+                      <div className="text-xs text-muted-foreground hidden sm:block">View proposals</div>
+                    </div>
+                  </Button>
+                </Link>
 
-            <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/contracts`}>
-              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
-                <FileCheck className="h-4 w-4 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="font-medium text-sm sm:text-base">Contracts</div>
-                  <div className="text-xs text-muted-foreground hidden sm:block">Manage contracts</div>
-                </div>
-              </Button>
-            </Link>
+                <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/contracts`}>
+                  <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
+                    <FileCheck className="h-4 w-4 flex-shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium text-sm sm:text-base">Contracts</div>
+                      <div className="text-xs text-muted-foreground hidden sm:block">Manage contracts</div>
+                    </div>
+                  </Button>
+                </Link>
 
-            <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices`}>
-              <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
-                <DollarSign className="h-4 w-4 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="font-medium text-sm sm:text-base">Invoices</div>
-                  <div className="text-xs text-muted-foreground hidden sm:block">View invoices</div>
-                </div>
-              </Button>
-            </Link>
+                <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices`}>
+                  <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4">
+                    <DollarSign className="h-4 w-4 flex-shrink-0" />
+                    <div className="text-left">
+                      <div className="font-medium text-sm sm:text-base">Invoices</div>
+                      <div className="text-xs text-muted-foreground hidden sm:block">View invoices</div>
+                    </div>
+                  </Button>
+                </Link>
+              </>
+            )}
 
             <Button variant="outline" className="w-full justify-start gap-2 h-auto p-3 sm:p-4" onClick={() => fetchDashboardData()}>
               <TrendingUp className="h-4 w-4 flex-shrink-0" />
@@ -367,22 +376,23 @@ export default function ProjectDashboard() {
         </Card>
       </div>
 
-      {/* Recurring Invoices & Budget Monitor */}
-      {/* Show this section if project has recurring invoices OR has any invoices (for budget monitoring) */}
-      <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
-        {/* Recurring Invoices Overview */}
-        {data.recurringInvoices && data.recurringInvoices.length > 0 && (
-          <RecurringInvoicesOverview invoices={data.recurringInvoices} orgId={orgId} projectId={projectId} />
-        )}
+      {/* Recurring Invoices & Budget Monitor - Only visible to org owners */}
+      {hasFinancialAccess && (
+        <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
+          {/* Recurring Invoices Overview */}
+          {data.recurringInvoices && data.recurringInvoices.length > 0 && (
+            <RecurringInvoicesOverview invoices={data.recurringInvoices} orgId={orgId} projectId={projectId} />
+          )}
 
-        {/* Budget Monitor - Always show for projects (uses project budget) */}
-        <ScopeRadarWidget
-          projectId={projectId}
-          clientId={data.clients?.[0]?.id}
-          userId={session?.user?.id || ""}
-          compact={false}
-        />
-      </div>
+          {/* Budget Monitor - Only show for org owners */}
+          <ScopeRadarWidget
+            projectId={projectId}
+            clientId={data.clients?.[0]?.id}
+            userId={session?.user?.id || ""}
+            compact={false}
+          />
+        </div>
+      )}
 
       {/* Recent Completed Tasks */}
       {data.recentCompletedTasks.length > 0 && (
