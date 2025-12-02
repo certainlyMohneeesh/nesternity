@@ -1,3 +1,7 @@
+<div align="center">
+
+<img src="https://github.com/user-attachments/assets/386145f5-ebe0-4509-a72c-164005123716" alt="Nesternity Logo" width="200" />
+
 # 🪺 Nesternity
 
 **The Freelancer's Nest for Clients, Teams & Clarity**
@@ -10,6 +14,8 @@ A modern, AI-powered workspace for managing clients, projects, tasks, and invoic
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](./LICENSE)
 
 [Live Demo](https://nesternity.vercel.app) • [Documentation](./DEVELOPER_GUIDE.md) • [Getting Started](#-quick-start)
+
+</div>
 
 ---
 
