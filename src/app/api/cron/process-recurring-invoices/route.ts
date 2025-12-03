@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db';
 import { addDays, addWeeks, addMonths, addYears, isPast, isToday } from 'date-fns';
 import { generateRecurringInvoiceEmail } from '@/lib/ai/email-templates';
 import { createRecurringInvoiceNotification, ACTIVITY_TYPES } from '@/lib/notifications';
+import { sendInvoiceEmail } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   try {
@@ -206,6 +207,18 @@ export async function GET(request: NextRequest) {
             //   subject: `Invoice ${newInvoiceNumber} - ${parentInvoice.client.name}`,
             //   html: emailHtml,
             // });
+
+            const emailResult = await sendInvoiceEmail({
+              recipientEmail: parentInvoice.client.email,
+              ccEmails: parentInvoice.recipientEmails.length > 0 ? parentInvoice.recipientEmails : undefined,
+              clientName: parentInvoice.client.name,
+              invoiceNumber: newInvoiceNumber,
+              emailHtml,
+            });
+
+            if (!emailResult.success) {
+              throw new Error(emailResult.error || 'Failed to send email');
+            }
 
             emailSent = true;
             console.log(`📧 Email sent to ${parentInvoice.client.email}`);

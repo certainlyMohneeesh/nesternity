@@ -544,3 +544,48 @@ export async function sendProposalEmail(data: ProposalEmailData): Promise<{ succ
     return { success: false, error: 'Failed to send proposal email' };
   }
 }
+
+// Invoice Email Interface
+export interface InvoiceEmailData {
+  recipientEmail: string;
+  ccEmails?: string[];
+  clientName: string;
+  invoiceNumber: string;
+  emailHtml: string;
+}
+
+export async function sendInvoiceEmail(data: InvoiceEmailData): Promise<{ success: boolean; error?: string; emailId?: string }> {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY not configured');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    console.log('📧 Sending invoice email to:', data.recipientEmail);
+
+    const emailOptions: any = {
+      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+      to: [data.recipientEmail],
+      subject: `Invoice ${data.invoiceNumber} - ${data.clientName}`,
+      html: data.emailHtml,
+    };
+
+    // Add CC recipients if provided
+    if (data.ccEmails && data.ccEmails.length > 0) {
+      emailOptions.cc = data.ccEmails;
+    }
+
+    const { data: emailResult, error } = await resend.emails.send(emailOptions);
+
+    if (error) {
+      console.error('❌ Invoice email failed:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('✅ Invoice email sent successfully:', emailResult?.id);
+    return { success: true, emailId: emailResult?.id };
+  } catch (error) {
+    console.error('❌ Invoice email service error:', error);
+    return { success: false, error: 'Failed to send invoice email' };
+  }
+}
