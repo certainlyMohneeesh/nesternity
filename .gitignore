@@ -42,3 +42,4 @@ next-env.d.ts
 
 /generated/prisma
 AI-Model-docs/contracts.csv
+package-lock.json
