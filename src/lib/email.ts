@@ -563,7 +563,13 @@ export async function sendInvoiceEmail(data: InvoiceEmailData): Promise<{ succes
 
     console.log('📧 Sending invoice email to:', data.recipientEmail);
 
-    const emailOptions: any = {
+    const emailOptions: {
+      from: string;
+      to: string[];
+      subject: string;
+      html: string;
+      cc?: string[];
+    } = {
       from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
       to: [data.recipientEmail],
       subject: `Invoice ${data.invoiceNumber} - ${data.clientName}`,

@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
 
             const emailResult = await sendInvoiceEmail({
               recipientEmail: parentInvoice.client.email,
-              ccEmails: parentInvoice.recipientEmails.length > 0 ? parentInvoice.recipientEmails : undefined,
+              ccEmails: parentInvoice.recipientEmails,
               clientName: parentInvoice.client.name,
               invoiceNumber: newInvoiceNumber,
               emailHtml,
