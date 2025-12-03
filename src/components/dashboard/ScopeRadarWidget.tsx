@@ -159,6 +159,39 @@ export default function ScopeRadarWidget({
       .join('');
   };
 
+  // Sanitize email HTML for preview: remove <style> tags and inline styles
+  const sanitizeEmailHtml = (html: string) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      // Remove <style> and <link rel="stylesheet"> tags from the email HTML
+      doc.querySelectorAll('style, link[rel="stylesheet"]').forEach((el) => el.remove());
+
+      // Remove inline style, bgcolor, color and align attributes from all elements
+      doc.querySelectorAll('*').forEach((el) => {
+        el.removeAttribute('style');
+        el.removeAttribute('bgcolor');
+        el.removeAttribute('color');
+        el.removeAttribute('align');
+      });
+
+      // Replace legacy <font> tags with their inner content inside a span
+      const fonts = Array.from(doc.getElementsByTagName('font'));
+      fonts.forEach((f) => {
+        const span = doc.createElement('span');
+        while (f.firstChild) span.appendChild(f.firstChild);
+        f.parentNode?.replaceChild(span, f);
+      });
+
+      return doc.body.innerHTML;
+    } catch (e) {
+      // If sanitization fails, fallback to returning original HTML
+      console.error('[ScopeRadarWidget] sanitizeEmailHtml error', e);
+      return html;
+    }
+  };
+
   // Initialize user details on mount
   useEffect(() => {
     fetchUserDetails();
@@ -660,8 +693,8 @@ export default function ScopeRadarWidget({
                             <div className="flex-1 overflow-hidden flex flex-col space-y-1">
                               <Label className="text-xs font-semibold text-muted-foreground">Email Content</Label>
                               <div
-                                className="flex-1 p-4 border rounded-md overflow-y-auto prose prose-sm max-w-none bg-white"
-                                dangerouslySetInnerHTML={{ __html: emailData.body }}
+                                className="flex-1 p-4 border rounded-md overflow-y-auto prose prose-sm max-w-none bg-white dark:bg-slate-900 dark:prose-invert"
+                                dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(emailData.body) }}
                               />
                             </div>
                           </div>
