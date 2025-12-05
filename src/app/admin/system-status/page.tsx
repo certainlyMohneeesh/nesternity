@@ -117,7 +117,7 @@ export default function SystemStatusPage() {
       description: 'User authentication and session management'
     },
     {
-      name: 'Email Service (Resend)',
+      name: 'Email Service (ZeptoMail)',
       icon: Mail,
       status: status.email,
       description: 'Email delivery for invitations and notifications'

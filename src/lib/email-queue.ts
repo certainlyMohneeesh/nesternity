@@ -1,11 +1,18 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { redis } from './redis';
-import { Resend } from 'resend';
+import { SendMailClient } from 'zeptomail';
+
+// ZeptoMail Configuration
+const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
 
 // Email job types
 export interface EmailJob {
   type: 'team-invite' | 'password-reset' | 'notification';
   to: string;
+  toName?: string;
   subject: string;
   html: string;
   text: string;
@@ -13,20 +20,19 @@ export interface EmailJob {
   delay?: number;
 }
 
-// Optimized Resend client with connection pooling
-class ResendService {
-  private static instance: Resend | null = null;
-  private static connectionPool: Map<string, Resend> = new Map();
+// ZeptoMail client singleton
+class ZeptoMailService {
+  private static instance: SendMailClient | null = null;
   
-  static getInstance(): Resend {
-    if (!ResendService.instance) {
-      if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is required');
+  static getInstance(): SendMailClient {
+    if (!ZeptoMailService.instance) {
+      if (!ZEPTOMAIL_TOKEN) {
+        throw new Error('ZEPTOMAIL_TOKEN is required');
       }
       
-      ResendService.instance = new Resend(process.env.RESEND_API_KEY);
+      ZeptoMailService.instance = new SendMailClient({ url: ZEPTOMAIL_URL, token: ZEPTOMAIL_TOKEN });
     }
-    return ResendService.instance;
+    return ZeptoMailService.instance;
   }
 }
 
@@ -58,7 +64,7 @@ const RATE_LIMITS = {
 export const emailWorker = new Worker(
   'email',
   async (job: Job<EmailJob>) => {
-    const { type, to, subject, html, text, priority } = job.data;
+    const { type, to, toName, subject, html, text } = job.data;
     
     try {
       console.log(`📧 Processing ${type} email to ${to}...`);
@@ -66,33 +72,35 @@ export const emailWorker = new Worker(
       // Rate limiting check
       await checkRateLimit(type, to);
       
-      const resend = ResendService.getInstance();
+      const zeptoClient = ZeptoMailService.getInstance();
       
-      const result = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-        to: [to],
-        subject,
-        html,
-        text,
-        // Add tags for tracking
-        tags: [
-          { name: 'type', value: type },
-          { name: 'environment', value: process.env.NODE_ENV || 'development' }
+      const result = await zeptoClient.sendMail({
+        from: {
+          address: FROM_EMAIL,
+          name: FROM_NAME,
+        },
+        to: [
+          {
+            email_address: {
+              address: to,
+              name: toName || to,
+            },
+          },
         ],
+        subject,
+        htmlbody: html,
+        textbody: text,
+        client_reference: `${type}-${job.id}`,
       });
 
-      if (result.error) {
-        throw new Error(`Resend error: ${result.error.message}`);
-      }
-
-      console.log(`✅ Email sent successfully: ${result.data?.id}`);
+      console.log(`✅ Email sent successfully: ${result?.request_id}`);
       
       // Update success metrics
       await updateEmailMetrics(type, 'success');
       
       return {
         success: true,
-        messageId: result.data?.id,
+        messageId: result?.request_id,
         timestamp: new Date().toISOString(),
       };
       

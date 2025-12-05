@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { SendMailClient } from 'zeptomail';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ZeptoMail Configuration
+const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
+
+// Initialize ZeptoMail client
+let zeptoClient: SendMailClient | null = null;
+
+function getZeptoClient(): SendMailClient {
+  if (!zeptoClient) {
+    if (!ZEPTOMAIL_TOKEN) {
+      throw new Error('ZEPTOMAIL_TOKEN is not configured');
+    }
+    zeptoClient = new SendMailClient({ url: ZEPTOMAIL_URL, token: ZEPTOMAIL_TOKEN });
+  }
+  return zeptoClient;
+}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -176,9 +193,9 @@ export async function POST(req: NextRequest) {
       requestId,
     });
 
-    // 7. Check Resend configuration
-    if (!process.env.RESEND_API_KEY) {
-      console.error('[Budget Warning Email] ❌ RESEND_API_KEY not configured', {
+    // 7. Check ZeptoMail configuration
+    if (!ZEPTOMAIL_TOKEN) {
+      console.error('[Budget Warning Email] ❌ ZEPTOMAIL_TOKEN not configured', {
         requestId,
       });
       return NextResponse.json(
@@ -187,79 +204,91 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     console.log('[Budget Warning Email] Email service configuration:', {
-      fromEmail,
-      hasApiKey: !!process.env.RESEND_API_KEY,
-      apiKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...',
+      fromEmail: FROM_EMAIL,
+      fromName: FROM_NAME,
+      hasToken: !!ZEPTOMAIL_TOKEN,
       requestId,
     });
 
-    // 8. Send email via Resend
-    console.log('[Budget Warning Email] Step 5: Sending email via Resend...');
+    // 8. Send email via ZeptoMail
+    console.log('[Budget Warning Email] Step 5: Sending email via ZeptoMail...');
     const sendStartTime = Date.now();
     
-    const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: fromEmail,
-      to: [client.email],
-      subject: subject,
-      html: emailHtml,
-      replyTo: user.email || undefined,
-    });
+    try {
+      const zeptoClient = getZeptoClient();
+      const emailResult = await zeptoClient.sendMail({
+        from: {
+          address: FROM_EMAIL,
+          name: FROM_NAME,
+        },
+        to: [
+          {
+            email_address: {
+              address: client.email,
+              name: client.name || client.email,
+            },
+          },
+        ],
+        subject: subject,
+        htmlbody: emailHtml,
+        reply_to: user.email ? [{ address: user.email, name: user.email }] : undefined,
+      });
 
-    const sendDuration = Date.now() - sendStartTime;
+      const sendDuration = Date.now() - sendStartTime;
 
-    if (emailError) {
-      console.error('[Budget Warning Email] ❌ Resend API error:', {
+      console.log('[Budget Warning Email] ✅ Email sent successfully:', {
+        emailId: emailResult?.request_id,
+        recipientEmail: client.email,
+        recipientName: client.name,
+        subject: subject,
+        sendDuration: `${sendDuration}ms`,
+        requestId,
+      });
+
+      // 9. Log activity (optional - requires teamId, so skipping for now)
+      console.log('[Budget Warning Email] Step 6: Activity logging skipped (requires team context)');
+      console.log('[Budget Warning Email] Email details logged:', {
+        clientId: client.id,
+        clientEmail: client.email,
+        emailSubject: subject,
+        emailId: emailResult?.request_id,
+        senderName,
+        senderTitle,
+        senderCompany,
+        requestId,
+      });
+
+      const totalDuration = Date.now() - startTime;
+      console.log(`[Budget Warning Email] ========== REQUEST COMPLETE [${requestId}] ==========`);
+      console.log('[Budget Warning Email] Total Duration:', `${totalDuration}ms`);
+      console.log('[Budget Warning Email] Success: true\n');
+
+      return NextResponse.json({
+        success: true,
+        emailId: emailResult?.request_id,
+        recipient: {
+          email: client.email,
+          name: client.name,
+        },
+        duration: totalDuration,
+      });
+    } catch (emailError) {
+      const sendDuration = Date.now() - sendStartTime;
+      const errorMessage = emailError instanceof Error ? emailError.message : 'Unknown error';
+      
+      console.error('[Budget Warning Email] ❌ ZeptoMail API error:', {
         error: emailError,
-        errorMessage: emailError.message,
-        errorName: emailError.name,
+        errorMessage,
         clientEmail: client.email,
         sendDuration: `${sendDuration}ms`,
         requestId,
       });
       return NextResponse.json(
-        { error: 'Failed to send email', details: emailError.message },
+        { error: 'Failed to send email', details: errorMessage },
         { status: 500 }
       );
     }
-
-    console.log('[Budget Warning Email] ✅ Email sent successfully:', {
-      emailId: emailResult?.id,
-      recipientEmail: client.email,
-      recipientName: client.name,
-      subject: subject,
-      sendDuration: `${sendDuration}ms`,
-      requestId,
-    });
-
-    // 9. Log activity (optional - requires teamId, so skipping for now)
-    console.log('[Budget Warning Email] Step 6: Activity logging skipped (requires team context)');
-    console.log('[Budget Warning Email] Email details logged:', {
-      clientId: client.id,
-      clientEmail: client.email,
-      emailSubject: subject,
-      emailId: emailResult?.id,
-      senderName,
-      senderTitle,
-      senderCompany,
-      requestId,
-    });
-
-    const totalDuration = Date.now() - startTime;
-    console.log(`[Budget Warning Email] ========== REQUEST COMPLETE [${requestId}] ==========`);
-    console.log('[Budget Warning Email] Total Duration:', `${totalDuration}ms`);
-    console.log('[Budget Warning Email] Success: true\n');
-
-    return NextResponse.json({
-      success: true,
-      emailId: emailResult?.id,
-      recipient: {
-        email: client.email,
-        name: client.name,
-      },
-      duration: totalDuration,
-    });
 
   } catch (error) {
     const totalDuration = Date.now() - startTime;

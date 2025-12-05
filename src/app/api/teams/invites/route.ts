@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { Resend } from 'resend';
+import { SendMailClient } from 'zeptomail';
 import { nanoid } from 'nanoid';
 import { createInviteNotification, createInviteReceivedNotification, ACTIVITY_TYPES } from '@/lib/notifications';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ZeptoMail Configuration
+const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
+
+// Initialize ZeptoMail client
+let zeptoClient: SendMailClient | null = null;
+
+function getZeptoClient(): SendMailClient {
+  if (!zeptoClient) {
+    if (!ZEPTOMAIL_TOKEN) {
+      throw new Error('ZEPTOMAIL_TOKEN is not configured');
+    }
+    zeptoClient = new SendMailClient({ url: ZEPTOMAIL_URL, token: ZEPTOMAIL_TOKEN });
+  }
+  return zeptoClient;
+}
 
 // Get team invites
 export async function GET(request: NextRequest) {
@@ -177,17 +194,28 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Send email if Resend is configured
+    // Send email if ZeptoMail is configured
     let emailSent = false;
-    if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
+    if (ZEPTOMAIL_TOKEN) {
       try {
         const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${token_invite}`;
+        const zeptoClient = getZeptoClient();
         
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL,
-          to: email,
+        await zeptoClient.sendMail({
+          from: {
+            address: FROM_EMAIL,
+            name: FROM_NAME,
+          },
+          to: [
+            {
+              email_address: {
+                address: email,
+                name: email,
+              },
+            },
+          ],
           subject: `You're invited to join ${team.name}`,
-          html: `
+          htmlbody: `
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -487,17 +515,28 @@ export async function PATCH(request: NextRequest) {
       }
     });
 
-    // Send email if Resend is configured
+    // Send email if ZeptoMail is configured
     let emailSent = false;
-    if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
+    if (ZEPTOMAIL_TOKEN) {
       try {
         const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${newToken}`;
+        const zeptoClient = getZeptoClient();
         
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL,
-          to: invite.email,
+        await zeptoClient.sendMail({
+          from: {
+            address: FROM_EMAIL,
+            name: FROM_NAME,
+          },
+          to: [
+            {
+              email_address: {
+                address: invite.email,
+                name: invite.email,
+              },
+            },
+          ],
           subject: `Reminder: You're invited to join ${invite.team.name}`,
-          html: `
+          htmlbody: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2>Reminder: You're invited to join ${invite.team.name}</h2>
               <p>This is a reminder that you've been invited to join the team "${invite.team.name}" on Nesternity CRM.</p>

@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ZeptoMail Configuration
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
 
 export async function GET() {
   const status = {
-    database: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking database connection...', details: null as any },
-    auth: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking authentication service...', details: null as any },
-    email: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking email service...', details: null as any },
-    api: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking API endpoints...', details: null as any }
+    database: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking database connection...', details: null as unknown },
+    auth: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking authentication service...', details: null as unknown },
+    email: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking email service...', details: null as unknown },
+    api: { status: 'checking' as 'checking' | 'healthy' | 'error', message: 'Checking API endpoints...', details: null as unknown }
   };
 
   // Check Database
@@ -65,31 +66,30 @@ export async function GET() {
     };
   }
 
-  // Check Email Service
+  // Check Email Service (ZeptoMail)
   try {
-    if (!process.env.RESEND_API_KEY) {
+    if (!ZEPTOMAIL_TOKEN) {
       status.email = {
         status: 'error',
-        message: 'Resend API key not configured',
+        message: 'ZeptoMail API token not configured',
         details: null
       };
     } else {
-      // Just check if we can initialize Resend (don't send actual email)
-      const apiKey = process.env.RESEND_API_KEY;
       status.email = {
         status: 'healthy',
-        message: 'Resend service configured',
+        message: 'ZeptoMail service configured',
         details: {
-          apiKeyConfigured: !!apiKey,
-          fromEmail: process.env.RESEND_FROM_EMAIL
+          apiKeyConfigured: !!ZEPTOMAIL_TOKEN,
+          fromEmail: FROM_EMAIL
         }
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     status.email = {
       status: 'error',
       message: 'Email service check failed',
-      details: { error: error.message }
+      details: { error: errorMessage }
     };
   }
 

@@ -5,7 +5,7 @@ import { getCurrencySymbol } from '@/lib/utils';
 // ZeptoMail Configuration
 const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
 const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
-const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'notify@cyth.dev';
 const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
 
 // Initialize ZeptoMail client

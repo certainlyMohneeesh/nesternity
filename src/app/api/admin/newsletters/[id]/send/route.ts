@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getServerUser } from '@/lib/server-auth';
-import { Resend } from 'resend';
+import { SendMailClient } from 'zeptomail';
+
+// ZeptoMail Configuration
+const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.NEWSLETTER_FROM_EMAIL || process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
+
+// Initialize ZeptoMail client
+let zeptoClient: SendMailClient | null = null;
+
+function getZeptoClient(): SendMailClient {
+  if (!zeptoClient) {
+    if (!ZEPTOMAIL_TOKEN) {
+      throw new Error('ZEPTOMAIL_TOKEN is not configured');
+    }
+    zeptoClient = new SendMailClient({ url: ZEPTOMAIL_URL, token: ZEPTOMAIL_TOKEN });
+  }
+  return zeptoClient;
+}
 
 interface RouteParams {
     params: Promise<{ id: string }>
 }
-
-// Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // POST - Send newsletter to all active subscribers
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -55,15 +71,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        if (!process.env.RESEND_API_KEY) {
-            console.error('RESEND_API_KEY is not defined');
+        if (!ZEPTOMAIL_TOKEN) {
+            console.error('ZEPTOMAIL_TOKEN is not defined');
             return NextResponse.json(
-                { error: 'Email service not configured (RESEND_API_KEY missing)' },
+                { error: 'Email service not configured (ZEPTOMAIL_TOKEN missing)' },
                 { status: 500 }
             );
         }
 
-        // Send emails using Resend directly
+        // Send emails using ZeptoMail
+        const zeptoClient = getZeptoClient();
         const emailPromises = subscribers.map(async (subscriber) => {
             try {
                 // Create unsubscribe link
@@ -79,23 +96,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           </p>
         `;
 
-                // Send email via Resend
-                const { data, error } = await resend.emails.send({
-                    from: process.env.NEWSLETTER_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-                    to: subscriber.email,
+                // Send email via ZeptoMail
+                const result = await zeptoClient.sendMail({
+                    from: {
+                        address: FROM_EMAIL,
+                        name: FROM_NAME,
+                    },
+                    to: [
+                        {
+                            email_address: {
+                                address: subscriber.email,
+                                name: subscriber.email,
+                            },
+                        },
+                    ],
                     subject: newsletter.subject,
-                    html: htmlWithUnsubscribe,
-                    // text: newsletter.content // Optional: Add plain text version if needed
+                    htmlbody: htmlWithUnsubscribe,
                 });
 
-                if (error) {
-                    console.error(`Failed to send to ${subscriber.email}:`, error);
-                    return { success: false, email: subscriber.email, error };
-                }
-
-                return { success: true, email: subscriber.email, id: data?.id };
+                return { success: true, email: subscriber.email, id: result?.request_id };
             } catch (error) {
-                console.error(`Error sending to ${subscriber.email}:`, error);
+                console.error(`Failed to send to ${subscriber.email}:`, error);
                 return { success: false, email: subscriber.email, error };
             }
         });

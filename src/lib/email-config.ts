@@ -1,18 +1,18 @@
 // Configuration file to switch between email providers
 // Change this value to switch email systems
 
-export type EmailProvider = 'resend' | 'supabase-auth' | 'hybrid';
+export type EmailProvider = 'zeptomail' | 'supabase-auth' | 'hybrid';
 
 // 🎯 CHANGE THIS TO SWITCH EMAIL SYSTEMS:
-export const EMAIL_PROVIDER: EmailProvider = 'resend'; // Switched back to working system
+export const EMAIL_PROVIDER: EmailProvider = 'zeptomail'; // Using Zoho ZeptoMail
 
 // Provider-specific configurations
 export const EMAIL_CONFIG = {
-  'resend': {
-    name: 'Resend',
+  'zeptomail': {
+    name: 'Zoho ZeptoMail',
     free: false,
-    description: 'Professional email service with excellent deliverability',
-    cost: '100 emails/day free, then $20/month'
+    description: 'Professional transactional email service by Zoho with excellent deliverability',
+    cost: '10,000 emails free, then pay-as-you-go'
   },
   'supabase-auth': {
     name: 'Supabase Auth',
@@ -23,7 +23,7 @@ export const EMAIL_CONFIG = {
   'hybrid': {
     name: 'Hybrid (Auto-detect)',
     free: true,
-    description: 'Try Supabase first, fallback to Resend if needed',
+    description: 'Try Supabase first, fallback to ZeptoMail if needed',
     cost: 'FREE when Supabase works'
   }
 } as const;
