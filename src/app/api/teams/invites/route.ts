@@ -188,16 +188,83 @@ export async function POST(request: NextRequest) {
           to: email,
           subject: `You're invited to join ${team.name}`,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>You're invited to join ${team.name}</h2>
-              <p>You've been invited to join the team "${team.name}" on Nesternity CRM.</p>
-              <p>Click the link below to accept the invitation:</p>
-              <a href="${inviteUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
-              <p>Or copy and paste this link in your browser:</p>
-              <p style="background-color: #f8f9fa; padding: 8px; border-radius: 4px; font-family: monospace;">${inviteUrl}</p>
-              <p>This invitation will expire in 7 days.</p>
-              <p>If you don't have an account yet, you'll be able to create one when accepting the invitation.</p>
-            </div>
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Join the team</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; color: #111827; line-height: 1.6;">
+              
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb;">
+                  <tr>
+                      <td align="center" style="padding: 40px 20px;">
+                          
+                          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+                              
+                              <tr>
+                                  <td align="center" style="padding: 40px 40px 10px 40px;">
+                                      <img src="https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png" 
+                                          alt="Nesternity" 
+                                          width="140" 
+                                          style="display: block; width: 140px; height: auto; border: 0;">
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td style="padding: 30px 40px 40px 40px; text-align: center;">
+                                      
+                                      <div style="margin-bottom: 20px; font-size: 40px;">👋</div>
+
+                                      <h1 style="margin: 0 0 15px 0; font-size: 22px; font-weight: 700; color: #111827;">
+                                          You've been invited to join <br>
+                                          <span style="color: #2563eb;">${team.name}</span>
+                                      </h1>
+                                      
+                                      <p style="margin: 0 0 25px 0; font-size: 15px; color: #4b5563;">
+                                          Your teammates are using Nesternity to manage their projects and deliverables. Accept the invite to collaborate with them.
+                                      </p>
+
+                                      <div style="margin-bottom: 30px;">
+                                          <a href="${inviteUrl}" 
+                                            style="display: inline-block; background-color: #111827; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; border: 1px solid #111827;">
+                                              Join ${team.name}
+                                          </a>
+                                      </div>
+
+                                      <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+                                          This invitation expires in 7 days.
+                                      </p>
+                                      
+                                      <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #f3f4f6; text-align: left;">
+                                          <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase;">
+                                              Or paste this link:
+                                          </p>
+                                          <p style="margin: 0; font-size: 13px; color: #6b7280; word-break: break-all; font-family: monospace; background: #f3f4f6; padding: 8px; border-radius: 4px;">
+                                              ${inviteUrl}
+                                          </p>
+                                      </div>
+
+                                  </td>
+                              </tr>
+                          </table>
+
+                          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px;">
+                              <tr>
+                                  <td align="center" style="padding: 24px 0;">
+                                      <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                          © 2025 Nesternity.
+                                      </p>
+                                  </td>
+                              </tr>
+                          </table>
+
+                      </td>
+                  </tr>
+              </table>
+          </body>
+          </html>
           `,
         });
         emailSent = true;
