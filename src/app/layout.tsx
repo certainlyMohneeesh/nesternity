@@ -8,6 +8,7 @@ import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { seoConfig, getStructuredData } from "@/lib/seo";
+import { ProposalGenerationWidget } from "@/components/ai/ProposalGenerationWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -169,6 +170,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </QueryProvider>
           <CookieConsent />
           <Toaster position="bottom-center" richColors closeButton />
+          <ProposalGenerationWidget />
           <Analytics />
         </ThemeProvider>
 

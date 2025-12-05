@@ -1,6 +1,6 @@
 /**
  * POST /api/ai/proposal/generate
- * Generate AI-powered proposal from client brief
+ * Generate AI-powered proposal from client brief with history learning
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +10,7 @@ import { checkRateLimit } from '@/lib/ai/provider';
 import { enforceFeatureLimit } from '@/lib/middleware/subscription'
 import { incrementUsage } from '@/lib/usage'
 import { FeatureType } from '@prisma/client'
-import { createProposalPrompt } from '@/lib/ai/prompts';
+import { createProposalPrompt, type HistoricalProposal, type OrganizationContext } from '@/lib/ai/prompts';
 import { withCache } from '@/lib/ai/cache';
 import { prisma } from '@/lib/db';
 
@@ -20,6 +20,10 @@ interface GenerateProposalRequest {
   deliverables?: string[];
   budget?: number;
   timeline?: string;
+  organisationId?: string;
+  projectId?: string;
+  enableReasoning?: boolean;
+  enableHistoryLearning?: boolean;
 }
 
 interface ProposalResponse {
@@ -47,6 +51,79 @@ interface ProposalResponse {
   };
   paymentTerms: string;
   summary: string;
+  executiveSummary?: string;
+  scopeOfWork?: string;
+  reasoning?: {
+    pricingRationale: string;
+    timelineRationale: string;
+    risksIdentified: string[];
+    assumptions: string[];
+  };
+}
+
+/**
+ * Fetch historical proposals for learning
+ */
+async function fetchHistoricalProposals(
+  userId: string, 
+  organisationId?: string, 
+  limit = 10
+): Promise<HistoricalProposal[]> {
+  const proposals = await prisma.proposal.findMany({
+    where: {
+      createdBy: userId,
+      ...(organisationId && { organisationId }),
+      generatedByAI: true,
+      status: { in: ['ACCEPTED', 'REJECTED', 'SENT'] },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      brief: true,
+      deliverables: true,
+      pricing: true,
+      timeline: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  return proposals.map(p => ({
+    id: p.id,
+    title: p.title || 'Untitled',
+    brief: p.brief || '',
+    deliverables: Array.isArray(p.deliverables) 
+      ? (p.deliverables as Array<{ item: string }>).map(d => d.item || String(d))
+      : [],
+    pricing: {
+      amount: (p.pricing as { amount?: number })?.amount || 0,
+      currency: (p.pricing as { currency?: string })?.currency || 'INR',
+    },
+    timeline: (p.timeline as { total?: string })?.total || '',
+    status: p.status === 'ACCEPTED' ? 'accepted' : p.status === 'REJECTED' ? 'rejected' : 'pending',
+    createdAt: p.createdAt,
+  })) as HistoricalProposal[];
+}
+
+/**
+ * Fetch organization context
+ */
+async function fetchOrganizationContext(organisationId: string): Promise<OrganizationContext | undefined> {
+  const org = await prisma.organisation.findUnique({
+    where: { id: organisationId },
+    select: {
+      name: true,
+      // Add more fields as available in your schema
+    },
+  });
+
+  if (!org) return undefined;
+
+  return {
+    name: org.name,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -85,7 +162,17 @@ export async function POST(request: NextRequest) {
 
     // 4. Parse and validate request
     const body = await request.json() as GenerateProposalRequest;
-    const { clientId, brief, deliverables, budget, timeline } = body;
+    const { 
+      clientId, 
+      brief, 
+      deliverables, 
+      budget, 
+      timeline,
+      organisationId,
+      projectId,
+      enableReasoning = true,
+      enableHistoryLearning = true,
+    } = body;
 
     if (!clientId || !brief) {
       return NextResponse.json(
@@ -94,7 +181,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Fetch client details
+    // 5. Fetch client details
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: {
@@ -115,14 +202,32 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔄 Generating AI proposal for client:', client.name);
+    console.log('📚 History learning:', enableHistoryLearning ? 'enabled' : 'disabled');
+    console.log('🧠 Deep reasoning:', enableReasoning ? 'enabled' : 'disabled');
 
-    // 5. Generate proposal with caching
+    // 6. Fetch historical proposals for learning (if enabled)
+    let historicalProposals: HistoricalProposal[] = [];
+    let organizationContext: OrganizationContext | undefined;
+
+    if (enableHistoryLearning) {
+      console.log('📊 Fetching historical proposals for learning...');
+      historicalProposals = await fetchHistoricalProposals(user.id, organisationId);
+      console.log(`📊 Found ${historicalProposals.length} historical proposals`);
+      
+      if (organisationId) {
+        organizationContext = await fetchOrganizationContext(organisationId);
+      }
+    }
+
+    // 7. Generate proposal with caching
     const cacheInput = {
       clientId,
       brief,
       deliverables: deliverables || [],
       budget: budget || client.budget,
       timeline,
+      enableReasoning,
+      historyCount: historicalProposals.length,
     };
 
     const result = await withCache<{
@@ -141,11 +246,14 @@ export async function POST(request: NextRequest) {
           budget: budget || client.budget || undefined,
           timeline,
           deliverables,
+          historicalProposals: enableHistoryLearning ? historicalProposals : undefined,
+          organizationContext,
+          enableReasoning,
         });
 
         return await adapter.generateStructuredCompletion<ProposalResponse>(messages, {
           temperature: 0.7,
-          maxTokens: 4096,
+          maxTokens: 6144, // Increased for reasoning output
           ragEnabled: process.env.AI_RAG_ENABLED === 'true',
         });
       },

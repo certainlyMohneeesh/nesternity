@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,10 +10,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Sparkles, Save, Send, FileText, CheckCircle2, Clock, DollarSign } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, Sparkles, Save, Send, FileText, CheckCircle2, Clock, DollarSign, Brain, History, Zap, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { BudgetEstimation } from '@/components/proposals/BudgetEstimation';
 import { AnimatedGradientBorder } from '@/components/ui/animated-gradient-border';
+import { useAsyncProposalGeneration } from '@/hooks/useAsyncProposalGeneration';
+import { useProposalGenerationStore } from '@/lib/stores/proposal-generation-store';
 
 interface Client {
   id: string;
@@ -32,6 +36,7 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Form state
   const [clientId, setClientId] = useState('');
@@ -40,8 +45,65 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
   const [budget, setBudget] = useState('');
   const [timeline, setTimeline] = useState('');
 
+  // Advanced options
+  const [enableReasoning, setEnableReasoning] = useState(true);
+  const [enableHistoryLearning, setEnableHistoryLearning] = useState(true);
+  const [useAsyncGeneration, setUseAsyncGeneration] = useState(false);
+
   // Generated proposal state
   const [proposal, setProposal] = useState<any>(null);
+
+  // Async generation hook
+  const { generate: generateAsync, isGenerating: isAsyncGenerating, activeTask } = useAsyncProposalGeneration({
+    onComplete: (generatedProposal) => {
+      setProposal({
+        title: generatedProposal.title,
+        deliverables: generatedProposal.deliverables,
+        timeline: generatedProposal.timeline,
+        pricing: generatedProposal.pricing,
+        paymentTerms: generatedProposal.paymentTerms,
+        summary: generatedProposal.summary,
+        executiveSummary: generatedProposal.executiveSummary,
+        scopeOfWork: generatedProposal.scopeOfWork,
+        reasoning: generatedProposal.reasoning,
+      });
+      if (generatedProposal.pricing?.amount) {
+        setBudget(generatedProposal.pricing.amount.toString());
+      }
+    },
+  });
+
+  // Check for generated proposal from widget navigation
+  const { tasks, removeTask } = useProposalGenerationStore();
+  
+  useEffect(() => {
+    const generatedTaskId = searchParams.get('generated');
+    if (generatedTaskId && tasks[generatedTaskId]?.proposal) {
+      const task = tasks[generatedTaskId];
+      setProposal({
+        title: task.proposal!.title,
+        deliverables: task.proposal!.deliverables,
+        timeline: task.proposal!.timeline,
+        pricing: task.proposal!.pricing,
+        paymentTerms: task.proposal!.paymentTerms,
+        summary: task.proposal!.summary,
+        executiveSummary: task.proposal!.executiveSummary,
+        scopeOfWork: task.proposal!.scopeOfWork,
+        reasoning: task.proposal!.reasoning,
+      });
+      setClientId(task.clientId);
+      setBrief(task.brief);
+      if (task.budget) setBudget(task.budget.toString());
+      if (task.timeline) setTimeline(task.timeline);
+      if (task.deliverables) setDeliverables(task.deliverables.join('\n'));
+      
+      // Clean up the task from store
+      removeTask(generatedTaskId);
+      
+      // Remove the query param
+      router.replace(`/dashboard/organisation/${orgId}/projects/${projectId}/proposals/new`);
+    }
+  }, [searchParams, tasks, removeTask, router, orgId, projectId]);
 
   const handleGenerate = async () => {
     if (!clientId || !brief) {
@@ -51,45 +113,73 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await fetch('/api/ai/proposal/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientId,
-          brief,
-          deliverables: deliverables ? deliverables.split('\n').filter(d => d.trim()) : undefined,
-          budget: budget ? parseFloat(budget) : undefined,
-          timeline,
-        }),
-      });
+    const selectedClient = clients.find(c => c.id === clientId);
+    if (!selectedClient) return;
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to generate proposal');
+    if (useAsyncGeneration) {
+      // Use async generation with widget
+      await generateAsync({
+        clientId,
+        clientName: selectedClient.name,
+        brief,
+        deliverables: deliverables ? deliverables.split('\n').filter(d => d.trim()) : undefined,
+        budget: budget ? parseFloat(budget) : undefined,
+        timeline,
+        organisationId: orgId,
+        projectId,
+        enableReasoning,
+        enableHistoryLearning,
+      });
+      
+      toast.info('Proposal generation started', {
+        description: 'You can navigate away - check the widget for progress',
+      });
+    } else {
+      // Use sync generation (original behavior)
+      setLoading(true);
+      try {
+        const response = await fetch('/api/ai/proposal/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clientId,
+            brief,
+            deliverables: deliverables ? deliverables.split('\n').filter(d => d.trim()) : undefined,
+            budget: budget ? parseFloat(budget) : undefined,
+            timeline,
+            organisationId: orgId,
+            projectId,
+            enableReasoning,
+            enableHistoryLearning,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to generate proposal');
+        }
+
+        const data = await response.json();
+        setProposal(data.proposal);
+
+        // Auto-fill budget from AI-generated proposal pricing
+        if (data.proposal.pricing?.amount) {
+          setBudget(data.proposal.pricing.amount.toString());
+        }
+
+        toast.success('Proposal generated! ✨', {
+          description: 'Your AI-powered proposal is ready to review',
+        });
+      } catch (error) {
+        console.error('Error generating proposal:', error);
+        toast.error('Generation failed', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      } finally {
+        setLoading(false);
       }
-
-      const data = await response.json();
-      setProposal(data.proposal);
-
-      // Auto-fill budget from AI-generated proposal pricing
-      if (data.proposal.pricing?.amount) {
-        setBudget(data.proposal.pricing.amount.toString());
-      }
-
-      toast.success('Proposal generated! ✨', {
-        description: 'Your AI-powered proposal is ready to review',
-      });
-    } catch (error) {
-      console.error('Error generating proposal:', error);
-      toast.error('Generation failed', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -239,20 +329,89 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
             </div>
           </div>
 
+          {/* Advanced AI Options */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-purple-500" />
+              <span className="font-medium text-sm">Advanced AI Options</span>
+            </div>
+            
+            <div className="space-y-3">
+              <TooltipProvider>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="reasoning" className="text-sm cursor-pointer">Deep Reasoning</Label>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>AI will analyze requirements deeply before generating, including pricing rationale and risk assessment.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Switch
+                    id="reasoning"
+                    checked={enableReasoning}
+                    onCheckedChange={setEnableReasoning}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="history" className="text-sm cursor-pointer">Learn from History</Label>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>AI will analyze your past accepted/rejected proposals to improve pricing and structure.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Switch
+                    id="history"
+                    checked={enableHistoryLearning}
+                    onCheckedChange={setEnableHistoryLearning}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="async" className="text-sm cursor-pointer">Background Generation</Label>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Generate in background - you can navigate away and track progress in the floating widget.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <Switch
+                    id="async"
+                    checked={useAsyncGeneration}
+                    onCheckedChange={setUseAsyncGeneration}
+                  />
+                </div>
+              </TooltipProvider>
+            </div>
+          </div>
+
           <Button
             onClick={handleGenerate}
-            disabled={loading || !clientId || !brief}
+            disabled={loading || isAsyncGenerating || !clientId || !brief}
             className="w-full"
           >
-            {loading ? (
+            {loading || isAsyncGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                {isAsyncGenerating ? 'Generating in Background...' : 'Generating...'}
               </>
             ) : (
               <>
                 <Sparkles className="mr-2 h-4 w-4" />
-                Generate Proposal
+                {useAsyncGeneration ? 'Generate in Background' : 'Generate Proposal'}
               </>
             )}
           </Button>
@@ -415,6 +574,52 @@ export function ProposalEditor({ clients, orgId, projectId }: ProposalEditorProp
                   </div>
                   <p className="text-sm text-muted-foreground">{proposal.paymentTerms}</p>
                 </div>
+
+                {/* AI Reasoning Section */}
+                {proposal.reasoning && (
+                  <div className="rounded-lg border bg-purple-50/50 dark:bg-purple-950/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-500" />
+                      <h4 className="font-semibold text-sm">AI Reasoning</h4>
+                    </div>
+                    
+                    {proposal.reasoning.pricingRationale && (
+                      <div>
+                        <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Pricing Rationale</p>
+                        <p className="text-xs text-muted-foreground">{proposal.reasoning.pricingRationale}</p>
+                      </div>
+                    )}
+                    
+                    {proposal.reasoning.timelineRationale && (
+                      <div>
+                        <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Timeline Rationale</p>
+                        <p className="text-xs text-muted-foreground">{proposal.reasoning.timelineRationale}</p>
+                      </div>
+                    )}
+                    
+                    {proposal.reasoning.risksIdentified?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">Risks Identified</p>
+                        <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                          {proposal.reasoning.risksIdentified.map((risk: string, i: number) => (
+                            <li key={i}>{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {proposal.reasoning.assumptions?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Assumptions</p>
+                        <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                          {proposal.reasoning.assumptions.map((assumption: string, i: number) => (
+                            <li key={i}>{assumption}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-6 border-t">

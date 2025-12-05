@@ -1,8 +1,14 @@
 /**
- * prompts.ts — Fine-tuned (2025 market)
+ * prompts.ts — Fine-tuned (2025 market) with History Learning & Deep Reasoning
  *
  * Updated: 2025 market rates, clearer currency handling, safer defaults,
- * improved system prompts and minor API improvements (optional currency param)
+ * improved system prompts with chain-of-thought reasoning and historical learning.
+ *
+ * Features:
+ * - Historical proposal learning: Analyzes past successful proposals
+ * - Deep reasoning: Multi-step analysis before generating output
+ * - Adaptive pricing: Learns from acceptance/rejection patterns
+ * - Context-aware: Uses organization and client history
  *
  * Notes:
  * - Exchange rates change; this file uses a working default EXCHANGE_RATE (INR per USD)
@@ -12,6 +18,32 @@
 
 import { ChatMessage } from './types';
 
+/** Historical proposal data for learning */
+export interface HistoricalProposal {
+  id: string;
+  title: string;
+  brief: string;
+  deliverables: string[];
+  pricing: {
+    amount: number;
+    currency: string;
+  };
+  timeline: string;
+  status: 'accepted' | 'rejected' | 'pending' | 'draft';
+  clientFeedback?: string;
+  successFactors?: string[];
+  createdAt: Date;
+}
+
+/** Organization context for proposal generation */
+export interface OrganizationContext {
+  name: string;
+  industry?: string;
+  averageProjectValue?: number;
+  preferredPaymentTerms?: string;
+  typicalTimelines?: string;
+}
+
 export interface ProposalPromptInput {
   clientName: string;
   clientEmail: string;
@@ -20,6 +52,10 @@ export interface ProposalPromptInput {
   budget?: number; // numeric budget in chosen currency
   timeline?: string;
   deliverables?: string[];
+  // History learning inputs
+  historicalProposals?: HistoricalProposal[];
+  organizationContext?: OrganizationContext;
+  enableReasoning?: boolean;
 }
 
 export interface EstimationPromptInput {
@@ -66,49 +102,171 @@ function normCurrency(currency?: string) {
 }
 
 /**
- * Smart Proposal & SOW Generator Prompt
+ * Build historical analysis section from past proposals
+ * This enables the AI to learn from past successful/rejected proposals
+ */
+function buildHistoricalAnalysis(proposals?: HistoricalProposal[]): string {
+  if (!proposals || proposals.length === 0) {
+    return '';
+  }
+
+  const accepted = proposals.filter(p => p.status === 'accepted');
+  const rejected = proposals.filter(p => p.status === 'rejected');
+  
+  // Calculate success patterns
+  const avgAcceptedPrice = accepted.length > 0 
+    ? accepted.reduce((sum, p) => sum + p.pricing.amount, 0) / accepted.length 
+    : 0;
+  
+  const avgRejectedPrice = rejected.length > 0 
+    ? rejected.reduce((sum, p) => sum + p.pricing.amount, 0) / rejected.length 
+    : 0;
+
+  let analysis = `## HISTORICAL LEARNING DATA
+You have access to ${proposals.length} past proposals from this organization.
+
+**Success Metrics:**
+- Accepted proposals: ${accepted.length}
+- Rejected proposals: ${rejected.length}
+- Acceptance rate: ${proposals.length > 0 ? Math.round((accepted.length / proposals.length) * 100) : 0}%
+${avgAcceptedPrice > 0 ? `- Average accepted price: ${accepted[0]?.pricing.currency || 'INR'} ${avgAcceptedPrice.toLocaleString()}` : ''}
+${avgRejectedPrice > 0 ? `- Average rejected price: ${rejected[0]?.pricing.currency || 'INR'} ${avgRejectedPrice.toLocaleString()}` : ''}
+`;
+
+  if (accepted.length > 0) {
+    analysis += `
+**SUCCESSFUL PROPOSALS TO LEARN FROM:**
+${accepted.slice(0, 3).map(p => `
+📗 "${p.title}"
+- Brief: ${p.brief.slice(0, 150)}...
+- Price: ${p.pricing.currency} ${p.pricing.amount.toLocaleString()}
+- Timeline: ${p.timeline || 'Not specified'}
+${p.successFactors?.length ? `- Success factors: ${p.successFactors.join(', ')}` : ''}
+${p.clientFeedback ? `- Client feedback: "${p.clientFeedback}"` : ''}`).join('\n')}
+`;
+  }
+
+  if (rejected.length > 0) {
+    analysis += `
+**REJECTED PROPOSALS TO LEARN FROM (Avoid these patterns):**
+${rejected.slice(0, 2).map(p => `
+📕 "${p.title}"
+- Brief: ${p.brief.slice(0, 100)}...
+- Price: ${p.pricing.currency} ${p.pricing.amount.toLocaleString()}
+${p.clientFeedback ? `- Rejection reason: "${p.clientFeedback}"` : ''}`).join('\n')}
+`;
+  }
+
+  analysis += `
+**LEARNING INSIGHTS:**
+- Learn from accepted proposals: What made them successful?
+- Avoid patterns from rejected proposals
+- Price competitively but realistically based on historical acceptance
+- Match successful proposal structures and value propositions
+`;
+
+  return analysis;
+}
+
+/**
+ * Build organization context section
+ */
+function buildOrganizationContext(context?: OrganizationContext): string {
+  if (!context) {
+    return '';
+  }
+
+  return `## ORGANIZATION CONTEXT
+**Organization:** ${context.name}
+${context.industry ? `**Industry:** ${context.industry}` : ''}
+${context.averageProjectValue ? `**Typical Project Value:** ${context.averageProjectValue.toLocaleString()}` : ''}
+${context.preferredPaymentTerms ? `**Preferred Payment Terms:** ${context.preferredPaymentTerms}` : ''}
+${context.typicalTimelines ? `**Typical Timelines:** ${context.typicalTimelines}` : ''}
+
+Use this context to align the proposal with organization standards.
+`;
+}
+
+/**
+ * Smart Proposal & SOW Generator Prompt with History Learning & Deep Reasoning
  * - currency param is optional and defaults to 'INR'
+ * - Now includes analysis of historical proposals for pattern learning
+ * - Chain-of-thought reasoning for better outputs
  */
 export function createProposalPrompt(input: ProposalPromptInput, currency?: string): ChatMessage[] {
   const C = normCurrency(currency);
   const currentYear = 2025; // pinned for prompt clarity
+  const useReasoning = input.enableReasoning !== false; // enabled by default
+
+  // Analyze historical proposals for learning
+  const historicalAnalysis = buildHistoricalAnalysis(input.historicalProposals);
+  const orgContext = buildOrganizationContext(input.organizationContext);
 
   // Market ranges (2025 snapshot). These are guidance numbers for the assistant —
   // kept conservative and realistic for freelancer/contractor quotes.
   const systemPrompt = `You are an expert business proposal writer specializing in software development with deep knowledge of ${currentYear} market rates.
 
-CRITICAL PRICING GUIDELINES (${currentYear} snapshot):
+${useReasoning ? `## REASONING FRAMEWORK
+Before generating the proposal, you MUST think through these steps internally:
 
-**For INR (India) — indicative freelancer/contractor ranges:**
-- Small web app / landing page: ₹50,000 - ₹200,000
-- Medium web application: ₹200,000 - ₹800,000
-- Large enterprise app: ₹800,000 - ₹3,000,000
-- Mobile app (iOS/Android): ₹300,000 - ₹1,200,000
-- E-commerce platform: ₹200,000 - ₹2,000,000 (template → custom marketplace)
-- SaaS MVP: ₹800,000 - ₹2,500,000
-- API / Backend system: ₹200,000 - ₹1,000,000
+1. **UNDERSTAND**: What exactly is the client asking for? What's the core problem they're solving?
+2. **ANALYZE**: What are the technical requirements, complexity factors, and potential challenges?
+3. **BENCHMARK**: How does this compare to similar projects in terms of scope and complexity?
+4. **PRICE**: Based on market rates and historical data, what's the fair price range?
+5. **STRUCTURE**: How should deliverables be phased for optimal project flow?
+6. **RISK**: What are the unknowns and how much buffer is needed?
 
-**Team Rates (INR/hour) — typical freelance bands:**
-- Junior: ₹300 - ₹1,500/hr
-- Mid-level: ₹1,000 - ₹2,500/hr
-- Senior: ₹2,500 - ₹5,000/hr
-- Designer: ₹800 - ₹2,500/hr
+Take your time to reason through each step. Quality and accuracy matter more than speed.
+` : ''}
 
-**For USD (international) — indicative ranges:**
-- Small project: $500 - $5,000
-- Medium project: $10,000 - $60,000
-- Large project: $60,000 - $250,000+
-- Mobile app: $15,000 - $150,000+
-- SaaS MVP: $15,000 - $150,000+
-- API / Backend: $5,000 - $50,000+
+${historicalAnalysis}
+
+${orgContext}
+
+CRITICAL PRICING GUIDELINES (${currentYear} India Market - Realistic Freelancer Rates):
+
+**For INR (India) — ACTUAL freelancer/contractor ranges (Dec 2025):**
+- Simple landing page / portfolio: ₹15,000 - ₹50,000
+- Small web app (5-10 pages): ₹30,000 - ₹80,000
+- Medium web application: ₹80,000 - ₹250,000
+- Large/complex web app: ₹250,000 - ₹600,000
+- Enterprise application: ₹500,000 - ₹1,500,000
+- Mobile app (single platform): ₹80,000 - ₹300,000
+- Mobile app (cross-platform): ₹150,000 - ₹500,000
+- E-commerce (template-based): ₹40,000 - ₹150,000
+- E-commerce (custom): ₹150,000 - ₹500,000
+- SaaS MVP (basic): ₹200,000 - ₹500,000
+- SaaS (full-featured): ₹500,000 - ₹1,200,000
+- API / Backend system: ₹50,000 - ₹300,000
+- WordPress/CMS site: ₹20,000 - ₹80,000
+
+**Hourly Rates (INR) — Indian freelancer market reality:**
+- Fresher/Intern: ₹150 - ₹400/hr
+- Junior (1-2 yrs): ₹400 - ₹800/hr
+- Mid-level (3-5 yrs): ₹800 - ₹1,500/hr
+- Senior (5+ yrs): ₹1,500 - ₹3,000/hr
+- Expert/Architect: ₹3,000 - ₹5,000/hr
+- UI/UX Designer: ₹500 - ₹1,500/hr
+- DevOps/Cloud: ₹1,000 - ₹2,500/hr
+
+**For USD (international clients) — indicative ranges:**
+- Small project: $300 - $2,000
+- Medium project: $2,000 - $15,000
+- Large project: $15,000 - $50,000
+- Enterprise: $50,000 - $150,000+
+- Mobile app: $3,000 - $30,000
+- SaaS MVP: $5,000 - $40,000
+- API / Backend: $1,500 - $15,000
 
 PRICING STRATEGY:
-1. START with the realistic market range for the project type
-2. ADJUST based on complexity, integrations, compliance
-3. USE MID-RANGE pricing by default unless the scope clearly justifies premium
-4. Account for actual development effort (realistic velocity)
-5. Include buffer (15-20%) for unknowns
-6. Consider team mix (junior/mid/senior) and non-billable overhead (project mgmt, handover)
+1. START with the LOWER to MID range for the project type - Indian clients are price-sensitive
+2. ADJUST upward only for: complex integrations, strict compliance, tight deadlines, premium support
+3. USE LOWER-MID range pricing by default — competitive pricing wins more projects
+4. Calculate based on realistic Indian developer velocity (6-8 productive hours/day)
+5. Include modest buffer (10-15%) for unknowns — don't over-inflate
+6. Consider that most Indian freelancers work solo or small teams — lower overhead
+7. Factor in that clients compare with Upwork/Fiverr rates — stay competitive
+8. If client has a budget, try to work within it or explain clearly why more is needed
 
 CRITICAL INSTRUCTIONS:
 1. Return ONLY valid, complete JSON — no markdown code fences, no extra text outside JSON
@@ -148,10 +306,18 @@ REQUIRED Output Format (exact structure):
     ]
   },
   "paymentTerms": "50% upfront, 25% at milestone 2, 25% on completion",
-  "summary": "Brief executive summary (max 300 chars)"
+  "summary": "Brief executive summary (max 300 chars)",
+  "executiveSummary": "Detailed executive summary explaining value proposition (max 500 chars)",
+  "scopeOfWork": "Comprehensive scope description (max 800 chars)",
+  "reasoning": {
+    "pricingRationale": "Why this price point was chosen based on scope, complexity, and market rates",
+    "timelineRationale": "Why this timeline is realistic given the deliverables",
+    "risksIdentified": ["Risk 1", "Risk 2"],
+    "assumptions": ["Assumption 1", "Assumption 2"]
+  }
 }
 
-IMPORTANT: Complete ALL fields. Use MARKET-REALISTIC pricing. Do not truncate arrays.`;
+IMPORTANT: Complete ALL fields including the reasoning section. Use MARKET-REALISTIC pricing. Do not truncate arrays.`;
 
   const userPrompt = `Create a professional proposal with REALISTIC ${C} pricing for:
 
@@ -191,31 +357,44 @@ export function createEstimationPrompt(input: EstimationPromptInput, currency: s
   const C = normCurrency(currency);
   const systemPrompt = `You are an expert project estimator for software development projects with deep knowledge of global market rates (2025 snapshot).
 
-CRITICAL PRICING GUIDELINES (${C}):
+CRITICAL PRICING GUIDELINES (${C}) - Realistic 2025 Market Rates:
 
-**Currency-specific freelance bands (2025 typical):**
-- INR (India):
-  - Junior Developer: ₹300-1,500/hour
-  - Mid-Level Developer: ₹1,000-2,500/hour
-  - Senior Developer: ₹2,500-5,000/hour
-  - Full Stack: ₹1,500-3,500/hour
-  - UI/UX Designer: ₹800-2,500/hour
-  - Project Manager: ₹1,200-2,500/hour
+**INR (India) — Actual Freelancer Hourly Rates:**
+- Fresher/Intern: ₹150-400/hour
+- Junior Developer (1-2 yrs): ₹400-800/hour
+- Mid-Level Developer (3-5 yrs): ₹800-1,500/hour
+- Senior Developer (5+ yrs): ₹1,500-3,000/hour
+- Full Stack Developer: ₹800-2,000/hour
+- UI/UX Designer: ₹500-1,500/hour
+- DevOps Engineer: ₹1,000-2,500/hour
+- Project Manager: ₹800-1,800/hour
 
-- USD (International):
-  - Junior Developer: $20-40/hour
-  - Mid-Level Developer: $40-80/hour
-  - Senior Developer: $70-150+/hour
-  - Full Stack: $50-100/hour
-  - UI/UX Designer: $35-80/hour
-  - Project Manager: $50-100/hour
+**INR Project-Based Estimates (Freelancer/Small Agency):**
+- Landing page: ₹15,000-50,000
+- Simple website (5-10 pages): ₹30,000-80,000
+- Web application (medium): ₹80,000-250,000
+- Mobile app (single platform): ₹80,000-300,000
+- E-commerce (Shopify/WooCommerce): ₹40,000-150,000
+- Custom web app: ₹150,000-500,000
+- API development: ₹50,000-200,000
+
+**USD (International) — Competitive Indian Freelancer Rates:**
+- Junior Developer: $8-15/hour
+- Mid-Level Developer: $15-30/hour
+- Senior Developer: $30-50/hour
+- Full Stack: $20-40/hour
+- UI/UX Designer: $15-35/hour
+- Project Manager: $20-40/hour
 
 ESTIMATION STRATEGY:
 1. ALWAYS check historical data first - learn from past projects
-2. Use conservative estimates and include a 15-20% buffer
-3. Break down by phases: Planning (10%), Design (15%), Development (50%), Testing (15%), Deployment (10%)
-4. Account for realistic team mix
-5. Account for non-billable and coordination overhead
+2. Use COMPETITIVE estimates - Indian market is price-sensitive
+3. Include modest buffer (10-15%) — don't over-inflate
+4. Break down by phases: Planning (5-8%), Design (10-15%), Development (55-60%), Testing (12-15%), Deployment (5-8%)
+5. Assume solo freelancer or small team (2-3 people) — lower coordination overhead
+6. Calculate realistic hours: most features take 4-20 hours, not days
+7. Compare with Upwork/Freelancer rates to stay competitive
+8. If estimate seems high, double-check — simpler solutions often exist
 
 CRITICAL: Return ONLY valid, complete JSON. No markdown or extra text.
 
