@@ -250,20 +250,20 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
               <div>
                 <p className="font-semibold">{invoice.client.name}</p>
                 {invoice.client.company && (
-                  <p className="text-gray-600">{invoice.client.company}</p>
+                  <p className="font-semibold">{invoice.client.company}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
+              <div className="font-semibold flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 <span>{invoice.client.email}</span>
               </div>
               {invoice.client.phone && (
-                <div className="text-gray-600">
+                <div className="font-semibold">
                   <strong>Phone:</strong> {invoice.client.phone}
                 </div>
               )}
               {invoice.client.address && (
-                <div className="text-gray-600">
+                <div className="font-semibold">
                   <strong>Address:</strong> {invoice.client.address}
                 </div>
               )}
@@ -280,27 +280,27 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
+                <Calendar className="w-4 h-4" />
                 <div>
-                  <span className="text-gray-600">Issued:</span>{' '}
+                  <span className="font-medium">Issued:</span>{' '}
                   <span className="font-medium">
                     {new Date(invoice.issuedDate).toLocaleDateString()}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
+                <Calendar className="w-4 h-4" />
                 <div>
-                  <span className="text-gray-600">Due:</span>{' '}
+                  <span className="font-medium">Due:</span>{' '}
                   <span className="font-medium">
                     {new Date(invoice.dueDate).toLocaleDateString()}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-gray-600" />
+                <CreditCard className="w-4 h-4" />
                 <div>
-                  <span className="text-gray-600">Currency:</span>{' '}
+                  <span className="font-medium">Currency:</span>{' '}
                   <span className="font-medium">{invoice.currency}</span>
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
               <CardTitle>Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+              <p className="font-semibold">{invoice.notes}</p>
             </CardContent>
           </Card>
         )}
