@@ -161,89 +161,128 @@ Return only the complete HTML email body.`,
  */
 function generateFallbackScopeCreepEmail(data: ScopeCreepEmailData): string {
   const currencySymbol = getCurrencySymbol(data.currency);
+  const isCritical = data.overrunAmount > 0;
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-    .header { background: #f8f9fa; padding: 20px; text-align: center; }
-    .content { padding: 20px; }
-    .budget-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-    .budget-box.critical { background: #f8d7da; border-left-color: #dc3545; }
-    .items { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
-    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Budget Update</title>
 </head>
-<body>
-  <div class="header">
-    <h2>Project Budget Update</h2>
-  </div>
-  
-  <div class="content">
-    <p>Dear ${data.clientName},</p>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; color: #111827; line-height: 1.6;">
     
-    <p>I hope this email finds you well. I wanted to reach out to provide an important update regarding the budget for <strong>${data.projectName}</strong>.</p>
-    
-    <div class="budget-box${data.overrunAmount > 0 ? ' critical' : ''}">
-      <h3>Budget Status</h3>
-      <table style="width: 100%; border-collapse: collapse;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb;">
         <tr>
-          <td><strong>Original Budget:</strong></td>
-          <td style="text-align: right;">${currencySymbol}${data.originalBudget.toLocaleString()}</td>
+            <td align="center" style="padding: 40px 20px;">
+                
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+                    
+                    <tr>
+                        <td align="center" style="padding: 40px 40px 20px 40px;">
+                            <img src="https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png" 
+                                 alt="Nesternity" 
+                                 width="140" 
+                                 style="display: block; width: 140px; height: auto; border: 0;">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 0 40px 40px 40px;">
+                            
+                            <h1 style="margin: 0 0 20px 0; font-size: 22px; font-weight: 700; color: #111827; text-align: center;">
+                                Project Budget Update
+                            </h1>
+                            
+                            <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+                                Hi <strong>${data.clientName}</strong>,
+                            </p>
+                            
+                            <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+                                I'm writing to keep you updated on the budget status for <strong>${data.projectName}</strong>. Transparency is key to our partnership, and we want to ensure we stay aligned on project scope and costs.
+                            </p>
+
+                            <div style="background-color: ${isCritical ? '#fef2f2' : '#f0f9ff'}; border: 1px solid ${isCritical ? '#fecaca' : '#bae6fd'}; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                <h3 style="margin: 0 0 15px 0; font-size: 14px; font-weight: 700; color: ${isCritical ? '#991b1b' : '#0369a1'}; text-transform: uppercase;">
+                                    ${isCritical ? '⚠️ Budget Alert' : '📊 Budget Snapshot'}
+                                </h3>
+                                
+                                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                                    <tr>
+                                        <td style="padding-bottom: 8px; color: #4b5563;">Original Budget:</td>
+                                        <td style="padding-bottom: 8px; text-align: right; font-weight: 600; color: #111827;">
+                                            ${currencySymbol}${data.originalBudget.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-bottom: 8px; color: #4b5563;">Current Spend:</td>
+                                        <td style="padding-bottom: 8px; text-align: right; font-weight: 600; color: #111827;">
+                                            ${currencySymbol}${data.currentSpend.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid ${isCritical ? '#fecaca' : '#bae6fd'};">
+                                        <td style="padding-top: 8px; font-weight: 700; color: ${isCritical ? '#dc2626' : '#111827'};">
+                                            ${isCritical ? 'Overrun Amount:' : 'Remaining:'}
+                                        </td>
+                                        <td style="padding-top: 8px; text-align: right; font-weight: 700; color: ${isCritical ? '#dc2626' : '#2563eb'};">
+                                            ${currencySymbol}${isCritical ? data.overrunAmount.toLocaleString() : data.remainingBudget.toLocaleString()}
+                                            ${isCritical ? ` (${data.overrunPercent.toFixed(1)}%)` : ''}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            ${data.flaggedItems.length > 0 ? `
+                            <div style="margin-bottom: 30px;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #374151;">Contributing Factors:</h4>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #4b5563;">
+                                    ${data.flaggedItems.map(item => `
+                                    <li style="margin-bottom: 5px;">
+                                        <strong>${item.item}</strong>: ${currencySymbol}${item.cost.toLocaleString()}
+                                        ${item.reason ? `<br><span style="font-size: 13px; color: #6b7280; font-style: italic;">${item.reason}</span>` : ''}
+                                    </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px;">
+                                <p style="margin: 0 0 10px 0; font-size: 14px; color: #111827; font-weight: 600;">Suggested Next Steps:</p>
+                                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #4b5563;">
+                                    <li style="margin-bottom: 5px;">Review current project scope priorities.</li>
+                                    <li style="margin-bottom: 5px;">Discuss a potential change order for additional requirements.</li>
+                                    <li>Explore phased delivery options to manage costs.</li>
+                                </ul>
+                            </div>
+
+                            <p style="margin-top: 30px; font-size: 15px; color: #4b5563;">
+                                Let's schedule a brief 15-minute call this week to discuss the best path forward. I'm confident we can find a solution that works for everyone.
+                            </p>
+                            
+                            <p style="margin-top: 30px; font-size: 15px; color: #4b5563;">
+                                Best regards,<br>
+                                <strong>Your Team</strong>
+                            </p>
+                            
+                        </td>
+                    </tr>
+                </table>
+
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+                    <tr>
+                        <td align="center" style="padding: 24px 0;">
+                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                © ${new Date().getFullYear()} Nesternity.<br>
+                                Automated budget monitoring alert.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
         </tr>
-        <tr>
-          <td><strong>Current Spend:</strong></td>
-          <td style="text-align: right;">${currencySymbol}${data.currentSpend.toLocaleString()}</td>
-        </tr>
-        ${data.overrunAmount > 0 ? `
-        <tr style="color: #dc3545;">
-          <td><strong>Budget Overrun:</strong></td>
-          <td style="text-align: right;">${currencySymbol}${data.overrunAmount.toLocaleString()} (${data.overrunPercent.toFixed(1)}%)</td>
-        </tr>
-        ` : `
-        <tr>
-          <td><strong>Remaining Budget:</strong></td>
-          <td style="text-align: right;">${currencySymbol}${data.remainingBudget.toLocaleString()}</td>
-        </tr>
-        `}
-      </table>
-    </div>
-    
-    ${data.flaggedItems.length > 0 ? `
-    <div class="items">
-      <h4>Contributing Factors:</h4>
-      <ul>
-        ${data.flaggedItems.map(item => `
-        <li>${item.item}: ${currencySymbol}${item.cost.toLocaleString()}${item.reason ? ` — ${item.reason}` : ''}</li>
-        `).join('')}
-      </ul>
-    </div>
-    ` : ''}
-    
-    <p>I value our partnership and want to ensure we maintain transparency throughout this project. I'd love to schedule a brief call to discuss the best path forward.</p>
-    
-    <p><strong>Possible Next Steps:</strong></p>
-    <ul>
-      <li>Review and adjust project scope</li>
-      <li>Prepare a change order for additional work</li>
-      <li>Consider a phased delivery approach</li>
-    </ul>
-    
-    <p>Please let me know your availability for a 15-minute call this week. I'm confident we can find a solution that works for both of us.</p>
-    
-    <p>Thank you for your understanding and continued trust in our work.</p>
-    
-    <p>Best regards,<br/>
-    <strong>Your Team</strong><br/>
-    <a href="mailto:${data.contactEmail}">${data.contactEmail}</a></p>
-  </div>
-  
-  <div class="footer">
-    This is an automated budget monitoring alert. Please reply if you have any questions.
-  </div>
+    </table>
 </body>
 </html>
   `.trim();
@@ -257,84 +296,118 @@ function generateFallbackRecurringInvoiceEmail(data: RecurringInvoiceEmailData):
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-    .header { background: #4f46e5; color: white; padding: 20px; text-align: center; }
-    .content { padding: 20px; }
-    .invoice-box { background: #f8f9fa; border: 2px solid #4f46e5; padding: 20px; margin: 20px 0; border-radius: 5px; }
-    .items { margin: 15px 0; }
-    .items table { width: 100%; border-collapse: collapse; }
-    .items th { text-align: left; border-bottom: 2px solid #ddd; padding: 8px; }
-    .items td { padding: 8px; border-bottom: 1px solid #eee; }
-    .total { font-size: 18px; font-weight: bold; color: #4f46e5; }
-    .payment-button { display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Invoice from Nesternity</title>
 </head>
-<body>
-  <div class="header">
-    <h2>Invoice ${data.invoiceNumber}</h2>
-    <p>${data.recurrence} Service Invoice</p>
-  </div>
-  
-  <div class="content">
-    <p>Dear ${data.clientName},</p>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; color: #111827; line-height: 1.6;">
     
-    <p>Thank you for your continued partnership! Please find your ${data.recurrence.toLowerCase()} invoice below.</p>
-    
-    <div class="invoice-box">
-      <h3>Invoice Details</h3>
-      <p><strong>Invoice Number:</strong> ${data.invoiceNumber}</p>
-      <p><strong>Issue Date:</strong> ${new Date().toLocaleDateString()}</p>
-      <p><strong>Due Date:</strong> ${data.dueDate}</p>
-      ${data.companyName ? `<p><strong>Company:</strong> ${data.companyName}</p>` : ''}
-      
-      <div class="items">
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th style="text-align: center;">Qty</th>
-              <th style="text-align: right;">Rate</th>
-              <th style="text-align: right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.items.map(item => `
-            <tr>
-              <td>${item.description}</td>
-              <td style="text-align: center;">${item.quantity}</td>
-              <td style="text-align: right;">${currencySymbol}${item.rate.toLocaleString()}</td>
-              <td style="text-align: right;">${currencySymbol}${item.total.toLocaleString()}</td>
-            </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-      
-      <p class="total">Total Amount Due: ${currencySymbol}${data.amount.toLocaleString()}</p>
-    </div>
-    
-    ${data.paymentLink ? `
-    <div style="text-align: center;">
-      <a href="${data.paymentLink}" class="payment-button">Pay Invoice Online</a>
-    </div>
-    ` : ''}
-    
-    <p>Payment is due by <strong>${data.dueDate}</strong>. If you have any questions about this invoice, please don't hesitate to reach out.</p>
-    
-    <p>We appreciate your business and look forward to continuing our work together!</p>
-    
-    <p>Best regards,<br/>
-    <strong>Your Team</strong></p>
-  </div>
-  
-  <div class="footer">
-    <p>This is an automated recurring invoice. For questions, please contact our support team.</p>
-  </div>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+                    
+                    <tr>
+                        <td align="center" style="padding: 40px 40px 20px 40px;">
+                            <img src="https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png" 
+                                 alt="Nesternity" 
+                                 width="140" 
+                                 style="display: block; width: 140px; height: auto; border: 0;">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 0 40px 40px 40px;">
+                            
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <h1 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 700; color: #111827;">
+                                    ${currencySymbol}${data.amount.toLocaleString()}
+                                </h1>
+                                <p style="margin: 0; font-size: 15px; color: #6b7280; font-weight: 500;">
+                                    due on ${data.dueDate}
+                                </p>
+                            </div>
+                            
+                            <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+                                Hi <strong>${data.clientName}</strong>,
+                            </p>
+                            
+                            <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+                                Thank you for your continued partnership. Here is your <strong>${data.recurrence.toLowerCase()} invoice</strong> for the recent period.
+                            </p>
+
+                            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 15px;">
+                                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                        <tr>
+                                            <td style="font-size: 13px; color: #6b7280;">Invoice No.</td>
+                                            <td style="text-align: right; font-size: 13px; font-weight: 600; color: #111827;">${data.invoiceNumber}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-size: 13px; color: #6b7280;">Issue Date</td>
+                                            <td style="text-align: right; font-size: 13px; font-weight: 600; color: #111827;">${new Date().toLocaleDateString()}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                
+                                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                                    ${data.items.map(item => `
+                                    <tr>
+                                        <td style="padding-bottom: 8px; color: #374151;">
+                                            ${item.description} <span style="color: #9ca3af; font-size: 12px;">×${item.quantity}</span>
+                                        </td>
+                                        <td style="padding-bottom: 8px; text-align: right; color: #111827; font-weight: 500;">
+                                            ${currencySymbol}${item.total.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                    `).join('')}
+                                    <tr style="border-top: 2px solid #e5e7eb;">
+                                        <td style="padding-top: 12px; font-weight: 700; color: #111827;">Total Due</td>
+                                        <td style="padding-top: 12px; text-align: right; font-weight: 700; color: #2563eb; font-size: 16px;">
+                                            ${currencySymbol}${data.amount.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            ${data.paymentLink ? `
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center">
+                                        <a href="${data.paymentLink}" 
+                                           style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-align: center; border: 1px solid #2563eb;">
+                                            Pay Invoice &rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            ` : ''}
+
+                            <p style="margin-top: 30px; font-size: 14px; color: #6b7280; text-align: center;">
+                                If you have any questions, just reply to this email.
+                            </p>
+                            
+                        </td>
+                    </tr>
+                </table>
+
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+                    <tr>
+                        <td align="center" style="padding: 24px 0;">
+                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                © ${new Date().getFullYear()} Nesternity.<br>
+                                123 Tech Street, Innovation District, Bangalore
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
+        </tr>
+    </table>
 </body>
 </html>
   `.trim();
