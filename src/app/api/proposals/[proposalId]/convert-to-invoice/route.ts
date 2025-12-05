@@ -58,23 +58,55 @@ export async function POST(
 
     console.log('✅ Proposal is accepted');
 
-    // Generate invoice number
+    // Generate invoice number with retry logic for race condition handling
     console.log('🔢 Generating invoice number...');
-    const lastInvoice = await prisma.invoice.findFirst({
-      orderBy: { createdAt: "desc" },
-      select: { invoiceNumber: true },
-    });
-
-    let invoiceNumber = "INV-0001";
-    if (lastInvoice?.invoiceNumber) {
-      const match = lastInvoice.invoiceNumber.match(/INV-(\d+)/);
-      if (match) {
-        const nextNumber = parseInt(match[1]) + 1;
-        invoiceNumber = `INV-${String(nextNumber).padStart(4, "0")}`;
+    
+    let invoiceNumber = "";
+    let retryCount = 0;
+    const maxRetries = 5;
+    
+    while (retryCount < maxRetries) {
+      // Find the highest invoice number by extracting and comparing the numeric part
+      const allInvoices = await prisma.invoice.findMany({
+        select: { invoiceNumber: true },
+        orderBy: { invoiceNumber: 'desc' },
+      });
+      
+      let maxNumber = 0;
+      for (const inv of allInvoices) {
+        const match = inv.invoiceNumber?.match(/INV-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
       }
+      
+      const nextNumber = maxNumber + 1 + retryCount; // Add retryCount to avoid same number on retry
+      invoiceNumber = `INV-${String(nextNumber).padStart(4, "0")}`;
+      
+      // Check if this invoice number already exists
+      const existing = await prisma.invoice.findUnique({
+        where: { invoiceNumber },
+        select: { id: true },
+      });
+      
+      if (!existing) {
+        console.log('✅ Invoice number generated:', invoiceNumber);
+        break;
+      }
+      
+      console.log(`⚠️  Invoice number ${invoiceNumber} already exists, retrying...`);
+      retryCount++;
     }
-
-    console.log('✅ Invoice number generated:', invoiceNumber);
+    
+    if (retryCount >= maxRetries) {
+      // Fallback: use timestamp-based invoice number
+      const timestamp = Date.now();
+      invoiceNumber = `INV-${timestamp}`;
+      console.log('⚠️  Using timestamp-based invoice number:', invoiceNumber);
+    }
 
     // Parse deliverables to create invoice items
     console.log('📦 Parsing deliverables...');
@@ -123,7 +155,7 @@ export async function POST(
 
     console.log('✅ Invoice items prepared:', items.length);
 
-    // Create the invoice
+    // Create the invoice with retry logic for unique constraint errors
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // 30 days from now
 
@@ -132,42 +164,72 @@ export async function POST(
     console.log('  💰 Currency:', proposal.currency);
     console.log('  👤 Client:', proposal.client.name);
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        clientId: proposal.clientId,
-        issuedById: user.id,
-        organisationId: proposal.organisationId, // Add organisationId from proposal
-        projectId: proposal.projectId, // Add projectId from proposal
-        dueDate,
-        notes: proposal.paymentTerms
-          ? `Converted from proposal: ${proposal.title}\n\nPayment Terms:\n${proposal.paymentTerms}`
-          : `Converted from proposal: ${proposal.title}`,
-        taxRate: 0,
-        discount: 0,
-        currency: proposal.currency,
-        status: "PENDING",
-        items: {
-          create: items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            total: item.total,
-          })),
-        },
-      },
-      include: {
-        client: true,
-        issuedBy: {
-          select: {
-            id: true,
-            email: true,
-            displayName: true,
+    let invoice;
+    let createRetries = 0;
+    const maxCreateRetries = 3;
+    
+    while (createRetries < maxCreateRetries) {
+      try {
+        invoice = await prisma.invoice.create({
+          data: {
+            invoiceNumber,
+            clientId: proposal.clientId,
+            issuedById: user.id,
+            organisationId: proposal.organisationId,
+            projectId: proposal.projectId,
+            dueDate,
+            notes: proposal.paymentTerms
+              ? `Converted from proposal: ${proposal.title}\n\nPayment Terms:\n${proposal.paymentTerms}`
+              : `Converted from proposal: ${proposal.title}`,
+            taxRate: 0,
+            discount: 0,
+            currency: proposal.currency,
+            status: "PENDING",
+            items: {
+              create: items.map((item) => ({
+                description: item.description,
+                quantity: item.quantity,
+                rate: item.rate,
+                total: item.total,
+              })),
+            },
           },
-        },
-        items: true,
-      },
-    });
+          include: {
+            client: true,
+            issuedBy: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true,
+              },
+            },
+            items: true,
+          },
+        });
+        break; // Success, exit retry loop
+      } catch (createError: any) {
+        if (createError.code === 'P2002' && createError.meta?.target?.includes('invoiceNumber')) {
+          createRetries++;
+          console.log(`⚠️  Unique constraint error on attempt ${createRetries}, regenerating invoice number...`);
+          
+          // Generate a new unique invoice number
+          const timestamp = Date.now();
+          const random = Math.floor(Math.random() * 1000);
+          invoiceNumber = `INV-${timestamp}-${random}`;
+          console.log(`  🔄 New invoice number: ${invoiceNumber}`);
+          
+          if (createRetries >= maxCreateRetries) {
+            throw new Error(`Failed to create invoice after ${maxCreateRetries} attempts due to duplicate invoice number`);
+          }
+        } else {
+          throw createError; // Re-throw non-unique-constraint errors
+        }
+      }
+    }
+
+    if (!invoice) {
+      throw new Error('Failed to create invoice');
+    }
 
     console.log('✅ Invoice created successfully!');
     console.log('  🆔 Invoice ID:', invoice.id);
