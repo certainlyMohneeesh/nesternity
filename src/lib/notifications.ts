@@ -398,6 +398,7 @@ export async function createProposalNotification(
 
 /**
  * Create notification for scope sentinel alerts
+ * IMPORTANT: Only organisation owners should receive these notifications
  */
 export async function createScopeRadarNotification(
   userId: string,
@@ -413,6 +414,20 @@ export async function createScopeRadarNotification(
   metadata: Record<string, any> = {}
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // SECURITY: Verify user is the organisation owner before creating notification
+    const organisationId = metadata.organisationId;
+    if (organisationId) {
+      const organisation = await db.organisation.findUnique({
+        where: { id: organisationId },
+        select: { ownerId: true }
+      });
+      
+      if (organisation && organisation.ownerId !== userId) {
+        console.log('[Notifications] Skipping scope radar notification - user is not organisation owner');
+        return { success: true }; // Silent skip for non-owners
+      }
+    }
+
     const riskEmoji = {
       low: '🟢',
       medium: '🟡',
@@ -779,7 +794,9 @@ export async function createRecurringInvoiceNotification(
 }
 
 /**
- * Create scope radar notification for project owner and team admins
+ * Create scope radar notification for organisation owner ONLY
+ * SECURITY: Budget and scope alerts are restricted to organisation owners
+ * Team members and admins should NOT receive these notifications
  */
 export async function createScopeRadarNotificationForTeam(
   projectId: string,
@@ -796,26 +813,38 @@ export async function createScopeRadarNotificationForTeam(
   scopeRadarId?: string
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
-    console.log('[Notifications] Creating scope radar notifications for project:', projectId);
+    console.log('[Notifications] Creating scope radar notification for organisation owner only, project:', projectId);
 
-    // Get project with team info
+    // Get project with organisation info to find the owner
     const project = await db.project.findUnique({
       where: { id: projectId },
       include: {
-        team: {
-          include: {
-            owner: true,
-            members: {
-              where: { role: 'admin' },
-              include: { user: true }
+        team: true,
+        organisation: {
+          select: {
+            id: true,
+            ownerId: true,
+            owner: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true
+              }
             }
           }
         }
       }
     });
 
-    if (!project || !project.team) {
-      return { success: false, count: 0, error: 'Project or team not found' };
+    if (!project) {
+      return { success: false, count: 0, error: 'Project not found' };
+    }
+
+    // SECURITY: Only notify the organisation owner
+    const ownerId = project.organisation?.ownerId;
+    if (!ownerId) {
+      console.warn('[Notifications] No organisation owner found for project:', projectId);
+      return { success: false, count: 0, error: 'Organisation owner not found' };
     }
 
     const riskEmoji = { low: '🟢', medium: '🟡', high: '🟠', critical: '🔴' };
@@ -842,46 +871,39 @@ export async function createScopeRadarNotificationForTeam(
 
     // Build action URL
     let actionUrl = `/dashboard`;
-    if (organisationId) {
-      actionUrl = `/dashboard/organisation/${organisationId}/projects/${projectId}`;
+    const orgId = organisationId || project.organisation?.id;
+    if (orgId) {
+      actionUrl = `/dashboard/organisation/${orgId}/projects/${projectId}`;
     }
 
-    // Collect unique users to notify (owner + admins)
-    const usersToNotify = new Set<string>();
-    usersToNotify.add(project.team.createdBy); // Owner
-    project.team.members.forEach(member => {
-      usersToNotify.add(member.userId);
-    });
+    // SECURITY: Only create notification for the organisation owner
+    const result = await createPersonalNotification(
+      ownerId,
+      actionType,
+      titles[actionType] || 'Project alert',
+      description,
+      actionUrl,
+      'View Project',
+      {
+        teamId: project.teamId,
+        projectId,
+        projectName,
+        riskLevel,
+        budgetInfo,
+        organisationId: orgId,
+        scopeRadarId,
+      }
+    );
 
-    let successCount = 0;
-
-    for (const userId of usersToNotify) {
-      const result = await createPersonalNotification(
-        userId,
-        actionType,
-        titles[actionType] || 'Project alert',
-        description,
-        actionUrl,
-        'View Project',
-        {
-          teamId: project.teamId,
-          projectId,
-          projectName,
-          riskLevel,
-          budgetInfo,
-          organisationId,
-          scopeRadarId,
-        }
-      );
-
-      if (result.success) successCount++;
+    if (result.success) {
+      console.log(`[Notifications] Scope radar notification sent to organisation owner: ${ownerId}`);
+      return { success: true, count: 1 };
+    } else {
+      return { success: false, count: 0, error: result.error };
     }
-
-    console.log(`[Notifications] Created ${successCount}/${usersToNotify.size} scope radar notifications`);
-    return { success: true, count: successCount };
 
   } catch (error: any) {
-    console.error('[Notifications] Error creating scope radar notifications:', error);
-    return { success: false, count: 0, error: error?.message || 'Failed to create notifications' };
+    console.error('[Notifications] Error creating scope radar notification:', error);
+    return { success: false, count: 0, error: error?.message || 'Failed to create notification' };
   }
 }

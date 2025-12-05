@@ -1,7 +1,7 @@
 import "../styles/globals.css";
 import { Inter } from "next/font/google";
 import { ReactNode } from "react";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import CookieConsent from "@/components/CookieConsent";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
@@ -94,12 +94,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: seoConfig.baseUrl,
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -108,6 +102,15 @@ export const metadata: Metadata = {
   category: "Business",
   classification: "Business Software",
   applicationName: seoConfig.siteName,
+};
+
+// Separate viewport export (Next.js 14+ requirement)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#18181b",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -119,7 +122,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#18181b" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

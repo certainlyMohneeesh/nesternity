@@ -1,0 +1,28 @@
+{
+  "name": "Nesternity CRM",
+  "short_name": "Nesternity",
+  "description": "Modern SaaS CRM Dashboard for teams and projects. Manage invoices, budgets, proposals, and team collaboration.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/nesternity_W.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/nesternity_l.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
