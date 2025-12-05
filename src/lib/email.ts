@@ -1,9 +1,60 @@
-// Email service using Resend
-import { Resend } from 'resend';
+// Email service using Zoho ZeptoMail
+import { SendMailClient } from 'zeptomail';
 import { getCurrencySymbol } from '@/lib/utils';
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ZeptoMail Configuration
+const ZEPTOMAIL_URL: string = process.env.ZEPTOMAIL_URL || 'https://api.zeptomail.in/v1.1/email';
+const ZEPTOMAIL_TOKEN: string = process.env.ZEPTOMAIL_TOKEN || '';
+const FROM_EMAIL: string = process.env.ZEPTOMAIL_FROM_EMAIL || 'noreply@cyth.dev';
+const FROM_NAME: string = process.env.ZEPTOMAIL_FROM_NAME || 'Nesternity';
+
+// Initialize ZeptoMail client
+let zeptoClient: SendMailClient | null = null;
+
+function getZeptoClient(): SendMailClient {
+  if (!zeptoClient) {
+    if (!ZEPTOMAIL_TOKEN) {
+      throw new Error('ZEPTOMAIL_TOKEN is not configured');
+    }
+    zeptoClient = new SendMailClient({ url: ZEPTOMAIL_URL, token: ZEPTOMAIL_TOKEN });
+  }
+  return zeptoClient;
+}
+
+// Helper function to send email via ZeptoMail
+async function sendEmailViaZeptoMail(options: {
+  to: { email: string; name?: string }[];
+  subject: string;
+  htmlBody: string;
+  textBody?: string;
+}): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  try {
+    const client = getZeptoClient();
+
+    const response = await client.sendMail({
+      from: {
+        address: FROM_EMAIL,
+        name: FROM_NAME,
+      },
+      to: options.to.map((recipient) => ({
+        email_address: {
+          address: recipient.email,
+          name: recipient.name || recipient.email,
+        },
+      })),
+      subject: options.subject,
+      htmlbody: options.htmlBody,
+      textbody: options.textBody,
+    });
+
+    console.log('✅ Email sent via ZeptoMail:', response);
+    return { success: true, messageId: response?.request_id || 'sent' };
+  } catch (error) {
+    console.error('❌ ZeptoMail email error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown ZeptoMail error';
+    return { success: false, error: errorMessage };
+  }
+}
 
 export interface EmailInviteData {
   recipientEmail: string;
@@ -16,27 +67,26 @@ export interface EmailInviteData {
 
 export async function sendTeamInviteEmail(data: EmailInviteData): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY not configured');
+    if (!ZEPTOMAIL_TOKEN) {
+      console.error('❌ ZEPTOMAIL_TOKEN not configured');
       return { success: false, error: 'Email service not configured' };
     }
 
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/${data.inviteToken}`;
     
-    const { data: emailResult, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [data.recipientEmail],
+    const result = await sendEmailViaZeptoMail({
+      to: [{ email: data.recipientEmail, name: data.recipientName }],
       subject: `You're invited to join ${data.teamName} on Nesternity CRM`,
-      html: generateInviteEmailHTML(data, inviteUrl),
-      text: generateInviteEmailText(data, inviteUrl),
+      htmlBody: generateInviteEmailHTML(data, inviteUrl),
+      textBody: generateInviteEmailText(data, inviteUrl),
     });
 
-    if (error) {
-      console.error('❌ Email sending failed:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error('❌ Email sending failed:', result.error);
+      return { success: false, error: result.error };
     }
 
-    console.log('✅ Email sent successfully:', emailResult?.id);
+    console.log('✅ Team invite email sent successfully:', result.messageId);
     return { success: true };
 
   } catch (error) {
@@ -293,27 +343,26 @@ Need help? Contact us at support@nesternity.com
 
 export async function sendPasswordResetEmail(data: PasswordResetEmailData): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY not configured');
+    if (!ZEPTOMAIL_TOKEN) {
+      console.error('❌ ZEPTOMAIL_TOKEN not configured');
       return { success: false, error: 'Email service not configured' };
     }
 
     const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/reset-password?token=${data.resetToken}`;
 
-    const { data: emailResult, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [data.recipientEmail],
+    const result = await sendEmailViaZeptoMail({
+      to: [{ email: data.recipientEmail, name: data.recipientName }],
       subject: 'Reset your password for Nesternity CRM',
-      html: generatePasswordResetEmailHTML(data, resetUrl),
-      text: generatePasswordResetEmailText(data, resetUrl),
+      htmlBody: generatePasswordResetEmailHTML(data, resetUrl),
+      textBody: generatePasswordResetEmailText(data, resetUrl),
     });
 
-    if (error) {
-      console.error('❌ Password reset email failed:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error('❌ Password reset email failed:', result.error);
+      return { success: false, error: result.error };
     }
 
-    console.log('✅ Password reset email sent:', emailResult?.id);
+    console.log('✅ Password reset email sent:', result.messageId);
     return { success: true };
   } catch (error) {
     console.error('❌ Password reset email service error:', error);
@@ -337,186 +386,184 @@ export interface ProposalEmailData {
 }
 
 function generateProposalEmailHTML(data: ProposalEmailData, signUrl: string): string {
+  // Helper for formatting date
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  };
+
   return `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${data.proposalTitle} - Proposal from Nesternity</title>
     </head>
-    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff;">
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 45px 35px; text-align: center;">
-                <div style="display: inline-flex; align-items: center; gap: 12px;">
-                    <h1 style="color: #ffffff; font-size: 32px; font-weight: bold; margin: 0; letter-spacing: 1.5px;">NESTERNITY</h1>
-                </div>
-                <p style="color: #e0e7ff; margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">Professional Project Proposal</p>
-            </div>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; color: #111827; line-height: 1.6;">
+        
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb;">
+            <tr>
+                <td align="center" style="padding: 40px 20px;">
+                    
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+                        
+                        <tr>
+                            <td align="center" style="padding: 40px 40px 20px 40px;">
+                                <img src="https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png" 
+                                     alt="Nesternity" 
+                                     width="140" 
+                                     style="display: block; width: 140px; height: auto; border: 0;">
+                            </td>
+                        </tr>
 
-            <!-- Content -->
-            <div style="padding: 45px 35px;">
-                <h2 style="color: #1e293b; font-size: 28px; font-weight: 700; margin-bottom: 20px;">New Proposal Awaiting Your Review 📋</h2>
-                
-                <p style="color: #475569; font-size: 17px; line-height: 1.7; margin-bottom: 20px;">
-                    Hi <strong>${data.recipientName}</strong>${data.recipientCompany ? ` from <strong>${data.recipientCompany}</strong>` : ''},
-                </p>
+                        <tr>
+                            <td style="padding: 0 40px 40px 40px;">
+                                
+                                <h1 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 700; color: #111827; text-align: center;">
+                                    Proposal for ${data.proposalTitle}
+                                </h1>
+                                
+                                <p style="margin: 0 0 24px 0; font-size: 16px; color: #4b5563; text-align: left;">
+                                    Hi <strong>${data.recipientName}</strong>${data.recipientCompany ? `,` : ''},
+                                </p>
+                                
+                                <p style="margin: 0 0 24px 0; font-size: 16px; color: #4b5563; text-align: left;">
+                                    <strong>${data.senderName}</strong> has sent you a proposal for the project <strong>${data.proposalTitle}</strong>. Please review the details below.
+                                </p>
 
-                <p style="color: #475569; font-size: 17px; line-height: 1.7; margin-bottom: 25px;">
-                    We're excited to present a new proposal for your project. This proposal has been carefully crafted to meet your requirements and deliver exceptional value.
-                </p>
+                                <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                        <tr>
+                                            <td style="padding-bottom: 8px; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase;">Project Name</td>
+                                            <td style="padding-bottom: 8px; font-size: 13px; color: #6b7280; font-weight: 600; text-transform: uppercase; text-align: right;">Total Investment</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-size: 16px; color: #111827; font-weight: 600;">${data.proposalTitle}</td>
+                                            <td style="font-size: 16px; color: #2563eb; font-weight: 700; text-align: right;">
+                                                ${getCurrencySymbol(data.currency)}${data.pricing.toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
 
-                <!-- Proposal Summary Card -->
-                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #0ea5e9; padding: 25px; border-radius: 10px; margin: 30px 0;">
-                    <h3 style="color: #0c4a6e; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">📊 Proposal Overview</h3>
-                    <div style="margin: 10px 0;">
-                        <span style="color: #64748b; font-size: 14px;">Project:</span><br>
-                        <strong style="color: #1e293b; font-size: 18px;">${data.proposalTitle}</strong>
-                    </div>
-                    <div style="margin: 15px 0 0 0;">
-                        <span style="color: #64748b; font-size: 14px;">Investment:</span><br>
-                        <strong style="color: #0ea5e9; font-size: 24px; font-weight: bold;">
-                            ${getCurrencySymbol(data.currency)}${data.pricing.toLocaleString()}
-                        </strong>
-                    </div>
-                </div>
+                                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td align="center" style="padding-bottom: 10px;">
+                                            <a href="${signUrl}" 
+                                               style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 50px; text-align: center; border: 1px solid #2563eb;">
+                                                Review & Sign Proposal &rarr;
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    ${data.pdfUrl ? `
+                                    <tr>
+                                        <td align="center" style="padding-top: 10px;">
+                                            <a href="${data.pdfUrl}" style="color: #6b7280; font-size: 14px; text-decoration: none;">
+                                                Download PDF version
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    ` : ''}
+                                </table>
 
-                <!-- CTA Buttons -->
-                <div style="text-align: center; margin: 40px 0 35px 0;">
-                    <a href="${signUrl}" 
-                       style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 10px; font-weight: 600; font-size: 17px; box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); margin-bottom: 15px;">
-                        ✍️ Review & Sign Proposal
-                    </a>
-                    ${data.pdfUrl ? `
-                    <br><br>
-                    <a href="${data.pdfUrl}" 
-                       style="display: inline-block; background-color: #ffffff; color: #6366f1; text-decoration: none; padding: 16px 36px; border-radius: 10px; font-weight: 600; font-size: 16px; border: 2px solid #6366f1;">
-                        📄 Download PDF
-                    </a>
-                    ` : ''}
-                </div>
+                                <div style="margin-top: 40px; border-top: 1px solid #f3f4f6; padding-top: 30px;">
+                                    
+                                    <h3 style="margin: 0 0 15px 0; font-size: 14px; font-weight: 700; color: #111827;">What happens next?</h3>
+                                    <ul style="margin: 0 0 30px 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
+                                        <li style="margin-bottom: 8px;">Review the full scope and terms using the button above.</li>
+                                        <li style="margin-bottom: 8px;">If everything looks good, sign electronically to accept.</li>
+                                        <li>Once signed, we can officially kick off the project!</li>
+                                    </ul>
 
-                <!-- What's Next Section -->
-                <div style="background-color: #f8fafc; padding: 25px; border-radius: 10px; margin-top: 30px;">
-                    <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">🚀 What Happens Next?</h3>
-                    <ol style="color: #475569; line-height: 1.8; margin: 0; padding-left: 20px; font-size: 15px;">
-                        <li><strong>Review the proposal</strong> – Take your time to read through all details</li>
-                        <li><strong>Ask questions</strong> – Contact us if you need clarification</li>
-                        <li><strong>Sign electronically</strong> – Use the secure link above to accept</li>
-                        <li><strong>Start the project</strong> – We'll begin work immediately after approval</li>
-                    </ol>
-                </div>
+                                    <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px;">
+                                         ${data.expiresAt ? `
+                                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #b45309;">
+                                                <strong>⏰ Valid Until:</strong> ${formatDate(data.expiresAt)}
+                                            </p>
+                                        ` : ''}
+                                        <p style="margin: 0; font-size: 13px; color: #6b7280;">
+                                            <strong>🔒 Secure:</strong> This link is unique to you. Your signature will be legally binding and IP tracked for security.
+                                        </p>
+                                    </div>
 
-                ${data.expiresAt ? `
-                <div style="background-color: #fffbeb; padding: 20px; border-radius: 8px; margin-top: 25px; border-left: 4px solid #f59e0b;">
-                    <p style="color: #92400e; font-size: 14px; margin: 0; line-height: 1.6;">
-                        <strong>⏰ Time-Sensitive:</strong><br>
-                        This proposal is valid until <strong>${new Date(data.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong> at <strong>${new Date(data.expiresAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</strong>.
-                    </p>
-                </div>
-                ` : ''}
+                                </div>
 
-                <!-- Security Notice -->
-                <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin-top: 25px; border-left: 4px solid #22c55e;">
-                    <p style="color: #15803d; font-size: 14px; margin: 0; line-height: 1.6;">
-                        <strong>🔒 Secure & Private:</strong><br>
-                        • This link is unique to you and expires after use<br>
-                        • All communications are encrypted<br>
-                        • Your signature is legally binding and tracked<br>
-                        • IP address and timestamp are recorded for security
-                    </p>
-                </div>
+                                <p style="margin-top: 30px; font-size: 14px; color: #4b5563;">
+                                    Questions? Just reply to this email.
+                                    <br><br>
+                                    Best,<br>
+                                    <strong>${data.senderName}</strong> via Nesternity
+                                </p>
 
-                <!-- Help Section -->
-                <div style="margin-top: 30px; padding-top: 25px; border-top: 1px solid #e2e8f0;">
-                    <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin: 0;">
-                        <strong style="color: #1e293b;">Need assistance?</strong><br>
-                        We're here to help! Reply to this email or contact <strong>${data.senderName}</strong> directly.
-                    </p>
-                </div>
+                            </td>
+                        </tr>
+                    </table>
 
-                <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-                    Looking forward to working together! 🤝
-                </p>
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+                        <tr>
+                            <td align="center" style="padding: 24px 0;">
+                                <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                    © ${new Date().getFullYear()} Nesternity. All rights reserved.<br>
+                                    Professional Project Management
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
 
-                <p style="color: #475569; font-size: 16px; margin-top: 20px;">
-                    Best regards,<br>
-                    <strong>${data.senderName}</strong>
-                </p>
-            </div>
-
-            <!-- Footer -->
-            <div style="background-color: #f8fafc; padding: 35px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 13px; margin: 0 0 8px 0;">
-                    Powered by <strong style="color: #6366f1;">Nesternity</strong> – Professional Project Management
-                </p>
-                <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                    If you can't click the button, copy this link:<br>
-                    <a href="${signUrl}" style="color: #6366f1; word-break: break-all;">${signUrl}</a>
-                </p>
-                <p style="color: #cbd5e1; font-size: 11px; margin: 15px 0 0 0;">
-                    © ${new Date().getFullYear()} Nesternity. All rights reserved.
-                </p>
-            </div>
-        </div>
+                </td>
+            </tr>
+        </table>
     </body>
     </html>
   `;
 }
 
 function generateProposalEmailText(data: ProposalEmailData, signUrl: string): string {
+  const expiryText = data.expiresAt 
+    ? `\n⏰ VALID UNTIL: ${new Date(data.expiresAt).toLocaleDateString()}` 
+    : '';
+
   return `
-NESTERNITY - Professional Project Proposal
+PROPOSAL FOR ${data.proposalTitle.toUpperCase()}
+------------------------------------------------
 
-New Proposal Awaiting Your Review
+Hi ${data.recipientName},
 
-Hi ${data.recipientName}${data.recipientCompany ? ` from ${data.recipientCompany}` : ''},
+${data.senderName} has sent you a proposal for the project "${data.proposalTitle}".
 
-We're excited to present a new proposal for your project.
-
-PROPOSAL OVERVIEW
-================
+SUMMARY
+-------
 Project: ${data.proposalTitle}
 Investment: ${getCurrencySymbol(data.currency)}${data.pricing.toLocaleString()}
 
-REVIEW & SIGN
+ACTION REQUIRED
+---------------
+Please review and sign the proposal at the link below:
+
 ${signUrl}
 
-${data.pdfUrl ? `DOWNLOAD PDF\n${data.pdfUrl}\n` : ''}
+${data.pdfUrl ? `(Download PDF: ${data.pdfUrl})` : ''}
 
-WHAT HAPPENS NEXT?
-==================
-1. Review the proposal – Take your time to read through all details
-2. Ask questions – Contact us if you need clarification
-3. Sign electronically – Use the secure link above to accept
-4. Start the project – We'll begin work immediately after approval
+WHAT'S NEXT?
+1. Review the full scope and terms.
+2. Sign electronically to accept.
+3. Project kickoff begins!
+${expiryText}
 
-${data.expiresAt ? `⏰ TIME-SENSITIVE: This proposal is valid until ${new Date(data.expiresAt).toLocaleString()}\n` : ''}
+Questions? Reply to this email.
 
-🔒 SECURITY NOTICE:
-• This link is unique to you and expires after use
-• All communications are encrypted
-• Your signature is legally binding and tracked
-• IP address and timestamp are recorded for security
-
-Need assistance? Reply to this email or contact ${data.senderName} directly.
-
-Looking forward to working together!
-
-Best regards,
-${data.senderName}
-
----
-Powered by Nesternity – Professional Project Management
-© ${new Date().getFullYear()} Nesternity. All rights reserved.
+Best,
+${data.senderName} via Nesternity
   `;
 }
 
 export async function sendProposalEmail(data: ProposalEmailData): Promise<{ success: boolean; error?: string; emailId?: string }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY not configured');
+    if (!ZEPTOMAIL_TOKEN) {
+      console.error('❌ ZEPTOMAIL_TOKEN not configured');
       return { success: false, error: 'Email service not configured' };
     }
 
@@ -524,21 +571,20 @@ export async function sendProposalEmail(data: ProposalEmailData): Promise<{ succ
 
     console.log('📧 Sending proposal email to:', data.recipientEmail);
 
-    const { data: emailResult, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [data.recipientEmail],
+    const result = await sendEmailViaZeptoMail({
+      to: [{ email: data.recipientEmail, name: data.recipientName }],
       subject: `${data.proposalTitle} - Review & Sign Your Proposal`,
-      html: generateProposalEmailHTML(data, signUrl),
-      text: generateProposalEmailText(data, signUrl),
+      htmlBody: generateProposalEmailHTML(data, signUrl),
+      textBody: generateProposalEmailText(data, signUrl),
     });
 
-    if (error) {
-      console.error('❌ Proposal email failed:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error('❌ Proposal email failed:', result.error);
+      return { success: false, error: result.error };
     }
 
-    console.log('✅ Proposal email sent successfully:', emailResult?.id);
-    return { success: true, emailId: emailResult?.id };
+    console.log('✅ Proposal email sent successfully:', result.messageId);
+    return { success: true, emailId: result.messageId };
   } catch (error) {
     console.error('❌ Proposal email service error:', error);
     return { success: false, error: 'Failed to send proposal email' };

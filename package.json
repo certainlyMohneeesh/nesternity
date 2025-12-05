@@ -58,7 +58,6 @@
     "@supabase/supabase-js": "^2.50.2",
     "@tabler/icons-react": "^3.34.0",
     "@tanstack/react-query": "^5.87.1",
-    "@types/ioredis": "^5.0.0",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-signature-canvas": "^1.0.7",
     "@types/react-window": "^1.8.8",
@@ -92,6 +91,7 @@
     "sonner": "^2.0.5",
     "stripe": "^18.3.0",
     "tailwind-merge": "^3.3.1",
+    "zeptomail": "^7.0.0",
     "zod": "^3.25.71"
   },
   "devDependencies": {

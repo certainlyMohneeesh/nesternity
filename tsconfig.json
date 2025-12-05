@@ -14,12 +14,14 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "skipDefaultLibCheck": true,
     "plugins": [
       {
         "name": "next"
       }
     ],
     "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "paths": {
       "@/*": ["./src/*"],
       "@/lib/*": ["src/lib/*"],
