@@ -96,6 +96,8 @@ export async function POST(request: NextRequest, { params }: Props) {
         invoiceNumber: newInvoiceNumber,
         clientId: parentInvoice.clientId,
         issuedById: user.id,
+        organisationId: parentInvoice.organisationId, // Copy from parent
+        projectId: parentInvoice.projectId, // Copy from parent
         issuedDate: now,
         dueDate,
         status: 'PENDING',

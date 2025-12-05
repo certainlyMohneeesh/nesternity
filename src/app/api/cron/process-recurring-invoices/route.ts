@@ -139,6 +139,8 @@ export async function GET(request: NextRequest) {
             invoiceNumber: newInvoiceNumber,
             clientId: parentInvoice.clientId,
             issuedById: parentInvoice.issuedById,
+            organisationId: parentInvoice.organisationId, // Copy from parent
+            projectId: parentInvoice.projectId, // Copy from parent
             issuedDate: now,
             dueDate,
             status: 'PENDING',
