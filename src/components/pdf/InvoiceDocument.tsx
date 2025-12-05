@@ -1,9 +1,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Link, Image, Font } from '@react-pdf/renderer'
-import { replaceSymbolWithCurrencyCode } from '@/lib/utils'
 
-// Register Roboto font for Unicode symbol support (Industry Standard)
-// This ensures currency symbols like ₹, €, £, ¥ display correctly
+// Register Roboto font (Keep existing registration)
 Font.register({
   family: 'Roboto',
   fonts: [
@@ -12,36 +10,16 @@ Font.register({
       fontWeight: 300,
     },
     {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-lightitalic-webfont.ttf',
-      fontWeight: 300,
-      fontStyle: 'italic',
-    },
-    {
       src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf',
       fontWeight: 400,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-italic-webfont.ttf',
-      fontWeight: 400,
-      fontStyle: 'italic',
     },
     {
       src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',
       fontWeight: 500,
     },
     {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-mediumitalic-webfont.ttf',
-      fontWeight: 500,
-      fontStyle: 'italic',
-    },
-    {
       src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',
       fontWeight: 700,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bolditalic-webfont.ttf',
-      fontWeight: 700,
-      fontStyle: 'italic',
     },
   ],
 })
@@ -59,18 +37,11 @@ interface InvoiceProps {
     enablePaymentLink?: boolean
     paymentUrl?: string | null
     watermarkText?: string | null
-    eSignatureUrl?: string | null
     client: {
-      id?: string
       name: string
       email: string
       company?: string | null
       address?: string | null
-    }
-    issuedBy?: {
-      id: string
-      email: string
-      displayName?: string | null
     }
     items: Array<{
       id?: string
@@ -82,518 +53,344 @@ interface InvoiceProps {
   }
 }
 
-// LOGO CDN URL - Replace this with your Cloudflare CDN URL after setup
-const LOGO_URL = 'https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png' // Update this!
+// LOGO CDN URL
+const LOGO_URL = 'https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png'
 
-// Get locale for currency formatting
+// Helper for Currency
 const getCurrencyLocale = (currency: string): string => {
-  const localeMap: Record<string, string> = {
-    INR: 'en-IN',
-    USD: 'en-US',
-    EUR: 'de-DE',
-    GBP: 'en-GB',
-    JPY: 'ja-JP',
-    CNY: 'zh-CN',
-    AUD: 'en-AU',
-    CAD: 'en-CA',
-    SGD: 'en-SG',
-    HKD: 'zh-HK',
-    NZD: 'en-NZ',
-    BRL: 'pt-BR',
-    MXN: 'es-MX',
-    KRW: 'ko-KR',
-  }
+  const localeMap: Record<string, string> = { INR: 'en-IN', USD: 'en-US', EUR: 'de-DE' }
   return localeMap[currency.toUpperCase()] || 'en-US'
 }
 
+// --- NEW STYLES ---
 const styles = StyleSheet.create({
   page: {
-    flexDirection: 'column',
-    backgroundColor: '#ffffff',
-    padding: 50,
+    padding: 40, // Reduced from 50 to save space
     fontFamily: 'Roboto',
-    position: 'relative',
+    backgroundColor: '#ffffff',
+    color: '#111827',
+    fontSize: 10,
+    lineHeight: 1.4,
   },
-  watermarkContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-    pointerEvents: 'none',
-  },
-  watermark: {
-    fontSize: 70,
-    color: '#f3f4f6',
-    fontWeight: 'bold',
-    opacity: 0.3,
-    transform: 'rotate(-45deg)',
-    textAlign: 'center',
-  },
-  content: {
-    zIndex: 2,
-    position: 'relative',
-  },
-  // Professional Header
+  
+  // Header Section
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 40,
-    paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: '#2563eb',
-  },
-  logoSection: {
-    flex: 1,
   },
   logo: {
-    width: 140,
-    height: 40,
-    objectFit: 'contain',
-    objectPosition: 'left center',
-    marginBottom: 15,
-    marginLeft: 0,
+    width: 120,
+    height: 'auto',
+    marginBottom: 10,
   },
-  companyInfo: {
+  companyAddress: {
     fontSize: 9,
     color: '#6b7280',
-    lineHeight: 1.5,
-    marginBottom: 2,
+    marginTop: 2,
   },
-  invoiceDetails: {
-    alignItems: 'flex-end',
+  titleBig: {
+    fontSize: 36,
+    fontFamily: 'Roboto', // Serif look like the reference
+    fontWeight: 'normal',
+    color: '#111827',
   },
-  invoiceTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-  invoiceNumber: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 15,
-  },
-  badge: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  // Date Section
-  dateRow: {
+
+  // Meta Grid (Bill To + Dates)
+  metaContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 35,
-    gap: 30,
-  },
-  dateCard: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    padding: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  dateLabel: {
-    fontSize: 9,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  dateValue: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  // Billing Section
-  billingSection: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 35,
-  },
-  billingCard: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  billingTitle: {
-    fontSize: 11,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  billingName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  billingInfo: {
-    fontSize: 10,
-    color: '#6b7280',
-    lineHeight: 1.6,
-    marginBottom: 3,
-  },
-  // Modern Table
-  table: {
     marginBottom: 30,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingBottom: 20,
+  },
+  colLeft: {
+    width: '55%',
+  },
+  colRight: {
+    width: '40%',
+    alignItems: 'flex-end',
+  },
+  
+  // Label Styles
+  label: {
+    fontSize: 8,
+    color: '#6b7280',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 5,
+  },
+  value: {
+    fontSize: 11,
+    color: '#111827',
+    fontWeight: 'medium',
+  },
+  valueDate: {
+    fontSize: 11,
+    color: '#111827',
+    textAlign: 'right',
+  },
+  
+  // Table
+  table: {
+    width: '100%',
+    marginBottom: 20,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: 2,
-    borderBottomColor: '#e5e7eb',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#111827', // Dark line like reference
+    paddingBottom: 8,
+    marginBottom: 8,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
-    paddingVertical: 14,
-    paddingHorizontal: 15,
+    paddingVertical: 10,
   },
-  tableHeaderText: {
-    fontSize: 10,
+  th: {
+    fontSize: 9,
     fontWeight: 'bold',
-    color: '#374151',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    color: '#111827',
   },
-  tableCell: {
-    fontSize: 11,
-    color: '#1f2937',
+  td: {
+    fontSize: 10,
+    color: '#374151',
   },
-  col1: { flex: 3 },
-  col2: { flex: 1, textAlign: 'center' },
-  col3: { flex: 1.5, textAlign: 'right' },
-  col4: { flex: 1.5, textAlign: 'right' },
-  // Summary Section
-  summarySection: {
-    alignSelf: 'flex-end',
-    width: '45%',
+  // Column Widths
+  cDesc: { flex: 3, textAlign: 'left' },
+  cQty: { flex: 0.5, textAlign: 'center' },
+  cRate: { flex: 1, textAlign: 'right' },
+  cTotal: { flex: 1, textAlign: 'right' },
+
+  // Footer Section (Totals + Notes)
+  footerSection: {
+    flexDirection: 'row',
+    marginTop: 10,
   },
+  footerLeft: {
+    flex: 3,
+    paddingRight: 40,
+  },
+  footerRight: {
+    flex: 2,
+  },
+
+  // Totals
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    paddingVertical: 6,
   },
   summaryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6b7280',
   },
   summaryValue: {
-    fontSize: 11,
+    fontSize: 10,
+    color: '#111827',
     fontWeight: 'bold',
-    color: '#374151',
+    textAlign: 'right',
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#2563eb',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  totalLabel: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  // Notes & Payment
-  notesSection: {
-    marginTop: 40,
-    padding: 20,
-    backgroundColor: '#fef3c7',
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-    borderRadius: 6,
-  },
-  notesTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#92400e',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  notesText: {
-    fontSize: 10,
-    color: '#78350f',
-    lineHeight: 1.6,
-  },
-  paymentSection: {
-    marginTop: 30,
-    padding: 25,
-    backgroundColor: '#eff6ff',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#3b82f6',
-    alignItems: 'center',
-  },
-  paymentTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1e40af',
-    marginBottom: 12,
-  },
-  paymentButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  paymentButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  paymentHint: {
-    fontSize: 9,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 50,
-    right: 50,
     paddingTop: 15,
+    marginTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
-  footerRow: {
+  totalLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#111827',
+    textTransform: 'uppercase',
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#8E30C8',
+  },
+
+  // Clean Notes
+  notesContainer: {
+    marginTop: 0,
+  },
+  notesTitle: {
+    fontSize: 12,
+    fontFamily: 'Roboto', // Serif
+    fontWeight: 'normal',
+    marginBottom: 8,
+    color: '#111827',
+  },
+  notesText: {
+    fontSize: 9,
+    color: '#6b7280',
+    lineHeight: 1.5,
+  },
+
+  // Bottom Payment Bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 40,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 8,
-    color: '#9ca3af',
-  },
-  poweredBy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  poweredByText: {
-    fontSize: 8,
-    color: '#9ca3af',
-  },
-  nesternity: {
-    fontSize: 9,
+  paymentButton: {
+    color: '#8E30C8', // Your Blue
+    fontSize: 10,
     fontWeight: 'bold',
-    color: '#2563eb',
+    textDecoration: 'none',
+  },
+  brandText: {
+    fontSize: 8,
+    color: '#525252ff',
   },
 })
 
 export const InvoiceDocument: React.FC<InvoiceProps> = ({ invoice }) => {
   const taxRate = invoice.taxRate || 0
   const discount = invoice.discount || 0
-
   const subtotal = invoice.items.reduce((sum, item) => sum + item.total, 0)
   const taxAmount = subtotal * (taxRate / 100)
   const discountAmount = subtotal * (discount / 100)
   const total = subtotal + taxAmount - discountAmount
 
-  // Get locale for currency formatting
   const locale = getCurrencyLocale(invoice.currency)
-
-  // Format amounts with currency code (more reliable than symbols in PDF)
-  const formatAmount = (amount: number) => {
-    const formatted = amount.toLocaleString(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })
-    return `${invoice.currency} ${formatted}`
-  }
-
+  const formatAmount = (amount: number) => 
+    amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  
   const formatDate = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {invoice.watermarkText && (
-          <View style={styles.watermarkContainer}>
-            <Text style={styles.watermark}>{invoice.watermarkText}</Text>
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Image src={LOGO_URL} style={styles.logo} />
+            <Text style={styles.companyAddress}>Professional Project Management</Text>
+            <Text style={styles.companyAddress}>nesternity@cyth.dev | www.nesternity.cyth.app</Text>
           </View>
-        )}
+          <Text style={styles.titleBig}>Invoice</Text>
+        </View>
 
-        <View style={styles.content}>
-          {/* Professional Header */}
-          <View style={styles.header}>
-            <View style={styles.logoSection}>
-              <Image
-                src={LOGO_URL}
-                style={styles.logo}
-              />
-              <Text style={styles.companyInfo}>Professional Project Management</Text>
-              <Text style={styles.companyInfo}>Email: hello@nesternity.com</Text>
-              <Text style={styles.companyInfo}>Web: www.nesternity.com</Text>
-            </View>
-            <View style={styles.invoiceDetails}>
-              <Text style={styles.invoiceTitle}>INVOICE</Text>
-              <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
-              <View style={styles.badge}>
-                <Text>Amount Due</Text>
-              </View>
-            </View>
+        {/* Meta Info Grid */}
+        <View style={styles.metaContainer}>
+          <View style={styles.colLeft}>
+            <Text style={styles.label}>BILLED TO:</Text>
+            <Text style={[styles.value, { fontWeight: 'bold', marginBottom: 2 }]}>
+              {invoice.client.name}
+            </Text>
+            {invoice.client.company && <Text style={styles.value}>{invoice.client.company}</Text>}
+            <Text style={[styles.value, { color: '#6b7280' }]}>{invoice.client.email}</Text>
+            {invoice.client.address && <Text style={[styles.value, { color: '#6b7280' }]}>{invoice.client.address}</Text>}
           </View>
-
-          {/* Date Cards */}
-          <View style={styles.dateRow}>
-            <View style={styles.dateCard}>
-              <Text style={styles.dateLabel}>Issue Date</Text>
-              <Text style={styles.dateValue}>{formatDate(invoice.createdAt)}</Text>
+          
+          <View style={styles.colRight}>
+            <View style={{ marginBottom: 10 }}>
+              <Text style={[styles.label, { textAlign: 'right' }]}>DATE</Text>
+              <Text style={styles.valueDate}>{formatDate(invoice.createdAt)}</Text>
             </View>
-            <View style={styles.dateCard}>
-              <Text style={styles.dateLabel}>Due Date</Text>
-              <Text style={styles.dateValue}>{formatDate(invoice.dueDate)}</Text>
+            <View>
+              <Text style={[styles.label, { textAlign: 'right' }]}>INVOICE NO.</Text>
+              <Text style={styles.valueDate}>{invoice.invoiceNumber}</Text>
             </View>
           </View>
+        </View>
 
-          {/* Billing Information */}
-          <View style={styles.billingSection}>
-            <View style={styles.billingCard}>
-              <Text style={styles.billingTitle}>Bill To</Text>
-              <Text style={styles.billingName}>{invoice.client.name}</Text>
-              {invoice.client.company && (
-                <Text style={styles.billingInfo}>{invoice.client.company}</Text>
+        {/* Table */}
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, styles.cDesc]}>DESCRIPTION</Text>
+            <Text style={[styles.th, styles.cQty]}>QTY</Text>
+            <Text style={[styles.th, styles.cRate]}>RATE</Text>
+            <Text style={[styles.th, styles.cTotal]}>AMOUNT</Text>
+          </View>
+          {invoice.items.map((item, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={[styles.td, styles.cDesc]}>{item.description}</Text>
+              <Text style={[styles.td, styles.cQty]}>{item.quantity}</Text>
+              <Text style={[styles.td, styles.cRate]}>{invoice.currency} {formatAmount(item.rate)}</Text>
+              <Text style={[styles.td, styles.cTotal]}>{invoice.currency} {formatAmount(item.total)}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Footer Area: Split into Left (Notes) and Right (Totals) */}
+        <View style={styles.footerSection}>
+          <View style={styles.footerLeft}>
+            <View style={styles.notesContainer}>
+              {/* <Text style={styles.notesTitle}>Payment Info</Text>
+              <Text style={styles.notesText}>Nesternity</Text>
+              <Text style={styles.notesText}>Bank: Really Great Bank</Text>
+              <Text style={styles.notesText}>Account No: 0123 4567 8901</Text> */}
+              
+              {invoice.notes && (
+                <View style={{ marginTop: 15 }}>
+                  <Text style={[styles.notesTitle, { fontSize: 10 }]}>Notes</Text>
+                  <Text style={styles.notesText}>{invoice.notes}</Text>
+                </View>
               )}
-              <Text style={styles.billingInfo}>{invoice.client.email}</Text>
-              {invoice.client.address && (
-                <Text style={styles.billingInfo}>{invoice.client.address}</Text>
-              )}
             </View>
           </View>
 
-          {/* Items Table */}
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.col1]}>Description</Text>
-              <Text style={[styles.tableHeaderText, styles.col2]}>Qty</Text>
-              <Text style={[styles.tableHeaderText, styles.col3]}>Rate</Text>
-              <Text style={[styles.tableHeaderText, styles.col4]}>Amount</Text>
-            </View>
-            {invoice.items.map((item, index) => (
-              <View style={styles.tableRow} key={item.id || index}>
-                <Text style={[styles.tableCell, styles.col1]}>{item.description}</Text>
-                <Text style={[styles.tableCell, styles.col2]}>{item.quantity}</Text>
-                <Text style={[styles.tableCell, styles.col3]}>
-                  {formatAmount(item.rate)}
-                </Text>
-                <Text style={[styles.tableCell, styles.col4]}>
-                  {formatAmount(item.total)}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Summary */}
-          <View style={styles.summarySection}>
+          <View style={styles.footerRight}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>
-                {formatAmount(subtotal)}
-              </Text>
+              <Text style={styles.summaryLabel}>Sub-Total</Text>
+              <Text style={styles.summaryValue}>{invoice.currency} {formatAmount(subtotal)}</Text>
             </View>
             {discount > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Discount ({discount}%)</Text>
-                <Text style={styles.summaryValue}>
-                  -{formatAmount(discountAmount)}
+                <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
+                  -{invoice.currency} {formatAmount(discountAmount)}
                 </Text>
               </View>
             )}
             {taxRate > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Tax ({taxRate}%)</Text>
-                <Text style={styles.summaryValue}>
-                  {formatAmount(taxAmount)}
-                </Text>
+                <Text style={styles.summaryValue}>{invoice.currency} {formatAmount(taxAmount)}</Text>
               </View>
             )}
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Due</Text>
-              <Text style={styles.totalValue}>
-                {formatAmount(total)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Payment Link */}
-          {invoice.enablePaymentLink && invoice.paymentUrl && (
-            <View style={styles.paymentSection}>
-              <Text style={styles.paymentTitle}>💳 Pay Securely Online</Text>
-              <Link src={invoice.paymentUrl} style={styles.paymentButton}>
-                <Text style={styles.paymentButtonText}>
-                  PAY {formatAmount(total)}
-                </Text>
-              </Link>
-              <Text style={styles.paymentHint}>
-                Click to pay securely with credit card or bank transfer
-              </Text>
-            </View>
-          )}
-
-          {/* Notes */}
-          {invoice.notes && (
-            <View style={styles.notesSection}>
-              <Text style={styles.notesTitle}>Notes</Text>
-              <Text style={styles.notesText}>{invoice.notes}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>
-              Thank you for your business!
-            </Text>
-            <View style={styles.poweredBy}>
-              <Text style={styles.poweredByText}>Powered by</Text>
-              <Text style={styles.nesternity}>Nesternity</Text>
+              <Text style={styles.totalLabel}>TOTAL</Text>
+              <Text style={styles.totalValue}>{invoice.currency} {formatAmount(total)}</Text>
             </View>
           </View>
         </View>
+
+        {/* Bottom Bar (Payment Link & Brand) */}
+        <View style={styles.bottomBar}>
+           <View>
+             <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#8E30C8' }}>Nesternity</Text>
+             <Text style={styles.brandText}>nesternity@cyth.dev</Text>
+           </View>
+           
+           {invoice.enablePaymentLink && invoice.paymentUrl && (
+             <Link src={invoice.paymentUrl} style={styles.paymentButton}>
+               CLICK TO PAY ONLINE →
+             </Link>
+           )}
+        </View>
+
       </Page>
     </Document>
   )

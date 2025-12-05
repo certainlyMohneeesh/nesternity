@@ -1,48 +1,15 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
-import { getCurrencySymbol, formatCurrency, replaceSymbolWithCurrencyCode } from '@/lib/utils'
 
-// Register Roboto font for Unicode symbol support (Industry Standard)
-// This ensures currency symbols like ₹, €, £, ¥ display correctly
+// Register Roboto font (Standard for PDF generation)
 Font.register({
   family: 'Roboto',
   fonts: [
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf',
-      fontWeight: 300,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-lightitalic-webfont.ttf',
-      fontWeight: 300,
-      fontStyle: 'italic',
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf',
-      fontWeight: 400,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-italic-webfont.ttf',
-      fontWeight: 400,
-      fontStyle: 'italic',
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',
-      fontWeight: 500,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-mediumitalic-webfont.ttf',
-      fontWeight: 500,
-      fontStyle: 'italic',
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',
-      fontWeight: 700,
-    },
-    {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bolditalic-webfont.ttf',
-      fontWeight: 700,
-      fontStyle: 'italic',
-    },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf', fontWeight: 300 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf', fontWeight: 400 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf', fontWeight: 500 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf', fontWeight: 700 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-italic-webfont.ttf', fontStyle: 'italic' },
   ],
 })
 
@@ -64,10 +31,6 @@ interface ProposalProps {
       address?: string | null
       phone?: string | null
     }
-    project?: {
-      name: string
-      description?: string | null
-    } | null
     signatures?: Array<{
       signerName: string
       signerEmail: string
@@ -78,365 +41,266 @@ interface ProposalProps {
   }
 }
 
-// LOGO CDN URL - Replace this with your Cloudflare CDN URL after setup
-const LOGO_URL = 'https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png' // Update this!
+const LOGO_URL = 'https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png'
 
-// Get locale for currency formatting
 const getCurrencyLocale = (currency: string): string => {
-  const localeMap: Record<string, string> = {
-    INR: 'en-IN',
-    USD: 'en-US',
-    EUR: 'de-DE',
-    GBP: 'en-GB',
-    JPY: 'ja-JP',
-    CNY: 'zh-CN',
-    AUD: 'en-AU',
-    CAD: 'en-CA',
-    SGD: 'en-SG',
-    HKD: 'zh-HK',
-    NZD: 'en-NZ',
-    BRL: 'pt-BR',
-    MXN: 'es-MX',
-    KRW: 'ko-KR',
-  }
+  const localeMap: Record<string, string> = { INR: 'en-IN', USD: 'en-US', EUR: 'de-DE' }
   return localeMap[currency.toUpperCase()] || 'en-US'
 }
 
 const styles = StyleSheet.create({
+  // Global
   page: {
-    flexDirection: 'column',
     backgroundColor: '#ffffff',
-    padding: 50,
     fontFamily: 'Roboto',
-  },
-  // Hero Header
-  hero: {
-    marginBottom: 40,
-    paddingBottom: 25,
-    borderBottomWidth: 3,
-    borderBottomColor: '#2563eb',
-  },
-  logo: {
-    width: 160,
-    height: 45,
-    objectFit: 'contain',
-    objectPosition: 'left center',
-    marginBottom: 20,
-    marginLeft: 0,
-  },
-  titleRow: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  titleSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 700,
-    color: '#111827',
-    marginBottom: 12,
-    lineHeight: 1.4,
-    textAlign: 'center',
-    maxWidth: '90%',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#6b7280',
-    lineHeight: 1.6,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  pricingBox: {
-    backgroundColor: '#eff6ff',
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#2563eb',
-    alignItems: 'center',
-  },
-  pricingLabel: {
     fontSize: 10,
-    color: '#1e40af',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  pricingAmount: {
-    fontSize: 40,
-    fontWeight: 700,
-    color: '#2563eb',
-    letterSpacing: -1,
-    fontFamily: 'Roboto',
-  },
-  // Section Styles
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 15,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#e5e7eb',
-  },
-  // Client Info Card
-  infoCard: {
-    backgroundColor: '#f9fafb',
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    gap: 30,
-  },
-  infoColumn: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 9,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    marginBottom: 5,
-    letterSpacing: 0.5,
-  },
-  value: {
-    fontSize: 11,
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  // Project Brief
-  textContent: {
-    fontSize: 11,
+    lineHeight: 1.5,
     color: '#374151',
-    lineHeight: 1.8,
-    textAlign: 'justify',
   },
-  // Deliverables - Card Style
-  deliverableCard: {
-    backgroundColor: '#ffffff',
-    padding: 18,
-    marginBottom: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  
+  // --- COVER PAGE STYLES ---
+  coverPage: {
+    padding: 40,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
   },
-  deliverableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  coverHeader: {
+    marginTop: 20,
+  },
+  coverLogo: {
+    width: 150,
+    marginBottom: 40,
+  },
+  coverTitleContainer: {
+    marginTop: 60,
+  },
+  coverLabel: {
+    fontSize: 10,
+    color: '#2563eb', // Brand Blue
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     marginBottom: 10,
   },
-  deliverableNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    paddingTop: 8,
-    marginRight: 15,
-  },
-  deliverableTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
+  coverTitle: {
+    fontSize: 32,
     color: '#111827',
-    flex: 1,
-  },
-  deliverableDescription: {
-    fontSize: 10,
-    color: '#6b7280',
-    lineHeight: 1.7,
-    marginLeft: 47,
-  },
-  deliverableTimeline: {
-    fontSize: 9,
-    color: '#9ca3af',
-    marginTop: 8,
-    marginLeft: 47,
-    fontStyle: 'italic',
-  },
-  // Timeline - Modern Phase Cards
-  phaseCard: {
-    backgroundColor: '#f8fafc',
-    padding: 18,
-    marginBottom: 15,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2563eb',
-  },
-  phaseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  phaseNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
-    paddingTop: 9,
-    marginRight: 15,
+    lineHeight: 1.2,
+    marginBottom: 20,
   },
-  phaseName: {
+  coverSubtitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#111827',
-    flex: 1,
-  },
-  phaseDuration: {
-    fontSize: 10,
-    color: '#2563eb',
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontWeight: 'bold',
-  },
-  phaseDeliverables: {
-    marginTop: 10,
-  },
-  phaseBullet: {
-    fontSize: 10,
-    color: '#4b5563',
-    marginBottom: 5,
-    paddingLeft: 0,
-    lineHeight: 1.5,
-  },
-  // Investment Section
-  investmentSection: {
-    backgroundColor: '#f0f9ff',
-    padding: 25,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#2563eb',
-  },
-  investmentTitle: {
-    fontSize: 14,
-    color: '#1e40af',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-  investmentAmount: {
-    fontSize: 40,
-    fontWeight: 700,
-    color: '#2563eb',
-    marginBottom: 15,
-    fontFamily: 'Roboto',
-  },
-  paymentTermsBox: {
-    backgroundColor: '#ffffff',
-    padding: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-  },
-  paymentTermsLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  paymentTermsText: {
-    fontSize: 10,
-    color: '#475569',
-    lineHeight: 1.7,
-  },
-  // Signatures
-  signatureSection: {
-    marginTop: 40,
-    paddingTop: 25,
-    borderTopWidth: 2,
-    borderTopColor: '#e5e7eb',
-  },
-  signatureCard: {
-    backgroundColor: '#f9fafb',
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 15,
-  },
-  signatureImage: {
-    width: 200,
-    height: 70,
-    marginBottom: 15,
-    borderBottomWidth: 2,
-    borderBottomColor: '#cbd5e1',
-  },
-  signatureInfo: {
-    fontSize: 9,
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 40,
   },
-  signatureBold: {
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  signatureDate: {
-    fontSize: 9,
-    color: '#9ca3af',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 50,
-    right: 50,
-    paddingTop: 15,
+  coverBottom: {
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    paddingTop: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  validityBadge: {
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    fontSize: 9,
+  coverMetaBlock: {
+    flexDirection: 'column',
+  },
+  coverMetaLabel: {
+    fontSize: 8,
+    color: '#9ca3af',
+    textTransform: 'uppercase',
     fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  coverMetaValue: {
+    fontSize: 11,
+    color: '#111827',
+    fontWeight: 'medium',
+  },
+
+  // --- CONTENT PAGE STYLES ---
+  contentPage: {
+    paddingTop: 30,
+    paddingBottom: 50,
+    paddingHorizontal: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    paddingBottom: 10,
+  },
+  headerLogo: {
+    width: 80,
+  },
+  headerText: {
+    fontSize: 8,
+    color: '#9ca3af',
     alignSelf: 'center',
+  },
+  
+  // Typography
+  h1: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2563eb', // Blue underline for sections
+    paddingBottom: 5,
+    marginTop: 20,
+  },
+  h2: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  text: {
+    fontSize: 10,
+    marginBottom: 8,
+    textAlign: 'justify',
+  },
+
+  // Sections
+  section: {
     marginBottom: 10,
   },
-  footerRow: {
+  
+  // Deliverables List
+  deliverableItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    paddingLeft: 5,
+  },
+  bulletPoint: {
+    width: 20,
+    fontSize: 10,
+    color: '#2563eb',
+    fontWeight: 'bold',
+  },
+  deliverableContent: {
+    flex: 1,
+  },
+  deliverableDesc: {
+    fontSize: 10,
+    color: '#4b5563',
+  },
+  deliverableMeta: {
+    fontSize: 9,
+    color: '#6b7280',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+
+  // Timeline (Left Border Style)
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    borderLeftWidth: 2,
+    borderLeftColor: '#dbeafe', // Light blue line
+    paddingLeft: 15,
+    marginLeft: 5,
+  },
+  timelineDot: {
+    position: 'absolute',
+    left: -19,
+    top: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  timelineDuration: {
+    fontSize: 9,
+    color: '#2563eb',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  
+  // Investment
+  investmentBox: {
+    marginTop: 10,
+    backgroundColor: '#f9fafb',
+    padding: 20,
+    borderRadius: 4,
+  },
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 5,
+  },
+  priceLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  priceValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  termsText: {
+    marginTop: 10,
+    fontSize: 9,
+    color: '#6b7280',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 10,
+  },
+
+  // Signatures
+  signatureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 40,
+    marginTop: 20,
+  },
+  signatureBox: {
+    width: '45%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#9ca3af',
+    paddingBottom: 5,
+    marginBottom: 20,
+  },
+  sigImage: {
+    height: 40,
+    width: 120,
+    objectFit: 'contain',
+  },
+  sigLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   footerText: {
     fontSize: 8,
     color: '#9ca3af',
-    lineHeight: 1.5,
-  },
-  poweredBy: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  nesternity: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#2563eb',
   },
 })
 
@@ -444,206 +308,147 @@ export function ProposalDocument({ proposal }: ProposalProps) {
   const deliverables = Array.isArray(proposal.deliverables) ? proposal.deliverables : []
   const timeline = Array.isArray(proposal.timeline) ? proposal.timeline : []
   const locale = getCurrencyLocale(proposal.currency)
-
-  // Format the pricing amount with currency code (more reliable than symbols in PDF)
+  
   const formattedPrice = proposal.pricing.toLocaleString(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   })
 
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    })
+  }
+
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Hero Header */}
-        <View style={styles.hero}>
-          <Image src={LOGO_URL} style={styles.logo} />
-          <View style={styles.titleRow}>
-            <View style={styles.titleSection}>
-              <Text style={styles.title}>{proposal.title}</Text>
-              <Text style={styles.subtitle}>
-                Prepared for {proposal.client.company || proposal.client.name}
-              </Text>
-              <Text style={styles.subtitle}>
-                {new Date(proposal.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-            </View>
-            <View style={styles.pricingBox}>
-              <Text style={styles.pricingLabel}>Investment</Text>
-              <Text style={styles.pricingAmount}>
-                {proposal.currency} {formattedPrice}
-              </Text>
-            </View>
+      {/* PAGE 1: COVER PAGE (Distinct layout) */}
+      <Page size="A4" style={[styles.page, styles.coverPage]}>
+        <View style={styles.coverHeader}>
+          <Image src={LOGO_URL} style={styles.coverLogo} />
+        </View>
+
+        <View style={styles.coverTitleContainer}>
+          <Text style={styles.coverLabel}>Project Proposal</Text>
+          <Text style={styles.coverTitle}>{proposal.title}</Text>
+          <Text style={styles.coverSubtitle}>
+            Prepared specifically for {proposal.client.company || proposal.client.name}
+          </Text>
+        </View>
+
+        <View style={styles.coverBottom}>
+          <View style={styles.coverMetaBlock}>
+            <Text style={styles.coverMetaLabel}>Prepared For</Text>
+            <Text style={styles.coverMetaValue}>{proposal.client.name}</Text>
+            <Text style={styles.coverMetaValue}>{proposal.client.company}</Text>
+            <Text style={styles.coverMetaValue}>{proposal.client.email}</Text>
+          </View>
+          
+          <View style={styles.coverMetaBlock}>
+            <Text style={styles.coverMetaLabel}>Date Issued</Text>
+            <Text style={styles.coverMetaValue}>{formatDate(proposal.createdAt)}</Text>
+            <Text style={[styles.coverMetaLabel, { marginTop: 10 }]}>Proposal ID</Text>
+            <Text style={styles.coverMetaValue}>{proposal.id}</Text>
           </View>
         </View>
+      </Page>
 
-        {/* Client Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Client Information</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoColumn}>
-                <Text style={styles.label}>Client Name</Text>
-                <Text style={styles.value}>{proposal.client.name}</Text>
-              </View>
-              {proposal.client.company && (
-                <View style={styles.infoColumn}>
-                  <Text style={styles.label}>Company</Text>
-                  <Text style={styles.value}>{proposal.client.company}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.infoRow}>
-              <View style={styles.infoColumn}>
-                <Text style={styles.label}>Email</Text>
-                <Text style={styles.value}>{proposal.client.email}</Text>
-              </View>
-              {proposal.client.phone && (
-                <View style={styles.infoColumn}>
-                  <Text style={styles.label}>Phone</Text>
-                  <Text style={styles.value}>{proposal.client.phone}</Text>
-                </View>
-              )}
-            </View>
-            {proposal.client.address && (
-              <View>
-                <Text style={styles.label}>Address</Text>
-                <Text style={styles.value}>{proposal.client.address}</Text>
-              </View>
-            )}
-          </View>
+      {/* PAGE 2+: CONTENT (Flowing layout) */}
+      <Page size="A4" style={[styles.page, styles.contentPage]}>
+        
+        {/* Header on every content page */}
+        <View style={styles.header} fixed>
+          <Image src={LOGO_URL} style={styles.headerLogo} />
+          <Text style={styles.headerText}>{proposal.title}</Text>
         </View>
 
-        {/* Project Brief */}
+        {/* 1. Executive Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Project Brief</Text>
-          <Text style={styles.textContent}>{proposal.brief}</Text>
+          <Text style={styles.h1}>1. Executive Summary</Text>
+          <Text style={styles.text}>{proposal.brief}</Text>
         </View>
 
-        {/* Deliverables */}
+        {/* 2. Scope of Work / Deliverables */}
         {deliverables.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Deliverables</Text>
+            <Text style={styles.h1}>2. Scope of Work</Text>
             {deliverables.map((item: any, index: number) => (
-              <View key={index} style={styles.deliverableCard}>
-                <View style={styles.deliverableHeader}>
-                  <Text style={styles.deliverableNumber}>{index + 1}</Text>
-                  <Text style={styles.deliverableTitle}>
-                    {item.item || item.title || item.name}
-                  </Text>
+              <View key={index} style={styles.deliverableItem} wrap={false}>
+                <Text style={styles.bulletPoint}>{index + 1}.</Text>
+                <View style={styles.deliverableContent}>
+                  <Text style={styles.h2}>{item.item || item.title || item.name}</Text>
+                  {item.description && <Text style={styles.deliverableDesc}>{item.description}</Text>}
+                  {item.timeline && <Text style={styles.deliverableMeta}>Est. Time: {item.timeline}</Text>}
                 </View>
-                {item.description && (
-                  <Text style={styles.deliverableDescription}>
-                    {item.description}
-                  </Text>
-                )}
-                {item.timeline && (
-                  <Text style={styles.deliverableTimeline}>
-                    ⏱ {item.timeline}
-                  </Text>
-                )}
               </View>
             ))}
           </View>
         )}
 
-        {/* Timeline */}
+        {/* 3. Project Timeline */}
         {timeline.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Project Timeline</Text>
+          <View style={styles.section} break={timeline.length > 4}> 
+             {/* Add a page break before timeline if it's long, to keep it together */}
+            <Text style={styles.h1}>3. Project Timeline</Text>
             {timeline.map((phase: any, index: number) => (
-              <View key={index} style={styles.phaseCard}>
-                <View style={styles.phaseHeader}>
-                  <Text style={styles.phaseNumber}>{index + 1}</Text>
-                  <Text style={styles.phaseName}>{phase.name || phase.phase}</Text>
-                  <Text style={styles.phaseDuration}>
-                    {phase.duration || phase.timeline}
-                  </Text>
+              <View key={index} style={styles.timelineItem} wrap={false}>
+                <View style={styles.timelineDot} />
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTitle}>{phase.name || phase.phase}</Text>
+                  <Text style={styles.timelineDuration}>{phase.duration || phase.timeline}</Text>
+                  {phase.deliverables && Array.isArray(phase.deliverables) && (
+                     phase.deliverables.map((del: string, i: number) => (
+                       <Text key={i} style={[styles.text, { fontSize: 9, color: '#666', marginBottom: 2 }]}>
+                         • {del}
+                       </Text>
+                     ))
+                  )}
                 </View>
-                {phase.deliverables && Array.isArray(phase.deliverables) && (
-                  <View style={styles.phaseDeliverables}>
-                    {phase.deliverables.map((del: string, i: number) => (
-                      <Text key={i} style={styles.phaseBullet}>
-                        • {del}
-                      </Text>
-                    ))}
-                  </View>
-                )}
               </View>
             ))}
           </View>
         )}
 
-        {/* Investment */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Investment</Text>
-          <View style={styles.investmentSection}>
-            <Text style={styles.investmentTitle}>Total Project Cost</Text>
-            <Text style={styles.investmentAmount}>
-              {proposal.currency} {formattedPrice}
-            </Text>
+        {/* 4. Investment */}
+        <View style={styles.section} wrap={false}>
+          <Text style={styles.h1}>4. Investment</Text>
+          <View style={styles.investmentBox}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Total Project Investment</Text>
+              <Text style={styles.priceValue}>{proposal.currency} {formattedPrice}</Text>
+            </View>
             {proposal.paymentTerms && (
-              <View style={styles.paymentTermsBox}>
-                <Text style={styles.paymentTermsLabel}>Payment Terms</Text>
-                <Text style={styles.paymentTermsText}>{proposal.paymentTerms}</Text>
-              </View>
+               <Text style={styles.termsText}>
+                 <Text style={{ fontWeight: 'bold' }}>Payment Terms: </Text>
+                 {proposal.paymentTerms}
+               </Text>
             )}
           </View>
         </View>
 
-        {/* Signatures */}
+        {/* 5. Signatures */}
         {proposal.signatures && proposal.signatures.length > 0 && (
-          <View style={styles.signatureSection}>
-            <Text style={styles.sectionTitle}>Authorized Signatures</Text>
-            {proposal.signatures.map((sig, index) => (
-              <View key={index} style={styles.signatureCard}>
-                <Image src={sig.signatureBlob} style={styles.signatureImage} />
-                <Text style={styles.signatureInfo}>
-                  <Text style={styles.signatureBold}>Signed by: </Text>
-                  {sig.signerName}
-                </Text>
-                <Text style={styles.signatureInfo}>
-                  <Text style={styles.signatureBold}>Email: </Text>
-                  {sig.signerEmail}
-                </Text>
-                {sig.signerTitle && (
-                  <Text style={styles.signatureInfo}>
-                    <Text style={styles.signatureBold}>Title: </Text>
-                    {sig.signerTitle}
-                  </Text>
-                )}
-                <Text style={styles.signatureDate}>
-                  Signed on {new Date(sig.signedAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h1}>5. Acceptance</Text>
+            <View style={styles.signatureGrid}>
+              {proposal.signatures.map((sig, index) => (
+                <View key={index} style={styles.signatureBox}>
+                  <Image src={sig.signatureBlob} style={styles.sigImage} />
+                  <Text style={[styles.text, { fontWeight: 'bold', marginBottom: 0 }]}>{sig.signerName}</Text>
+                  <Text style={[styles.text, { fontSize: 8, color: '#6b7280' }]}>{sig.signerTitle || 'Client'}</Text>
+                  <Text style={styles.sigLabel}>Date: {formatDate(sig.signedAt)}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.validityBadge}>
-            VALID FOR 30 DAYS
-          </Text>
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>
-              This proposal is valid for 30 days{'\n'}
-              Proposal ID: {proposal.id}
-            </Text>
-            <View style={styles.poweredBy}>
-              <Text style={styles.footerText}>Powered by </Text>
-              <Text style={styles.nesternity}>Nesternity</Text>
-            </View>
-          </View>
+        {/* Footer on every page */}
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>Nesternity | Confidential Proposal</Text>
+          <Text style={styles.footerText} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} />
         </View>
       </Page>
     </Document>
