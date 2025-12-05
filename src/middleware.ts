@@ -8,6 +8,35 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Security Headers for SEO and Trust Signals
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains'
+  );
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+
+  // Cache Control Headers for Performance
+  const cachePathname = request.nextUrl.pathname;
+
+  // Static assets - cache for 1 year
+  if (cachePathname.match(/\.(woff2|woff|ttf|svg|gif|webp|png|jpg|jpeg|ico)$/i)) {
+    response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+
+  // HTML pages - cache for 1 day with revalidation
+  if (cachePathname.endsWith('.html') || cachePathname === '/') {
+    response.headers.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+  }
+
+  // API routes - cache for 1 hour
+  if (cachePathname.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'public, max-age=3600');
+  }
+
   // Create Supabase client for middleware
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

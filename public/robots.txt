@@ -1,0 +1,33 @@
+# Robots.txt for Nesternity CRM
+# https://www.robotstxt.org/
+
+# Allow all search engines to crawl the site
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/organisation/*/settings
+Disallow: /_next/
+Disallow: /public/
+
+# Specific crawl delay for respectful indexing
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://nesternity.cyth.app/sitemap.xml
+Sitemap: https://nesternity.cyth.app/sitemap-mobile.xml
+
+# Google Search Console
+User-agent: Googlebot
+Allow: /
+
+# Bing/MSN
+User-agent: Bingbot
+Allow: /
+
+# Other search engines
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
