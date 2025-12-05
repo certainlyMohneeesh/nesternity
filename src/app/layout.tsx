@@ -133,9 +133,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="google-site-verification" content="your-google-verification-code" />
         <meta name="msvalidate.01" content="your-bing-verification-code" />
 
-        {/* Preload critical resources */}
-        <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        
         {/* DNS prefetch and preconnect */}
         <link rel="dns-prefetch" href="//api.nesternity.cyth.app" />
         <link rel="preconnect" href="https://api.nesternity.cyth.app" crossOrigin="anonymous" />
@@ -172,31 +169,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Toaster position="bottom-center" richColors closeButton />
           <Analytics />
         </ThemeProvider>
-
-        {/* Organization Schema */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "Nesternity CRM",
-              url: "https://nesternity.cyth.app",
-              logo: "https://nesternity.cyth.app/nesternity_W.png",
-              description: "Modern SaaS CRM dashboard for teams and projects.",
-              email: "support@nesternity.cyth.app",
-              contactPoint: {
-                "@type": "ContactPoint",
-                contactType: "Customer Service",
-                email: "support@nesternity.cyth.app",
-              },
-              sameAs: [
-                "https://twitter.com/nesternity",
-                "https://www.linkedin.com/company/nesternity",
-              ],
-            }),
-          }}
-        />
 
         {/* Software Application Schema */}
         <script

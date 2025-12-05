@@ -6,7 +6,6 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin/
-Disallow: /dashboard/organisation/*/settings
 Disallow: /_next/
 Disallow: /public/
 
