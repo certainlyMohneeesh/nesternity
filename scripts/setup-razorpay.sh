@@ -36,19 +36,19 @@ echo ""
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-if command -v pnpm &> /dev/null; then
-    pnpm install
+if command -v bun &> /dev/null; then
+    bun install
     echo -e "${GREEN}✅ Dependencies installed${NC}"
 else
-    echo -e "${RED}❌ pnpm not found. Please install pnpm first:${NC}"
-    echo "   npm install -g pnpm"
+    echo -e "${RED}❌ Bun not found. Please install Bun first:${NC}"
+    echo "   curl -fsSL https://bun.sh/install | bash"
     exit 1
 fi
 echo ""
 
 # Generate Prisma client
 echo "🔧 Generating Prisma client..."
-pnpm prisma generate
+bunx prisma generate
 echo -e "${GREEN}✅ Prisma client generated${NC}"
 echo ""
 
@@ -58,20 +58,20 @@ read -p "Do you want to run migrations now? (y/n) " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ "$NODE_ENV" = "production" ]; then
-        pnpm prisma migrate deploy
+        bunx prisma migrate deploy
     else
-        pnpm prisma migrate dev --name add_razorpay_integration
+        bunx prisma migrate dev --name add_razorpay_integration
     fi
     echo -e "${GREEN}✅ Database migrations completed${NC}"
 else
     echo -e "${YELLOW}⚠️  Skipping migrations. Run manually with:${NC}"
-    echo "   pnpm prisma migrate dev --name add_razorpay_integration"
+    echo "   bunx prisma migrate dev --name add_razorpay_integration"
 fi
 echo ""
 
 # Check database connection
 echo "🔌 Checking database connection..."
-if pnpm prisma db push --skip-generate --accept-data-loss &> /dev/null; then
+if bunx prisma db push --skip-generate --accept-data-loss &> /dev/null; then
     echo -e "${GREEN}✅ Database connection successful${NC}"
 else
     echo -e "${RED}❌ Database connection failed${NC}"
@@ -84,11 +84,11 @@ echo "🏗️  Building application..."
 read -p "Do you want to build the application now? (y/n) " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    pnpm build:local
+    bun run build:local
     echo -e "${GREEN}✅ Application built successfully${NC}"
 else
     echo -e "${YELLOW}⚠️  Skipping build. Run manually with:${NC}"
-    echo "   pnpm build:local"
+    echo "   bun run build:local"
 fi
 echo ""
 
@@ -109,7 +109,7 @@ echo "   - Enable events: payment_link.paid, payment_link.cancelled, payment_lin
 echo "   - Copy the Webhook Secret to .env.local"
 echo ""
 echo "3. Configure User Payment Settings:"
-echo "   - Start the application: pnpm dev"
+echo "   - Start the application: bun run dev"
 echo "   - Navigate to Settings → Payments"
 echo "   - Add your Razorpay credentials and bank details"
 echo ""
@@ -131,5 +131,5 @@ echo ""
 echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
 echo "🚀 Start the development server with:"
-echo "   pnpm dev"
+echo "   bun run dev"
 echo ""

@@ -69,17 +69,17 @@ echo -e "${GREEN}✓ Migrations cleared${NC}"
 
 echo ""
 echo -e "${YELLOW}🔍 Step 3: Validating schema...${NC}"
-pnpm prisma validate
+bunx prisma validate
 echo -e "${GREEN}✓ Schema valid${NC}"
 
 echo ""
 echo -e "${YELLOW}⚙️  Step 4: Generating Prisma Client...${NC}"
-pnpm prisma generate
+bunx prisma generate
 echo -e "${GREEN}✓ Prisma Client generated${NC}"
 
 echo ""
 echo -e "${YELLOW}📝 Step 5: Creating initial migration...${NC}"
-pnpm prisma migrate dev --name initial_razorpay_route
+bunx prisma migrate dev --name initial_razorpay_route
 
 echo ""
 echo -e "${GREEN}✨ ✨ ✨  COMPLETE FRESH START SUCCESSFUL! ✨ ✨ ✨${NC}"
@@ -87,7 +87,7 @@ echo ""
 echo "Your database is now completely empty with fresh schema."
 echo ""
 echo "Next steps:"
-echo "  1. Start dev server: ${GREEN}pnpm dev${NC}"
+echo "  1. Start dev server: ${GREEN}bun run dev${NC}"
 echo "  2. Go to http://localhost:3000"
 echo "  3. Sign up for a NEW account (old users deleted)"
 echo "  4. Go to Settings → Payments"

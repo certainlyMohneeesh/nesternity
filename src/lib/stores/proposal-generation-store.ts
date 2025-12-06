@@ -6,7 +6,8 @@
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, PersistOptions } from 'zustand/middleware';
+import type { StateCreator } from 'zustand';
 
 export type GenerationStatus = 
   | 'idle'
@@ -106,14 +107,28 @@ interface ProposalGenerationStore {
   hasActiveTasks: () => boolean;
 }
 
-export const useProposalGenerationStore = create<ProposalGenerationStore>()(
-  persist(
-    (set, get) => ({
+// Type for the persisted state (without functions)
+type PersistedProposalGenerationState = Pick<
+  ProposalGenerationStore,
+  'tasks' | 'isWidgetVisible' | 'isWidgetMinimized'
+>;
+
+const persistConfig: PersistOptions<ProposalGenerationStore, PersistedProposalGenerationState> = {
+  name: 'proposal-generation-store',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state): PersistedProposalGenerationState => ({
+    tasks: state.tasks,
+    isWidgetVisible: state.isWidgetVisible,
+    isWidgetMinimized: state.isWidgetMinimized,
+  }),
+};
+
+const proposalGenerationStoreCreator: StateCreator<ProposalGenerationStore> = (set, get) => ({
       tasks: {},
       isWidgetVisible: false,
       isWidgetMinimized: false,
 
-      startGeneration: (taskData) => {
+      startGeneration: (taskData: Omit<ProposalGenerationTask, 'id' | 'progress' | 'createdAt'>) => {
         const id = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const task: ProposalGenerationTask = {
           ...taskData,
@@ -127,7 +142,7 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
           createdAt: Date.now(),
         };
 
-        set((state) => ({
+        set((state: ProposalGenerationStore) => ({
           tasks: { ...state.tasks, [id]: task },
           isWidgetVisible: true,
           isWidgetMinimized: false,
@@ -136,8 +151,8 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
         return id;
       },
 
-      updateProgress: (taskId, progressUpdate) => {
-        set((state) => {
+      updateProgress: (taskId: string, progressUpdate: Partial<GenerationProgress>) => {
+        set((state: ProposalGenerationStore) => {
           const task = state.tasks[taskId];
           if (!task) return state;
 
@@ -156,8 +171,8 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
         });
       },
 
-      completeGeneration: (taskId, proposal) => {
-        set((state) => {
+      completeGeneration: (taskId: string, proposal: GeneratedProposal) => {
+        set((state: ProposalGenerationStore) => {
           const task = state.tasks[taskId];
           if (!task) return state;
 
@@ -180,8 +195,8 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
         });
       },
 
-      failGeneration: (taskId, error) => {
-        set((state) => {
+      failGeneration: (taskId: string, error: string) => {
+        set((state: ProposalGenerationStore) => {
           const task = state.tasks[taskId];
           if (!task) return state;
 
@@ -202,8 +217,8 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
         });
       },
 
-      removeTask: (taskId) => {
-        set((state) => {
+      removeTask: (taskId: string) => {
+        set((state: ProposalGenerationStore) => {
           const { [taskId]: removed, ...remaining } = state.tasks;
           const hasRemainingTasks = Object.keys(remaining).length > 0;
           return {
@@ -214,12 +229,12 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
       },
 
       clearCompletedTasks: () => {
-        set((state) => {
+        set((state: ProposalGenerationStore) => {
           const activeTasks = Object.fromEntries(
             Object.entries(state.tasks).filter(
-              ([, task]) => task.progress.status !== 'completed' && task.progress.status !== 'error'
+              ([, task]: [string, ProposalGenerationTask]) => task.progress.status !== 'completed' && task.progress.status !== 'error'
             )
-          );
+          ) as Record<string, ProposalGenerationTask>;
           return {
             tasks: activeTasks,
             isWidgetVisible: Object.keys(activeTasks).length > 0,
@@ -229,43 +244,35 @@ export const useProposalGenerationStore = create<ProposalGenerationStore>()(
 
       showWidget: () => set({ isWidgetVisible: true }),
       hideWidget: () => set({ isWidgetVisible: false }),
-      toggleMinimize: () => set((state) => ({ isWidgetMinimized: !state.isWidgetMinimized })),
+      toggleMinimize: () => set((state: ProposalGenerationStore) => ({ isWidgetMinimized: !state.isWidgetMinimized })),
 
       getActiveTask: () => {
-        const tasks = get().tasks;
-        return Object.values(tasks).find(
-          (task) => 
-            task.progress.status !== 'completed' && 
-            task.progress.status !== 'error' &&
-            task.progress.status !== 'idle'
+        const tasks: Record<string, ProposalGenerationTask> = get().tasks;
+        return Object.values(tasks).find((task: ProposalGenerationTask) =>
+          task.progress.status !== 'completed' &&
+          task.progress.status !== 'error' &&
+          task.progress.status !== 'idle'
         );
       },
 
       getCompletedTasks: () => {
-        const tasks = get().tasks;
-        return Object.values(tasks).filter(
-          (task) => task.progress.status === 'completed'
-        );
+        const tasks: Record<string, ProposalGenerationTask> = get().tasks;
+        return Object.values(tasks).filter((task: ProposalGenerationTask) => task.progress.status === 'completed');
       },
 
       hasActiveTasks: () => {
-        const tasks = get().tasks;
-        return Object.values(tasks).some(
-          (task) => 
-            task.progress.status !== 'completed' && 
-            task.progress.status !== 'error' &&
-            task.progress.status !== 'idle'
+        const tasks: Record<string, ProposalGenerationTask> = get().tasks;
+        return Object.values(tasks).some((task: ProposalGenerationTask) =>
+          task.progress.status !== 'completed' &&
+          task.progress.status !== 'error' &&
+          task.progress.status !== 'idle'
         );
       },
-    }),
-    {
-      name: 'proposal-generation-store',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        tasks: state.tasks,
-        isWidgetVisible: state.isWidgetVisible,
-        isWidgetMinimized: state.isWidgetMinimized,
-      }),
-    }
-  )
+    });
+
+export const useProposalGenerationStore = create<ProposalGenerationStore>(
+  persist(
+    proposalGenerationStoreCreator as StateCreator<ProposalGenerationStore>,
+    persistConfig
+  ) as unknown as StateCreator<ProposalGenerationStore>
 );

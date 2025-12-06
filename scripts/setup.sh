@@ -24,23 +24,14 @@ if ! grep -q "DATABASE_URL=" .env.local; then
     exit 1
 fi
 
-echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-npm install
-
-echo -e "${YELLOW}🔧 Generating Prisma client...${NC}"
-npx prisma generate
-
-echo -e "${YELLOW}🗃️ Running database migration...${NC}"
-npx prisma migrate dev --name init
-
 echo -e "${BLUE}📦 Installing dependencies...${NC}"
-pnpm install
+bun install
 
 echo -e "${BLUE}🔧 Generating Prisma client...${NC}"
-npx prisma generate
+bunx prisma generate
 
 echo -e "${BLUE}🗄️ Running database migrations...${NC}"
-npx prisma migrate dev --name setup
+bunx prisma migrate dev --name setup
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Database setup successful!${NC}"
@@ -53,12 +44,12 @@ if [ $? -eq 0 ]; then
     echo "📊 Admin Dashboard: http://localhost:3000/admin"
     echo ""
     echo "💡 Development Tips:"
-    echo "• pnpm dev          - Start development server (fast)"
-    echo "• pnpm prisma:studio - Database GUI"
-    echo "• pnpm prisma:dev   - Run new migrations"
+    echo "• bun run dev          - Start development server (fast)"
+    echo "• bun run prisma:studio - Database GUI"
+    echo "• bun run prisma:dev   - Run new migrations"
     echo ""
     
-    pnpm dev
+    bun run dev
 else
     echo -e "${RED}❌ Database setup failed${NC}"
     echo "Please check your DATABASE_URL in .env.local"
