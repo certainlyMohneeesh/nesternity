@@ -29,9 +29,9 @@ supabase db push --file sql/notifications.sql
 
 echo "✅ Database setup complete!"
 echo ""
-echo "📝 Next steps:"
+echo "📋 Next steps:"
 echo "   1. Update your .env.local file with Supabase credentials"
-echo "   2. Run 'npm install' to install dependencies"
-echo "   3. Run 'npm run dev' to start the development server"
+echo "   2. Run 'bun install' to install dependencies"
+echo "   3. Run 'bun run dev' to start the development server"
 echo ""
 echo "🎉 Your Nesternity CRM is ready to use!"

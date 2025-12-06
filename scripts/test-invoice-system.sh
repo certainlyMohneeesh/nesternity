@@ -6,7 +6,7 @@ echo "========================================"
 
 # Check if development server is running
 if ! curl -s http://localhost:3000 > /dev/null; then
-    echo "❌ Development server is not running. Please start with 'pnpm dev'"
+    echo "❌ Development server is not running. Please start with 'bun run dev'"
     exit 1
 fi
 
@@ -35,7 +35,7 @@ echo "✅ Required environment variables are set"
 # Test database connection
 echo "🔍 Testing database connection..."
 cd /home/chemicalmyth/Desktop/Nesternity/nesternity
-if pnpm prisma db push --skip-generate > /dev/null 2>&1; then
+if bunx prisma db push --skip-generate > /dev/null 2>&1; then
     echo "✅ Database connection successful"
 else
     echo "❌ Database connection failed"
@@ -69,6 +69,6 @@ echo "   4. Check browser console and server logs for any errors"
 echo ""
 echo "🐛 If you still encounter errors:"
 echo "   1. Check browser DevTools console for client-side errors"
-echo "   2. Check terminal where 'pnpm dev' is running for server-side errors"
+echo "   2. Check terminal where 'bun run dev' is running for server-side errors"
 echo "   3. Ensure you have at least one client created before creating invoices"
 echo "   4. Verify Supabase credentials and permissions"

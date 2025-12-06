@@ -7,7 +7,7 @@ echo "🚀 Starting Vercel build process..."
 
 # Always generate Prisma client first
 echo "📦 Generating Prisma client..."
-pnpm prisma generate
+bunx prisma generate
 
 echo "🔍 Checking database migration status..."
 
@@ -18,7 +18,7 @@ if [ ! -d "prisma/migrations" ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)"
     echo "Skipping migration deploy..."
 else
     # Try migrate deploy and capture output
-    if MIGRATE_OUTPUT=$(pnpm prisma migrate deploy 2>&1); then
+    if MIGRATE_OUTPUT=$(bunx prisma migrate deploy 2>&1); then
         echo "✅ Migrations deployed successfully"
         echo "$MIGRATE_OUTPUT"
     else
@@ -39,6 +39,6 @@ fi
 
 echo "✅ Database setup complete"
 echo "🏗️ Building Next.js application..."
-pnpm next build
+bun --bun run next build
 
 echo "🎉 Build completed successfully!"

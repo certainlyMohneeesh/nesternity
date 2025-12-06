@@ -35,19 +35,19 @@ echo ""
 
 # Step 3: Validate schema
 echo -e "${YELLOW}🔍 Validating Prisma schema...${NC}"
-pnpm prisma validate
+bunx prisma validate
 echo -e "${GREEN}✓ Schema is valid${NC}"
 echo ""
 
 # Step 4: Generate Prisma Client
 echo -e "${YELLOW}⚙️  Generating Prisma Client...${NC}"
-pnpm prisma generate
+bunx prisma generate
 echo -e "${GREEN}✓ Prisma Client generated${NC}"
 echo ""
 
 # Step 5: Create fresh migration
 echo -e "${YELLOW}📝 Creating fresh migration with Razorpay Route...${NC}"
-pnpm prisma migrate dev --name initial_with_razorpay_route
+bunx prisma migrate dev --name initial_with_razorpay_route
 echo -e "${GREEN}✓ Migration created and applied${NC}"
 echo ""
 
