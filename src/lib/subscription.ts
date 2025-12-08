@@ -11,9 +11,15 @@ interface CheckResult {
 }
 
 export async function getSubscriptionForUser(userId: string) {
-  // Try to find an active RazorpaySubscription for user
-  const sub = await prisma.razorpaySubscription.findFirst({
-    where: { userId },
+  // Try to find an active DodoSubscription for user
+  const sub = await prisma.dodoSubscription.findFirst({
+    where: { 
+      userId,
+      status: { in: ['ACTIVE', 'PAST_DUE'] } // Only active or past_due subscriptions
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
   })
   return sub
 }

@@ -23,7 +23,8 @@
     "migrate:org:verify": "bun run scripts/verify-migration.ts",
     "migrate:org:rollback": "bun run scripts/rollback-migration.ts --commit",
     "migrate:org:rollback-full": "bun run scripts/rollback-migration.ts --commit --delete-orgs",
-    "index:documents": "bun run scripts/index-documents.ts"
+    "index:documents": "bun run scripts/index-documents.ts",
+    "migrate:dodo": "bun run scripts/migrate-razorpay-to-dodo.ts --export"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -28,9 +28,9 @@ model User {
   organisations    Organisation[]   @relation("UserOrganisations")
   paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
   subscription     Subscription?    @relation("UserSubscription")
-  razorpayCustomer RazorpayCustomer?
-  razorpaySubscriptions RazorpaySubscription[]
-  razorpayPayments  RazorpayPayment[]
+  dodoCustomer     DodoCustomer?
+  dodoSubscriptions DodoSubscription[]
+  dodoPayments      DodoPayment[]
   usageRecords      UsageRecord[]
   taskActivities   TaskActivity[]   @relation("TaskActivityUser")
   taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
@@ -862,11 +862,11 @@ enum OrganisationStatus {
   INACTIVE
 }
 
-// Razorpay & Subscription models
-model RazorpayCustomer {
+// Dodo Payments & Subscription models
+model DodoCustomer {
   id                 String   @id @default(cuid())
   userId             String   @unique
-  razorpayCustomerId String   @unique
+  dodoCustomerId     String   @unique
   email              String
   name               String?
   phone              String?
@@ -874,19 +874,20 @@ model RazorpayCustomer {
   updatedAt          DateTime @updatedAt
 
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscriptions      RazorpaySubscription[]
-  payments           RazorpayPayment[]
+  subscriptions      DodoSubscription[]
+  payments           DodoPayment[]
 
   @@index([userId])
-  @@index([razorpayCustomerId])
+  @@index([dodoCustomerId])
+  @@map("dodo_customers")
 }
 
-model RazorpaySubscription {
+model DodoSubscription {
   id                     String   @id @default(cuid())
   userId                 String
   customerId             String
-  razorpaySubscriptionId String   @unique
-  razorpayPlanId         String
+  dodoSubscriptionId     String   @unique
+  dodoProductId          String
   status                 SubscriptionStatus
   planTier               PlanTier
   quantity               Int      @default(1)
@@ -895,63 +896,69 @@ model RazorpaySubscription {
   currentPeriodEnd       DateTime
   cancelAtPeriodEnd      Boolean  @default(false)
   canceledAt             DateTime?
-  endedAt                DateTime?
 
-  totalCount             Int?
-  paidCount              Int      @default(0)
-  remainingCount         Int?
-  shortUrl               String?
+  trialStart             DateTime?
+  trialEnd               DateTime?
+  
+  metadata               Json?
 
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  customer               RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer               DodoCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageRecords           UsageRecord[]
+  payments               DodoPayment[]
 
   @@index([userId])
   @@index([customerId])
-  @@index([razorpaySubscriptionId])
+  @@index([dodoSubscriptionId])
   @@index([status])
+  @@map("dodo_subscriptions")
 }
 
-model RazorpayPayment {
+model DodoPayment {
   id                 String   @id @default(cuid())
   userId             String
   customerId         String
-  razorpayPaymentId  String   @unique
-  razorpayOrderId    String?
+  subscriptionId     String?
+  dodoPaymentId      String   @unique
+  dodoCheckoutId     String?
 
-  amount             Int      // in paise
-  currency           String   @default("INR")
+  amount             Int      // in smallest currency unit (cents/paise)
+  currency           String   @default("USD")
   status             PaymentStatus
   method             String?
   description        String?
   email              String?
   contact            String?
   invoiceId          String?
-  notes              Json?
+  metadata           Json?
 
+  paidAt             DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  customer           RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer           DodoCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription       DodoSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([customerId])
-  @@index([razorpayPaymentId])
+  @@index([subscriptionId])
+  @@index([dodoPaymentId])
   @@index([status])
+  @@map("dodo_payments")
 }
 
 model SubscriptionPlan {
   id                   String   @id @default(cuid())
-  razorpayPlanId       String   @unique
+  dodoProductId        String   @unique
   name                 String
   tier                 PlanTier
   description          String?
-  amount               Int      // monthly price in paise
-  currency             String   @default("INR")
+  amount               Int      // monthly price in smallest currency unit
+  currency             String   @default("USD")
   period               String   @default("monthly")
   interval             Int      @default(1)
   maxOrganisations     Int
@@ -974,6 +981,7 @@ model SubscriptionPlan {
 
   @@index([tier])
   @@index([active])
+  @@map("subscription_plans")
 }
 
 model UsageRecord {
@@ -987,12 +995,13 @@ model UsageRecord {
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription   RazorpaySubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription   DodoSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([subscriptionId])
   @@index([featureType])
   @@index([periodStart])
+  @@map("usage_records")
 }
 
 model AuditLog {
