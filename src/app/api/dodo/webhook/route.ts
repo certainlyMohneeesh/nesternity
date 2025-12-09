@@ -133,7 +133,12 @@ async function handleSubscriptionCreated(event: any) {
     }
 
     // Extract metadata for plan tier
-    const planTier = subscription.metadata?.planTier || 'STARTER';
+    const planTier = subscription.metadata?.planTier;
+    if (!planTier) {
+      throw new Error(
+        `Missing planTier metadata for subscription.created event ${subscription.subscription_id}`
+      );
+    }
 
     // Create subscription in database
     await prisma.dodoSubscription.create({
