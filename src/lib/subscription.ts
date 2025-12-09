@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { FEATURE_LIMITS } from './feature-limits'
-import type { FeatureType } from '@prisma/client'
+import type { FeatureType } from '../generated/client.js'
 
 interface CheckResult {
   allowed: boolean

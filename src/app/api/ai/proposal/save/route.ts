@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/lib/auth/api';
 import { prisma } from '@/lib/db';
 import { enforceFeatureLimit } from '@/lib/middleware/subscription'
 import { incrementUsage } from '@/lib/usage'
-import { FeatureType } from '@prisma/client'
+import { FeatureType } from '@/generated/client.js'
 
 interface SaveProposalRequest {
   clientId: string;

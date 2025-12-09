@@ -15,7 +15,7 @@ import adapter from '@/lib/ai/adapter';
 import { checkRateLimit } from '@/lib/ai/provider';
 import { enforceFeatureLimit } from '@/lib/middleware/subscription';
 import { incrementUsage } from '@/lib/usage';
-import { FeatureType } from '@prisma/client';
+import { FeatureType } from '@/generated/client.js';
 import { createProposalPrompt, type HistoricalProposal, type OrganizationContext } from '@/lib/ai/prompts';
 import { prisma } from '@/lib/db';
 

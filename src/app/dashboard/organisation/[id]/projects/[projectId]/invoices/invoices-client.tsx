@@ -18,7 +18,7 @@ import {
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadButton'
 import InvoiceForm from '@/components/invoices/InvoiceForm'
 import { toast } from 'sonner'
-import { Plus, Eye, FileText, RefreshCw, Home } from 'lucide-react'
+import { Plus, Eye, FileText, RefreshCw, Home, BarChart3 } from 'lucide-react'
 import { getSessionToken } from '@/lib/supabase/client-session'
 import Link from 'next/link'
 import { InvoiceCard } from '@/components/invoices/InvoiceCard'
@@ -268,6 +268,12 @@ export function InvoicesPageClient({ orgId, projectId }: InvoicesPageClientProps
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/dashboard/analytics/qr-visits">
+            <Button variant="outline">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              QR Analytics
+            </Button>
+          </Link>
           <Link href={`/dashboard/organisation/${orgId}/projects/${projectId}/invoices/recurring`}>
             <Button variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />

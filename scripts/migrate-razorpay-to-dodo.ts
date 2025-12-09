@@ -10,7 +10,7 @@
  *   bun run scripts/migrate-razorpay-to-dodo.ts --export    # Export data for manual migration
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/client.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
