@@ -371,5 +371,11 @@ export function mapDodoPaymentStatus(
     failed: 'FAILED',
     refunded: 'REFUNDED',
   };
-  return statusMap[status.toLowerCase()] || 'PENDING';
+  const mapped = statusMap[status.toLowerCase()];
+
+  if (!mapped) {
+    throw new Error(`Unknown Dodo payment status: ${status}`);
+  }
+
+  return mapped;
 }
