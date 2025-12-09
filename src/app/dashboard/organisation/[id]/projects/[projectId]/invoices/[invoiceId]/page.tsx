@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { getSessionToken } from '@/lib/supabase/client-session'
 import React from 'react'
 import dynamic from 'next/dynamic'
+import { SmartPaymentRouter } from '@/components/SmartPaymentRouter'
 
 // Dynamic import for InvoicePDFClient to ensure it only loads on client-side, bhai yeh dhunda maine EZ snippet ki video main (Dynamic Imports in Next.js)
 const InvoicePDFClient = dynamic(
@@ -78,6 +79,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [userCountry, setUserCountry] = useState<string>('India')
 
   // Extract route params
   const organisationId = resolvedParams.id
@@ -92,6 +94,15 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
         toast.error('Authentication required')
         setLoading(false)
         return
+      }
+
+      // Fetch user profile for country preference
+      const profileResponse = await fetch('/api/user/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json()
+        setUserCountry(profileData.country || 'India')
       }
 
       const response = await fetch(`/api/invoices/${invoiceId}`, {
@@ -381,6 +392,20 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
               <p className="font-semibold">{invoice.notes}</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Payment Methods - Only show for pending invoices */}
+        {invoice.status === 'PENDING' && (
+          <SmartPaymentRouter
+            amount={calculateTotal()}
+            currency={invoice.currency}
+            invoiceId={invoice.id}
+            clientCountry={userCountry}
+            onPaymentMethodSelected={(method) => {
+              toast.success(`Payment method selected: ${method}`);
+              // Optionally track analytics or update invoice
+            }}
+          />
         )}
 
         {/* Actions */}

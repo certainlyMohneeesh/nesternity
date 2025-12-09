@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
         email: true,
         displayName: true,
         avatarUrl: true,
+        timezone: true,
+        country: true,
+        weekStart: true,
       },
     });
 
@@ -32,6 +35,9 @@ export async function GET(request: NextRequest) {
       email: prismaUser.email,
       displayName: prismaUser.displayName,
       avatarUrl: prismaUser.avatarUrl,
+      timezone: prismaUser.timezone,
+      country: prismaUser.country,
+      weekStart: prismaUser.weekStart,
     });
 
   } catch (error) {
