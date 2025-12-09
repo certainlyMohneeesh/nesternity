@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun --bun run next dev --turbopack",
     "build": "bash ./scripts/vercel-build.sh",
-    "build:local": "bunx prisma generate && bunx prisma migrate deploy && bun --bun run next build",
+    "build:local": "bunx prisma generate && bunx prisma migrate deploy && bun --bun run next build --turbopack",
     "start": "bun --bun run next start",
     "lint": "bun --bun run next lint",
     "prisma:generate": "bunx prisma generate && node fix-prisma-imports.js",

@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true
   },
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'prisma', 'pg'],
+  // Turbopack configuration for Prisma compatibility
+  turbopack: {
+    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.resolve.extensionAlias = {

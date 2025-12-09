@@ -9,6 +9,10 @@ echo "🚀 Starting Vercel build process..."
 echo "📦 Generating Prisma client..."
 bunx prisma generate
 
+# Fix Prisma imports for Turbopack compatibility
+echo "🔧 Fixing Prisma imports..."
+node fix-prisma-imports.js
+
 echo "🔍 Checking database migration status..."
 
 # Check if migrations directory exists
@@ -39,6 +43,7 @@ fi
 
 echo "✅ Database setup complete"
 echo "🏗️ Building Next.js application..."
-bun --bun run next build
+# Use explicit --turbopack flag for Next.js 16
+bun --bun run next build --turbopack
 
 echo "🎉 Build completed successfully!"
