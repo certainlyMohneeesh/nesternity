@@ -44,7 +44,7 @@ export type DodoPaymentMinAggregateOutputType = {
   amount: number | null
   currency: string | null
   status: $Enums.PaymentStatus | null
-  method: string | null
+  paymentMethod: string | null
   description: string | null
   email: string | null
   contact: string | null
@@ -64,7 +64,7 @@ export type DodoPaymentMaxAggregateOutputType = {
   amount: number | null
   currency: string | null
   status: $Enums.PaymentStatus | null
-  method: string | null
+  paymentMethod: string | null
   description: string | null
   email: string | null
   contact: string | null
@@ -84,7 +84,7 @@ export type DodoPaymentCountAggregateOutputType = {
   amount: number
   currency: number
   status: number
-  method: number
+  paymentMethod: number
   description: number
   email: number
   contact: number
@@ -115,7 +115,7 @@ export type DodoPaymentMinAggregateInputType = {
   amount?: true
   currency?: true
   status?: true
-  method?: true
+  paymentMethod?: true
   description?: true
   email?: true
   contact?: true
@@ -135,7 +135,7 @@ export type DodoPaymentMaxAggregateInputType = {
   amount?: true
   currency?: true
   status?: true
-  method?: true
+  paymentMethod?: true
   description?: true
   email?: true
   contact?: true
@@ -155,7 +155,7 @@ export type DodoPaymentCountAggregateInputType = {
   amount?: true
   currency?: true
   status?: true
-  method?: true
+  paymentMethod?: true
   description?: true
   email?: true
   contact?: true
@@ -263,7 +263,7 @@ export type DodoPaymentGroupByOutputType = {
   amount: number
   currency: string
   status: $Enums.PaymentStatus
-  method: string | null
+  paymentMethod: string | null
   description: string | null
   email: string | null
   contact: string | null
@@ -307,7 +307,7 @@ export type DodoPaymentWhereInput = {
   amount?: Prisma.IntFilter<"DodoPayment"> | number
   currency?: Prisma.StringFilter<"DodoPayment"> | string
   status?: Prisma.EnumPaymentStatusFilter<"DodoPayment"> | $Enums.PaymentStatus
-  method?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
+  paymentMethod?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   description?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   email?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   contact?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
@@ -331,7 +331,7 @@ export type DodoPaymentOrderByWithRelationInput = {
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   status?: Prisma.SortOrder
-  method?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   contact?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -358,7 +358,7 @@ export type DodoPaymentWhereUniqueInput = Prisma.AtLeast<{
   amount?: Prisma.IntFilter<"DodoPayment"> | number
   currency?: Prisma.StringFilter<"DodoPayment"> | string
   status?: Prisma.EnumPaymentStatusFilter<"DodoPayment"> | $Enums.PaymentStatus
-  method?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
+  paymentMethod?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   description?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   email?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   contact?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
@@ -382,7 +382,7 @@ export type DodoPaymentOrderByWithAggregationInput = {
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   status?: Prisma.SortOrder
-  method?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   contact?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -411,7 +411,7 @@ export type DodoPaymentScalarWhereWithAggregatesInput = {
   amount?: Prisma.IntWithAggregatesFilter<"DodoPayment"> | number
   currency?: Prisma.StringWithAggregatesFilter<"DodoPayment"> | string
   status?: Prisma.EnumPaymentStatusWithAggregatesFilter<"DodoPayment"> | $Enums.PaymentStatus
-  method?: Prisma.StringNullableWithAggregatesFilter<"DodoPayment"> | string | null
+  paymentMethod?: Prisma.StringNullableWithAggregatesFilter<"DodoPayment"> | string | null
   description?: Prisma.StringNullableWithAggregatesFilter<"DodoPayment"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"DodoPayment"> | string | null
   contact?: Prisma.StringNullableWithAggregatesFilter<"DodoPayment"> | string | null
@@ -429,7 +429,7 @@ export type DodoPaymentCreateInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -453,7 +453,7 @@ export type DodoPaymentUncheckedCreateInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -471,7 +471,7 @@ export type DodoPaymentUpdateInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -495,7 +495,7 @@ export type DodoPaymentUncheckedUpdateInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -516,7 +516,7 @@ export type DodoPaymentCreateManyInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -534,7 +534,7 @@ export type DodoPaymentUpdateManyMutationInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -555,7 +555,7 @@ export type DodoPaymentUncheckedUpdateManyInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -586,7 +586,7 @@ export type DodoPaymentCountOrderByAggregateInput = {
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   status?: Prisma.SortOrder
-  method?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
   description?: Prisma.SortOrder
   email?: Prisma.SortOrder
   contact?: Prisma.SortOrder
@@ -611,7 +611,7 @@ export type DodoPaymentMaxOrderByAggregateInput = {
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   status?: Prisma.SortOrder
-  method?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
   description?: Prisma.SortOrder
   email?: Prisma.SortOrder
   contact?: Prisma.SortOrder
@@ -631,7 +631,7 @@ export type DodoPaymentMinOrderByAggregateInput = {
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   status?: Prisma.SortOrder
-  method?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
   description?: Prisma.SortOrder
   email?: Prisma.SortOrder
   contact?: Prisma.SortOrder
@@ -782,7 +782,7 @@ export type DodoPaymentCreateWithoutUserInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -804,7 +804,7 @@ export type DodoPaymentUncheckedCreateWithoutUserInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -854,7 +854,7 @@ export type DodoPaymentScalarWhereInput = {
   amount?: Prisma.IntFilter<"DodoPayment"> | number
   currency?: Prisma.StringFilter<"DodoPayment"> | string
   status?: Prisma.EnumPaymentStatusFilter<"DodoPayment"> | $Enums.PaymentStatus
-  method?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
+  paymentMethod?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   description?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   email?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
   contact?: Prisma.StringNullableFilter<"DodoPayment"> | string | null
@@ -872,7 +872,7 @@ export type DodoPaymentCreateWithoutCustomerInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -894,7 +894,7 @@ export type DodoPaymentUncheckedCreateWithoutCustomerInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -938,7 +938,7 @@ export type DodoPaymentCreateWithoutSubscriptionInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -960,7 +960,7 @@ export type DodoPaymentUncheckedCreateWithoutSubscriptionInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -1006,7 +1006,7 @@ export type DodoPaymentCreateManyUserInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -1024,7 +1024,7 @@ export type DodoPaymentUpdateWithoutUserInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1046,7 +1046,7 @@ export type DodoPaymentUncheckedUpdateWithoutUserInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1066,7 +1066,7 @@ export type DodoPaymentUncheckedUpdateManyWithoutUserInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1086,7 +1086,7 @@ export type DodoPaymentCreateManyCustomerInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -1104,7 +1104,7 @@ export type DodoPaymentUpdateWithoutCustomerInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1126,7 +1126,7 @@ export type DodoPaymentUncheckedUpdateWithoutCustomerInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1146,7 +1146,7 @@ export type DodoPaymentUncheckedUpdateManyWithoutCustomerInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1166,7 +1166,7 @@ export type DodoPaymentCreateManySubscriptionInput = {
   amount: number
   currency?: string
   status: $Enums.PaymentStatus
-  method?: string | null
+  paymentMethod?: string | null
   description?: string | null
   email?: string | null
   contact?: string | null
@@ -1184,7 +1184,7 @@ export type DodoPaymentUpdateWithoutSubscriptionInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1206,7 +1206,7 @@ export type DodoPaymentUncheckedUpdateWithoutSubscriptionInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1226,7 +1226,7 @@ export type DodoPaymentUncheckedUpdateManyWithoutSubscriptionInput = {
   amount?: Prisma.IntFieldUpdateOperationsInput | number
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumPaymentStatusFieldUpdateOperationsInput | $Enums.PaymentStatus
-  method?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contact?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1249,7 +1249,7 @@ export type DodoPaymentSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   amount?: boolean
   currency?: boolean
   status?: boolean
-  method?: boolean
+  paymentMethod?: boolean
   description?: boolean
   email?: boolean
   contact?: boolean
@@ -1273,7 +1273,7 @@ export type DodoPaymentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   amount?: boolean
   currency?: boolean
   status?: boolean
-  method?: boolean
+  paymentMethod?: boolean
   description?: boolean
   email?: boolean
   contact?: boolean
@@ -1297,7 +1297,7 @@ export type DodoPaymentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   amount?: boolean
   currency?: boolean
   status?: boolean
-  method?: boolean
+  paymentMethod?: boolean
   description?: boolean
   email?: boolean
   contact?: boolean
@@ -1321,7 +1321,7 @@ export type DodoPaymentSelectScalar = {
   amount?: boolean
   currency?: boolean
   status?: boolean
-  method?: boolean
+  paymentMethod?: boolean
   description?: boolean
   email?: boolean
   contact?: boolean
@@ -1332,7 +1332,7 @@ export type DodoPaymentSelectScalar = {
   updatedAt?: boolean
 }
 
-export type DodoPaymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "customerId" | "subscriptionId" | "dodoPaymentId" | "dodoCheckoutId" | "amount" | "currency" | "status" | "method" | "description" | "email" | "contact" | "invoiceId" | "metadata" | "paidAt" | "createdAt" | "updatedAt", ExtArgs["result"]["dodoPayment"]>
+export type DodoPaymentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "customerId" | "subscriptionId" | "dodoPaymentId" | "dodoCheckoutId" | "amount" | "currency" | "status" | "paymentMethod" | "description" | "email" | "contact" | "invoiceId" | "metadata" | "paidAt" | "createdAt" | "updatedAt", ExtArgs["result"]["dodoPayment"]>
 export type DodoPaymentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.DodoCustomerDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1366,7 +1366,7 @@ export type $DodoPaymentPayload<ExtArgs extends runtime.Types.Extensions.Interna
     amount: number
     currency: string
     status: $Enums.PaymentStatus
-    method: string | null
+    paymentMethod: string | null
     description: string | null
     email: string | null
     contact: string | null
@@ -1810,7 +1810,7 @@ export interface DodoPaymentFieldRefs {
   readonly amount: Prisma.FieldRef<"DodoPayment", 'Int'>
   readonly currency: Prisma.FieldRef<"DodoPayment", 'String'>
   readonly status: Prisma.FieldRef<"DodoPayment", 'PaymentStatus'>
-  readonly method: Prisma.FieldRef<"DodoPayment", 'String'>
+  readonly paymentMethod: Prisma.FieldRef<"DodoPayment", 'String'>
   readonly description: Prisma.FieldRef<"DodoPayment", 'String'>
   readonly email: Prisma.FieldRef<"DodoPayment", 'String'>
   readonly contact: Prisma.FieldRef<"DodoPayment", 'String'>

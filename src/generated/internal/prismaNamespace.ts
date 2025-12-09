@@ -4087,7 +4087,7 @@ export const DodoPaymentScalarFieldEnum = {
   amount: 'amount',
   currency: 'currency',
   status: 'status',
-  method: 'method',
+  paymentMethod: 'paymentMethod',
   description: 'description',
   email: 'email',
   contact: 'contact',

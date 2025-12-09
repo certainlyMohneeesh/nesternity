@@ -1026,7 +1026,7 @@ model DodoPayment {
   amount             Int      // in smallest currency unit (cents/paise)
   currency           String   @default("USD")
   status             PaymentStatus
-  method             String?
+  paymentMethod      String?
   description        String?
   email              String?
   contact            String?
