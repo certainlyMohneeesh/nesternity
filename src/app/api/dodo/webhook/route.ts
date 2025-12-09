@@ -210,7 +210,7 @@ async function handleSubscriptionCancelled(event: any) {
     await prisma.dodoSubscription.updateMany({
       where: { dodoSubscriptionId: subscription.subscription_id },
       data: {
-        status: 'CANCELLED',
+        status: mapDodoSubscriptionStatus(subscription.status),
         canceledAt: new Date(),
         cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
         updatedAt: new Date(),
@@ -236,7 +236,7 @@ async function handleSubscriptionExpired(event: any) {
     await prisma.dodoSubscription.updateMany({
       where: { dodoSubscriptionId: subscription.subscription_id },
       data: {
-        status: 'EXPIRED',
+        status: mapDodoSubscriptionStatus(subscription.status),
         updatedAt: new Date(),
       },
     });
@@ -326,6 +326,8 @@ async function handlePaymentSucceeded(event: any) {
     }
 
     // Create payment record
+    const paymentStatus = mapDodoPaymentStatus(payment.status || 'succeeded');
+
     await prisma.dodoPayment.create({
       data: {
         id: `dp_${Date.now()}_${dodoCustomer.userId}`,
@@ -336,8 +338,8 @@ async function handlePaymentSucceeded(event: any) {
         dodoCheckoutId: payment.checkout_session_id || null,
         amount: payment.amount,
         currency: payment.currency,
-        status: 'SUCCEEDED',
-        paymentMethod: payment.payment_method || null,
+        status: paymentStatus,
+        method: payment.payment_method || null,
         description: payment.description || null,
         metadata: payment.metadata || undefined,
         paidAt: new Date(),
@@ -391,6 +393,8 @@ async function handlePaymentFailed(event: any) {
     }
 
     // Create payment record
+    const failedStatus = mapDodoPaymentStatus(payment.status || 'failed');
+
     await prisma.dodoPayment.create({
       data: {
         id: `dp_${Date.now()}_${dodoCustomer.userId}`,
@@ -401,8 +405,8 @@ async function handlePaymentFailed(event: any) {
         dodoCheckoutId: payment.checkout_session_id || null,
         amount: payment.amount,
         currency: payment.currency,
-        status: 'FAILED',
-        paymentMethod: payment.payment_method || null,
+        status: failedStatus,
+        method: payment.payment_method || null,
         description: payment.description || null,
         metadata: payment.metadata || undefined,
       },

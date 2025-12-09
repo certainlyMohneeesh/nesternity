@@ -341,13 +341,34 @@ export function parseDodoWebhookEvent(body: string): DodoWebhookEvent {
  */
 export function mapDodoSubscriptionStatus(
   status: string
-): 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED' | 'PAUSED' {
-  const statusMap: Record<string, 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED' | 'PAUSED'> = {
+):
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELED'
+  | 'INCOMPLETE'
+  | 'INCOMPLETE_EXPIRED'
+  | 'TRIALING'
+  | 'UNPAID'
+  | 'PAUSED' {
+  const statusMap: Record<
+    string,
+    | 'ACTIVE'
+    | 'PAST_DUE'
+    | 'CANCELED'
+    | 'INCOMPLETE'
+    | 'INCOMPLETE_EXPIRED'
+    | 'TRIALING'
+    | 'UNPAID'
+    | 'PAUSED'
+  > = {
     active: 'ACTIVE',
     past_due: 'PAST_DUE',
-    cancelled: 'CANCELLED',
-    expired: 'EXPIRED',
+    cancelled: 'CANCELED',
+    expired: 'INCOMPLETE_EXPIRED',
     paused: 'PAUSED',
+    trialing: 'TRIALING',
+    incomplete: 'INCOMPLETE',
+    unpaid: 'UNPAID',
   };
 
   const mapped = statusMap[status.toLowerCase()];
@@ -364,13 +385,20 @@ export function mapDodoSubscriptionStatus(
  */
 export function mapDodoPaymentStatus(
   status: string
-): 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED' {
-  const statusMap: Record<string, 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED'> = {
-    pending: 'PENDING',
-    succeeded: 'SUCCEEDED',
+): 'CREATED' | 'AUTHORIZED' | 'CAPTURED' | 'REFUNDED' | 'FAILED' {
+  const statusMap: Record<
+    string,
+    'CREATED' | 'AUTHORIZED' | 'CAPTURED' | 'REFUNDED' | 'FAILED'
+  > = {
+    pending: 'CREATED',
+    created: 'CREATED',
+    authorized: 'AUTHORIZED',
+    captured: 'CAPTURED',
+    succeeded: 'CAPTURED',
     failed: 'FAILED',
     refunded: 'REFUNDED',
   };
+
   const mapped = statusMap[status.toLowerCase()];
 
   if (!mapped) {
