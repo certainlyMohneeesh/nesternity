@@ -1,12 +1,11 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider      = "prisma-client"
+  output        = "../src/generated"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -14,6 +13,9 @@ model User {
   email            String           @unique
   displayName      String?          @map("display_name")
   avatarUrl        String?          @map("avatar_url")
+  timezone         String?          @default("Asia/Kolkata")
+  country          String?          @default("India")
+  weekStart        String?          @default("monday") @map("week_start")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
   stripeCustomerId String?          @unique @map("stripe_customer_id")
@@ -28,9 +30,9 @@ model User {
   organisations    Organisation[]   @relation("UserOrganisations")
   paymentSettings  PaymentSettings? @relation("UserPaymentSettings")
   subscription     Subscription?    @relation("UserSubscription")
-  razorpayCustomer RazorpayCustomer?
-  razorpaySubscriptions RazorpaySubscription[]
-  razorpayPayments  RazorpayPayment[]
+  dodoCustomer     DodoCustomer?
+  dodoSubscriptions DodoSubscription[]
+  dodoPayments      DodoPayment[]
   usageRecords      UsageRecord[]
   taskActivities   TaskActivity[]   @relation("TaskActivityUser")
   taskAttachments  TaskAttachment[] @relation("TaskAttachmentUploader")
@@ -153,6 +155,21 @@ model Invoice {
   enablePaymentLink         Boolean            @default(false) @map("enable_payment_link")
   eSignatureUrl             String?            @map("e_signature_url")
   watermarkText             String?            @map("watermark_text")
+  
+  // New Payment System Fields
+  paymentPageId             String?            @unique @map("payment_page_id")
+  paymentMode               PaymentMode?       @map("payment_mode")
+  paymentStatus             PaymentLinkStatus  @default(PENDING) @map("payment_status")
+  paidAt                    DateTime?          @map("paid_at")
+  paidAmount                Float?             @map("paid_amount")
+  paymentReference          String?            @map("payment_reference")
+  
+  // Dodo Payments (International)
+  dodoCheckoutId            String?            @map("dodo_checkout_id")
+  dodoCheckoutUrl           String?            @map("dodo_checkout_url")
+  dodoPaymentId             String?            @map("dodo_payment_id")
+  
+  // Legacy Razorpay fields (for migration)
   razorpayPaymentLinkId     String?            @map("razorpay_payment_link_id")
   razorpayPaymentLinkUrl    String?            @map("razorpay_payment_link_url")
   razorpayPaymentLinkStatus String?            @map("razorpay_payment_link_status")
@@ -179,6 +196,8 @@ model Invoice {
   @@index([status], map: "idx_invoices_status")
   @@index([issuedById, status, issuedDate(sort: Desc)], map: "idx_invoices_user_status")
   @@index([razorpayPaymentLinkId], map: "idx_invoices_razorpay_link_id")
+  @@index([paymentPageId], map: "idx_invoices_payment_page_id")
+  @@index([dodoCheckoutId], map: "idx_invoices_dodo_checkout_id")
   @@index([isRecurring, nextIssueDate], map: "idx_invoices_recurring_next")
   @@index([parentInvoiceId], map: "idx_invoices_parent_id")
   @@index([organisationId], map: "idx_invoices_organisation_id")
@@ -528,39 +547,105 @@ model IssueComment {
 }
 
 model PaymentSettings {
-  id                 String             @id @default(cuid())
-  userId             String             @unique @map("user_id")
-  razorpayAccountId  String?            @unique @map("razorpay_account_id")
-  accountStatus      AccountStatus      @default(PENDING) @map("account_status")
-  accountHolderName  String?            @map("account_holder_name")
-  accountNumber      String?            @map("account_number")
-  ifscCode           String?            @map("ifsc_code")
-  bankName           String?            @map("bank_name")
-  branchName         String?            @map("branch_name")
-  accountType        AccountType?       @map("account_type")
-  panNumber          String?            @map("pan_number")
-  businessName       String?            @map("business_name")
-  gstNumber          String?            @map("gst_number")
-  contactEmail       String?            @map("contact_email")
-  contactPhone       String?            @map("contact_phone")
-  businessAddress    String?            @map("business_address")
-  city               String?
-  state              String?
-  pincode            String?
-  country            String?            @default("India")
-  enableCommission   Boolean            @default(true) @map("enable_commission")
-  commissionPercent  Float?             @default(5.0) @map("commission_percent")
-  settlementSchedule SettlementSchedule @default(INSTANT) @map("settlement_schedule")
-  accountActive      Boolean            @default(false) @map("account_active")
-  verificationNotes  String?            @map("verification_notes")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
-  user               User               @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+  id                       String             @id @default(cuid())
+  userId                   String             @unique @map("user_id")
+  
+  // India Payments - UPI
+  upiId                    String?            @map("upi_id")
+  upiMerchantName          String?            @map("upi_merchant_name")
+  
+  // India Payments - Bank Transfer (for invoices > ₹1,00,000)
+  accountHolderName        String?            @map("account_holder_name")
+  accountNumber            String?            @map("account_number")
+  ifscCode                 String?            @map("ifsc_code")
+  bankName                 String?            @map("bank_name")
+  branchName               String?            @map("branch_name")
+  accountType              AccountType?       @map("account_type")
+  
+  // Business Details
+  panNumber                String?            @map("pan_number")
+  businessName             String?            @map("business_name")
+  gstNumber                String?            @map("gst_number")
+  contactEmail             String?            @map("contact_email")
+  contactPhone             String?            @map("contact_phone")
+  businessAddress          String?            @map("business_address")
+  city                     String?
+  state                    String?
+  pincode                  String?
+  country                  String?            @default("India")
+  
+  // International Payments - Dodo BYOK
+  enableInternational      Boolean            @default(false) @map("enable_international")
+  dodoApiKey               String?            @map("dodo_api_key")
+  dodoAccountId            String?            @map("dodo_account_id")
+  dodoMode                 DodoMode           @default(TEST) @map("dodo_mode")
+  
+  // Payment thresholds
+  bankTransferThreshold    Float              @default(100000) @map("bank_transfer_threshold")
+  
+  // Legacy fields (for migration)
+  razorpayAccountId        String?            @unique @map("razorpay_account_id")
+  accountStatus            AccountStatus      @default(PENDING) @map("account_status")
+  enableCommission         Boolean            @default(true) @map("enable_commission")
+  commissionPercent        Float?             @default(5.0) @map("commission_percent")
+  settlementSchedule       SettlementSchedule @default(INSTANT) @map("settlement_schedule")
+  accountActive            Boolean            @default(false) @map("account_active")
+  verificationNotes        String?            @map("verification_notes")
+  
+  createdAt                DateTime           @default(now()) @map("created_at")
+  updatedAt                DateTime           @updatedAt @map("updated_at")
+  user                     User               @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+  upiQrs                   UpiQr[]            @relation("UserUpiQrs")
 
   @@index([userId], map: "idx_payment_settings_user_id")
   @@index([razorpayAccountId], map: "idx_payment_settings_razorpay_account")
   @@index([accountStatus], map: "idx_payment_settings_status")
   @@map("payment_settings")
+}
+
+enum DodoMode {
+  TEST
+  LIVE
+}
+
+// UPI QR Code for India payments
+model UpiQr {
+  id                String          @id @default(cuid())
+  paymentSettingsId String          @map("payment_settings_id")
+  invoiceId         String?         @unique @map("invoice_id")
+  amount            Float?
+  note              String?
+  currency          String          @default("INR")
+  isActive          Boolean         @default(true) @map("is_active")
+  expiresAt         DateTime?       @map("expires_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  
+  paymentSettings   PaymentSettings @relation("UserUpiQrs", fields: [paymentSettingsId], references: [id], onDelete: Cascade)
+  visits            QrVisit[]       @relation("QrVisits")
+
+  @@index([paymentSettingsId], map: "idx_upi_qr_payment_settings_id")
+  @@index([invoiceId], map: "idx_upi_qr_invoice_id")
+  @@index([isActive], map: "idx_upi_qr_is_active")
+  @@map("upi_qrs")
+}
+
+// QR Visit tracking for insights
+model QrVisit {
+  id          String   @id @default(cuid())
+  qrId        String   @map("qr_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  country     String?
+  city        String?
+  referrer    String?
+  visitedAt   DateTime @default(now()) @map("visited_at")
+  
+  qr          UpiQr    @relation("QrVisits", fields: [qrId], references: [id], onDelete: Cascade)
+
+  @@index([qrId], map: "idx_qr_visit_qr_id")
+  @@index([visitedAt], map: "idx_qr_visit_visited_at")
+  @@map("qr_visits")
 }
 
 model Proposal {
@@ -835,6 +920,19 @@ enum SettlementSchedule {
   MONTHLY
 }
 
+enum PaymentMode {
+  UPI
+  BANK_TRANSFER
+  DODO
+}
+
+enum PaymentLinkStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
 enum ProposalStatus {
   DRAFT
   SENT
@@ -862,11 +960,11 @@ enum OrganisationStatus {
   INACTIVE
 }
 
-// Razorpay & Subscription models
-model RazorpayCustomer {
+// Dodo Payments & Subscription models
+model DodoCustomer {
   id                 String   @id @default(cuid())
   userId             String   @unique
-  razorpayCustomerId String   @unique
+  dodoCustomerId     String   @unique
   email              String
   name               String?
   phone              String?
@@ -874,19 +972,20 @@ model RazorpayCustomer {
   updatedAt          DateTime @updatedAt
 
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscriptions      RazorpaySubscription[]
-  payments           RazorpayPayment[]
+  subscriptions      DodoSubscription[]
+  payments           DodoPayment[]
 
   @@index([userId])
-  @@index([razorpayCustomerId])
+  @@index([dodoCustomerId])
+  @@map("dodo_customers")
 }
 
-model RazorpaySubscription {
+model DodoSubscription {
   id                     String   @id @default(cuid())
   userId                 String
   customerId             String
-  razorpaySubscriptionId String   @unique
-  razorpayPlanId         String
+  dodoSubscriptionId     String   @unique
+  dodoProductId          String
   status                 SubscriptionStatus
   planTier               PlanTier
   quantity               Int      @default(1)
@@ -895,63 +994,69 @@ model RazorpaySubscription {
   currentPeriodEnd       DateTime
   cancelAtPeriodEnd      Boolean  @default(false)
   canceledAt             DateTime?
-  endedAt                DateTime?
 
-  totalCount             Int?
-  paidCount              Int      @default(0)
-  remainingCount         Int?
-  shortUrl               String?
+  trialStart             DateTime?
+  trialEnd               DateTime?
+  
+  metadata               Json?
 
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  customer               RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer               DodoCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageRecords           UsageRecord[]
+  payments               DodoPayment[]
 
   @@index([userId])
   @@index([customerId])
-  @@index([razorpaySubscriptionId])
+  @@index([dodoSubscriptionId])
   @@index([status])
+  @@map("dodo_subscriptions")
 }
 
-model RazorpayPayment {
+model DodoPayment {
   id                 String   @id @default(cuid())
   userId             String
   customerId         String
-  razorpayPaymentId  String   @unique
-  razorpayOrderId    String?
+  subscriptionId     String?
+  dodoPaymentId      String   @unique
+  dodoCheckoutId     String?
 
-  amount             Int      // in paise
-  currency           String   @default("INR")
+  amount             Int      // in smallest currency unit (cents/paise)
+  currency           String   @default("USD")
   status             PaymentStatus
-  method             String?
+  paymentMethod      String?
   description        String?
   email              String?
   contact            String?
   invoiceId          String?
-  notes              Json?
+  metadata           Json?
 
+  paidAt             DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  customer           RazorpayCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer           DodoCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription       DodoSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([customerId])
-  @@index([razorpayPaymentId])
+  @@index([subscriptionId])
+  @@index([dodoPaymentId])
   @@index([status])
+  @@map("dodo_payments")
 }
 
 model SubscriptionPlan {
   id                   String   @id @default(cuid())
-  razorpayPlanId       String   @unique
+  dodoProductId        String   @unique
   name                 String
   tier                 PlanTier
   description          String?
-  amount               Int      // monthly price in paise
-  currency             String   @default("INR")
+  amount               Int      // monthly price in smallest currency unit
+  currency             String   @default("USD")
   period               String   @default("monthly")
   interval             Int      @default(1)
   maxOrganisations     Int
@@ -974,6 +1079,7 @@ model SubscriptionPlan {
 
   @@index([tier])
   @@index([active])
+  @@map("subscription_plans")
 }
 
 model UsageRecord {
@@ -987,12 +1093,13 @@ model UsageRecord {
   createdAt      DateTime @default(now())
 
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription   RazorpaySubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription   DodoSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([subscriptionId])
   @@index([featureType])
   @@index([periodStart])
+  @@map("usage_records")
 }
 
 model AuditLog {
@@ -1022,7 +1129,7 @@ model Document {
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
-  CANCELED
+  CANCELLED
   INCOMPLETE
   INCOMPLETE_EXPIRED
   TRIALING

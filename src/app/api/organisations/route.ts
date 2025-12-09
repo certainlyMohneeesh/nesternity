@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,7 +10,7 @@ const supabase = createClient(
 
 // GET /api/organisations - List user's organisations
 export async function GET(request: NextRequest) {
-  const requestId = `orgs_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const requestId = `orgs_${crypto.randomUUID()}`;
 
   console.log(`[Organisations API] ========== REQUEST START [${requestId}] ==========`);
   console.log(`[Organisations API] Timestamp: ${new Date().toISOString()}`);

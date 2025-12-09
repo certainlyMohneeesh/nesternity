@@ -57,13 +57,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/auth/session-context";
-import { 
-  getUserNotifications, 
-  markNotificationAsRead, 
-  markAllNotificationsAsRead,
-  getUnreadNotificationCount,
-  type Notification 
-} from "@/lib/notifications";
+import { type Notification } from "@/lib/notifications";
 import {
   isPushNotificationSupported,
   getNotificationPermission,
@@ -275,15 +269,20 @@ export default function NotificationCenter() {
     if (!session?.user) return;
 
     const pollInterval = setInterval(async () => {
-      const newCount = await getUnreadNotificationCount(session.user.id);
+      try {
+        const countResponse = await fetch('/api/notifications/unread-count');
+        const countData = await countResponse.json();
+        const newCount = countData.count || 0;
       
       // If count increased, fetch new notifications and send push
       if (newCount > unreadCount && !isFirstLoad.current) {
-        const newNotifications = await getUserNotifications(session.user.id);
+        const response = await fetch('/api/notifications');
+        const result = await response.json();
+        const newNotifications = result.notifications || [];
         
         // Find new notifications that weren't in the previous set
         const newItems = newNotifications.filter(
-          n => !previousNotificationIds.current.has(n.id) && !n.read_at
+          (n: Notification) => !previousNotificationIds.current.has(n.id) && !n.read_at
         );
 
         // Send push notifications for new items
@@ -308,11 +307,14 @@ export default function NotificationCenter() {
         setNotifications(newNotifications);
         
         // Update tracked IDs
-        previousNotificationIds.current = new Set(newNotifications.map(n => n.id));
+        previousNotificationIds.current = new Set(newNotifications.map((n: Notification) => n.id));
       }
-      
+
       setUnreadCount(newCount);
       isFirstLoad.current = false;
+      } catch (error) {
+        console.error('Error polling notifications:', error);
+      }
     }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(pollInterval);
@@ -321,20 +323,32 @@ export default function NotificationCenter() {
   async function fetchNotifications() {
     if (!session?.user) return;
     setLoading(true);
-    const data = await getUserNotifications(session.user.id);
-    setNotifications(data);
+    try {
+      const response = await fetch('/api/notifications');
+      const result = await response.json();
+      const data = result.notifications || [];
+      setNotifications(data);
     
-    // Track notification IDs for push notification comparison
-    previousNotificationIds.current = new Set(data.map(n => n.id));
-    isFirstLoad.current = false;
-    
-    setLoading(false);
+      // Track notification IDs for push notification comparison
+      previousNotificationIds.current = new Set(data.map((n: Notification) => n.id));
+      isFirstLoad.current = false;
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchUnreadCount() {
     if (!session?.user) return;
-    const count = await getUnreadNotificationCount(session.user.id);
-    setUnreadCount(count);
+    try {
+      const response = await fetch('/api/notifications/unread-count');
+      const data = await response.json();
+      setUnreadCount(data.count || 0);
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
   }
 
   // Filter notifications based on active filter and view mode
@@ -357,7 +371,11 @@ export default function NotificationCenter() {
   }, [notifications]);
 
   async function handleMarkAsRead(activityId: string, route?: string | null) {
-    await markNotificationAsRead(activityId);
+    await fetch(`/api/notifications/${activityId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ read: true })
+    });
     // Remove the notification from the list if viewing unread only
     if (viewMode === 'unread') {
       setNotifications(prev => prev.filter(n => n.id !== activityId));
@@ -400,7 +418,10 @@ export default function NotificationCenter() {
 
   async function handleMarkAllAsRead() {
     if (!session?.user) return;
-    await markAllNotificationsAsRead();
+    await fetch('/api/notifications/mark-all-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
     // Remove all notifications from the list
     setNotifications([]);
     setUnreadCount(0);

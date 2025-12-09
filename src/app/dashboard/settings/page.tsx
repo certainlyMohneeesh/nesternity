@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ProfileForm } from '@/components/settings/ProfileForm';
 import { PreferencesForm } from '@/components/settings/PreferencesForm';
 import { BillingSection } from '@/components/settings/BillingSection';
@@ -8,7 +9,7 @@ import { PaymentSettingsSection } from '@/components/settings/PaymentSettingsSec
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Database, Bell, Settings as SettingsIcon, User, CreditCard, AlertTriangle } from 'lucide-react';
+import { Database, Bell, Settings as SettingsIcon, User, CreditCard, AlertTriangle, BarChart3 } from 'lucide-react';
 import { getSessionToken } from '@/lib/supabase/client-session';
 import {
   Dialog,
@@ -37,7 +38,7 @@ export default function SettingsPage() {
 
     // Check for hash in URL to set active tab
     const hash = window.location.hash.replace('#', '');
-    if (hash && ['profile', 'notifications', 'billing', 'payments', 'preferences', 'data'].includes(hash)) {
+    if (hash && ['profile', 'notifications', 'billing', 'payments', 'analytics', 'preferences', 'data'].includes(hash)) {
       setActiveTab(hash);
     }
   }, []);
@@ -49,7 +50,15 @@ export default function SettingsPage() {
       const res = await fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
-        setSettings({ id: data.id, email: data.email, displayName: data.displayName, avatarUrl: data.avatarUrl });
+        setSettings({ 
+          id: data.id, 
+          email: data.email, 
+          displayName: data.displayName, 
+          avatarUrl: data.avatarUrl,
+          timezone: data.timezone,
+          country: data.country,
+          weekStart: data.weekStart,
+        });
       }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -164,6 +173,13 @@ export default function SettingsPage() {
               Payments
             </TabsTrigger>
             <TabsTrigger
+              value="analytics"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-3"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger
               value="preferences"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-3"
             >
@@ -197,6 +213,33 @@ export default function SettingsPage() {
 
           <TabsContent value="payments" className="space-y-6 mt-6">
             <PaymentSettingsSection />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Payment Analytics
+                </CardTitle>
+                <CardDescription>
+                  View detailed analytics for your QR code payment visits
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Track visitor behavior, device usage, geographic distribution, and conversion metrics for all your payment QR codes.
+                  </p>
+                  <Link href="/dashboard/analytics/qr-visits">
+                    <Button className="w-full sm:w-auto">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View Full Analytics Dashboard
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="preferences" className="space-y-6 mt-6">

@@ -63,13 +63,16 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { displayName, avatarUrl } = body;
+    const { displayName, avatarUrl, timezone, country, weekStart } = body;
 
     const updatedUser = await db.user.update({
       where: { id: user.id },
       data: {
-        displayName,
-        avatarUrl,
+        ...(displayName !== undefined && { displayName }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
+        ...(timezone !== undefined && { timezone }),
+        ...(country !== undefined && { country }),
+        ...(weekStart !== undefined && { weekStart }),
       }
     });
 

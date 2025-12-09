@@ -129,7 +129,7 @@ const proposalGenerationStoreCreator: StateCreator<ProposalGenerationStore> = (s
       isWidgetMinimized: false,
 
       startGeneration: (taskData: Omit<ProposalGenerationTask, 'id' | 'progress' | 'createdAt'>) => {
-        const id = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const id = `gen_${crypto.randomUUID()}`;
         const task: ProposalGenerationTask = {
           ...taskData,
           id,

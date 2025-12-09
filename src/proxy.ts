@@ -95,6 +95,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(newUrl);
   }
 
+  // Allow public Pay page (used by QR payment links)
+  if (pathname.startsWith('/pay')) {
+    console.log('🔓 Public payment page accessed, skipping auth guard');
+    return response;
+  }
+
   // Protect dashboard routes
   const isPublicProposalRoute = request.nextUrl.pathname.match(/^\/proposals\/[^/]+\/sign$/);
 

@@ -211,7 +211,7 @@ export default function IssuesPage() {
   // Optimistic update for issue creation
   const handleCreateIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${crypto.randomUUID()}`;
     const optimisticIssue: Issue = {
       id: tempId,
       title: formData.title,

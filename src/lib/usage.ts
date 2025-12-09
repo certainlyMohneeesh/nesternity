@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { FeatureType } from '@prisma/client'
+import { FeatureType } from '../generated/client.js'
 
 export async function incrementUsage(userId: string, subscriptionId: string | null | undefined, featureType: FeatureType, count = 1, meta: Record<string, any> | null = null) {
   const now = new Date()

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'node:crypto'
 import { parseWebhookEvent } from '@/lib/razorpay'
 import { db } from '@/lib/db'
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
         if (!existing) {
           await db.razorpaySubscription.create({
             data: {
-              id: `rs_${Date.now()}`,
+              id: `rs_${crypto.randomUUID()}`,
               userId: mappedUserId || '',
               customerId: mappedCustomerId || entity.customer_id || '',
               razorpaySubscriptionId: entity.id,

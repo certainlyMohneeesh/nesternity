@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a fake session token for testing
-    const fakeToken = `fake-token-${user.id}-${Date.now()}`;
+    const fakeToken = `fake-token-${user.id}-${crypto.randomUUID()}`;
 
     return NextResponse.json({ 
       success: true,

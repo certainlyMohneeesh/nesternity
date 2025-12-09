@@ -1,7 +1,7 @@
 {
   // "$schema": "./node_modules/typescript/lib/tsconfig.schema.json",
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2023",
     "lib": [
       "dom",
       "dom.iterable",
@@ -12,8 +12,8 @@
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
@@ -47,6 +47,18 @@
       ],
       "@/styles/*": [
         "styles/*"
+      ],
+      "*/enums.js": [
+        "*/enums.ts"
+      ],
+      "*/internal/class.js": [
+        "*/internal/class.ts"
+      ],
+      "*/internal/prismaNamespace.js": [
+        "*/internal/prismaNamespace.ts"
+      ],
+      "*/internal/types.js": [
+        "*/internal/types.ts"
       ]
     }
   },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'node:crypto'
 import { isAdminAuthenticated } from '@/middleware/admin-auth'
 import { prisma } from '@/lib/db'
 
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         customerId: customerId ?? '',
-        razorpaySubscriptionId: `manual-${Date.now()}-${userId}`,
+        razorpaySubscriptionId: `manual-${crypto.randomUUID()}-${userId}`,
         razorpayPlanId,
         status: 'TRIALING',
         planTier: planTier || 'STARTER',

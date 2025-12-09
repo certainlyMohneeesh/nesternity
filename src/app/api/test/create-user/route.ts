@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -11,8 +12,8 @@ export async function POST(request: NextRequest) {
     const { email = 'test@example.com', displayName = 'Test User' } = await request.json();
     
     // Create a test user directly in Prisma with a predictable ID
-    const testUserId = 'test-user-' + Date.now();
-    const uniqueEmail = email.includes('@') ? email.replace('@', `+${Date.now()}@`) : `test+${Date.now()}@example.com`;
+    const testUserId = `test-user-${crypto.randomUUID()}`;
+    const uniqueEmail = email.includes('@') ? email.replace('@', `+${crypto.randomUUID()}@`) : `test+${crypto.randomUUID()}@example.com`;
     
     const user = await (db as any).user.create({
       data: {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'node:crypto'
 import { createCustomer, createSubscription } from '@/lib/razorpay'
 import { db } from '@/lib/db'
 
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const razorpayCustomer = await db.razorpayCustomer.upsert({
       where: { userId },
       create: {
-        id: `rc_${Date.now()}_${userId}`,
+        id: `rc_${crypto.randomUUID()}`,
         userId,
         razorpayCustomerId: customer.id,
         email: customer.email,
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Persist RazorpaySubscription
     const razorpaySub = await db.razorpaySubscription.create({
       data: {
-        id: `rs_${Date.now()}_${userId}`,
+        id: `rs_${crypto.randomUUID()}`,
         userId,
         customerId: razorpayCustomer.id,
         razorpaySubscriptionId: subscription.id,

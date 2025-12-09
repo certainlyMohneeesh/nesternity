@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkFeatureLimit } from '@/lib/subscription'
-import type { FeatureType } from '@prisma/client'
+import type { FeatureType } from '../../generated/client.js'
 
 export async function enforceFeatureLimit(userId: string, feature: FeatureType) {
   const result = await checkFeatureLimit(userId, feature)

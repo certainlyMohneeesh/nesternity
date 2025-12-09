@@ -26,6 +26,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 // Initialize Supabase admin client
 function createSupabaseAdminClient() {
@@ -142,7 +143,7 @@ async function diagnoseSupabase() {
     console.log('6. Testing admin capabilities...');
     try {
       // Try to create a test user (in dry-run mode)
-      const testEmail = `test-${Date.now()}@example.com`;
+      const testEmail = `test-${crypto.randomUUID()}@example.com`;
       console.log(`   Testing user creation capability with: ${testEmail}`);
       
       const { data: createResult, error: createError } = await supabaseAdmin.auth.admin.createUser({

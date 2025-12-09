@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  const requestId = `login_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const requestId = `login_${crypto.randomUUID()}`;
   
   console.log(`\n[Login API] ========== REQUEST START [${requestId}] ==========`);
   console.log('[Login API] Timestamp:', new Date().toISOString());
