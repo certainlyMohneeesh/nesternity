@@ -4,7 +4,7 @@ const prisma = new PrismaClient()
 async function main() {
   const plans = [
     {
-      razorpayPlanId: 'free-plan',
+      dodoProductId: 'prod_free_plan',
       name: 'FREE',
       tier: 'FREE',
       description: 'Generous Free tier for freelancers',
@@ -28,7 +28,7 @@ async function main() {
       whiteLabel: false,
     },
     {
-      razorpayPlanId: 'starter-plan',
+      dodoProductId: 'prod_starter_plan',
       name: 'STARTER',
       tier: 'STARTER',
       description: 'Affordable plan for growing freelancers',
@@ -55,7 +55,7 @@ async function main() {
 
   for (const p of plans) {
     await prisma.subscriptionPlan.upsert({
-      where: { razorpayPlanId: p.razorpayPlanId },
+      where: { dodoProductId: p.dodoProductId },
       create: p as any,
       update: p as any,
     })
