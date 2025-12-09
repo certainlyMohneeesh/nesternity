@@ -90,7 +90,9 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      customer: {
+      customer: dodoCustomer ? {
+        customer_id: dodoCustomer.dodoCustomerId
+      } : {
         email: email,
         name: name || undefined,
         phone_number: phone || undefined,
