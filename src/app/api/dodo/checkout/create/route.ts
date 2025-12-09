@@ -64,6 +64,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Check for active subscription to prevent duplicates
+    const activeSubscription = await prisma.dodoSubscription.findFirst({
+      where: {
+        userId,
+        status: {
+          in: ['ACTIVE', 'PAST_DUE', 'TRIALING'],
+        },
+      },
+    });
+
+    if (activeSubscription) {
+      return NextResponse.json(
+        { error: 'User already has an active subscription' },
+        { status: 409 },
+      );
+    }
+
     // Create checkout session for subscription
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const checkoutSession = await createCheckoutSession({
