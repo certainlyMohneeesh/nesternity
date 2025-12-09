@@ -400,6 +400,7 @@ export const manualTests = {
    * Create a test payment link manually
    */
   async createTestPaymentLink() {
+    const crypto = require('crypto');
     const paymentLink = await createPaymentLink({
       amount: convertToPaise(100),
       currency: 'INR',
@@ -408,7 +409,7 @@ export const manualTests = {
         name: 'Manual Tester',
         email: 'manual@test.com',
       },
-      reference_id: `manual-test-${Date.now()}`,
+      reference_id: `manual-test-${crypto.randomUUID()}`,
     });
 
     console.log('✅ Test Payment Link Created:');

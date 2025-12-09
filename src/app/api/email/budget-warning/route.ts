@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { SendMailClient } from 'zeptomail';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
@@ -24,7 +25,7 @@ function getZeptoClient(): SendMailClient {
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const requestId = `req_${crypto.randomUUID()}`;
   
   console.log(`\n[Budget Warning Email] ========== REQUEST START [${requestId}] ==========`);
   console.log('[Budget Warning Email] Timestamp:', new Date().toISOString());

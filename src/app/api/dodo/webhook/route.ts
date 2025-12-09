@@ -330,7 +330,7 @@ async function handlePaymentSucceeded(event: any) {
 
     await prisma.dodoPayment.create({
       data: {
-        id: `dp_${Date.now()}_${dodoCustomer.userId}`,
+        id: `dp_${crypto.randomUUID()}_${dodoCustomer.userId}`,
         userId: dodoCustomer.userId,
         customerId: dodoCustomer.id,
         subscriptionId,
@@ -397,7 +397,7 @@ async function handlePaymentFailed(event: any) {
 
     await prisma.dodoPayment.create({
       data: {
-        id: `dp_${Date.now()}_${dodoCustomer.userId}`,
+        id: `dp_${crypto.randomUUID()}_${dodoCustomer.userId}`,
         userId: dodoCustomer.userId,
         customerId: dodoCustomer.id,
         subscriptionId,

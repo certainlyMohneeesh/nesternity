@@ -128,7 +128,7 @@ export default function TeamsPage() {
       return;
     }
     // Create a temporary team object for optimistic UI
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${crypto.randomUUID()}`;
     const optimisticTeam: TempTeam = {
       id: tempId,
       name: teamName.trim(),
@@ -141,7 +141,7 @@ export default function TeamsPage() {
         displayName: user?.name || 'You',
       },
       members: [{
-        id: `temp-member-${Date.now()}`,
+        id: `temp-member-${crypto.randomUUID()}`,
         role: 'owner',
         user: {
           id: user?.id || '',

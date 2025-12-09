@@ -1,4 +1,5 @@
 import { PrismaClient } from '../src/generated/client.js'
+import crypto from 'node:crypto'
 const prisma = new PrismaClient()
 
 async function main() {
@@ -15,7 +16,7 @@ async function main() {
       data: {
         userId: u.id,
         customerId: '',
-        razorpaySubscriptionId: `manual-${Date.now()}-${u.id}`,
+        razorpaySubscriptionId: `manual-${crypto.randomUUID()}-${u.id}`,
         razorpayPlanId: freePlan.razorpayPlanId,
         status: 'TRIALING',
         planTier: 'FREE',

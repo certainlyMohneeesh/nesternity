@@ -71,7 +71,7 @@ export default function QrRenderer({
   const handleDownload = () => {
     if (qrCode) {
       qrCode.download({
-        name: `payment-qr-${Date.now()}`,
+        name: `payment-qr-${crypto.randomUUID()}`,
         extension: 'png',
       });
     }

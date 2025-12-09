@@ -140,7 +140,7 @@ export function useCreateTask(teamId: string, boardId: string) {
       
       // Optimistically update to the new value
       const optimisticTask: Task = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${crypto.randomUUID()}`,
         title: newTask.title,
         description: newTask.description,
         listId: newTask.listId,
@@ -276,7 +276,7 @@ export function useCreateList(teamId: string, boardId: string) {
       
       // Optimistically update to the new value
       const optimisticList: List = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${crypto.randomUUID()}`,
         name: newList.name,
         position: previousLists?.length || 0,
         _count: { tasks: 0 },

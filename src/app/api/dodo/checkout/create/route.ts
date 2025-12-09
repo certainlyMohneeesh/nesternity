@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { createDodoCustomer, createCheckoutSession } from '@/lib/dodo';
 import { prisma } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       // Save to our database
       dodoCustomer = await prisma.dodoCustomer.create({
         data: {
-          id: `dc_${Date.now()}_${userId}`,
+          id: `dc_${crypto.randomUUID()}`,
           userId,
           dodoCustomerId: newCustomer.customer_id,
           email: newCustomer.email,

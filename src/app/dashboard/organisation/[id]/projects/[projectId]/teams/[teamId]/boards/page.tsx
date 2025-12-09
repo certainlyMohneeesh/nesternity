@@ -163,7 +163,7 @@ export default function BoardsPage({ params }: { params: Promise<{ id: string; p
       setCreating(true);
       setError(null);
       // Optimistic UI: add temp board
-      tempId = `temp-${Date.now()}`;
+      tempId = `temp-${crypto.randomUUID()}`;
       const tempBoard: Board = {
         id: tempId,
         name: boardName.trim(),

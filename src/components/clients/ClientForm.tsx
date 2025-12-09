@@ -111,7 +111,7 @@ export function ClientForm({ client, teamId, onSuccess, onCancel, onOptimisticCr
     setIsLoading(true)
     const optimisticClient = {
       ...data,
-      id: `temp-${Date.now()}`,
+      id: `temp-${crypto.randomUUID()}`,
       createdAt: new Date().toISOString(),
       status: data.status || 'PROSPECT',
       _count: { invoices: 0, projects: 0 },

@@ -13,6 +13,7 @@
 import { PrismaClient } from '../src/generated/client.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import crypto from 'node:crypto';
 
 const prisma = new PrismaClient();
 
@@ -145,7 +146,7 @@ function exportReport(report: MigrationReport) {
     fs.mkdirSync(exportDir, { recursive: true });
   }
 
-  const filename = `razorpay-migration-${Date.now()}.json`;
+  const filename = `razorpay-migration-${crypto.randomUUID()}.json`;
   const filepath = path.join(exportDir, filename);
 
   fs.writeFileSync(filepath, JSON.stringify(report, null, 2));

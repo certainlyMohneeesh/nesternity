@@ -4,6 +4,7 @@
  */
 
 const { google } = require('googleapis');
+const crypto = require('crypto');
 const path = require('path');
 
 async function testGoogleSheetsAPI() {
@@ -44,7 +45,7 @@ async function testGoogleSheetsAPI() {
     
     // Test adding a row (with test data)
     console.log('\n✍️  Testing write access...');
-    const testEmail = `test-${Date.now()}@example.com`;
+    const testEmail = `test-${crypto.randomUUID()}@example.com`;
     const testDate = new Date().toISOString();
     
     const appendResponse = await sheets.spreadsheets.values.append({
