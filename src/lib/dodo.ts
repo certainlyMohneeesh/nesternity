@@ -349,7 +349,14 @@ export function mapDodoSubscriptionStatus(
     expired: 'EXPIRED',
     paused: 'PAUSED',
   };
-  return statusMap[status.toLowerCase()] || 'CANCELLED';
+
+  const mapped = statusMap[status.toLowerCase()];
+
+  if (!mapped) {
+    throw new Error(`Unknown Dodo subscription status: ${status}`);
+  }
+
+  return mapped;
 }
 
 /**
