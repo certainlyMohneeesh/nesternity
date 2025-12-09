@@ -234,6 +234,51 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Invoice created successfully:', invoice.id);
 
+    // Auto-generate UPI QR payment link if enablePaymentLink is true
+    if (enablePaymentLink) {
+      console.log('💳 Auto-generating UPI payment link...');
+      try {
+        // Get user's payment settings
+        const paymentSettings = await prisma.paymentSettings.findUnique({
+          where: { userId: user.id },
+        });
+
+        if (paymentSettings?.upiId) {
+          // Create UPI QR entry
+          const upiQr = await prisma.upiQr.create({
+            data: {
+              paymentSettingsId: paymentSettings.id,
+              invoiceId: invoice.id,
+              amount: total,
+              note: `Payment for Invoice ${invoiceNumber}`,
+              currency: currency || 'INR',
+              isActive: true,
+            },
+          });
+
+          // Generate payment page URL
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const paymentUrl = `${baseUrl}/pay/${upiQr.id}`;
+
+          // Update invoice with payment URL and page ID
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              paymentPageId: upiQr.id,
+              paymentMode: 'UPI',
+            },
+          });
+
+          console.log('✅ UPI payment link generated:', paymentUrl);
+        } else {
+          console.log('⚠️ UPI ID not configured, skipping payment link generation');
+        }
+      } catch (error) {
+        console.error('❌ Failed to generate UPI payment link:', error);
+        // Don't fail invoice creation if payment link generation fails
+      }
+    }
+
     // Generate PDF if requested or if enablePaymentLink is true
     if (enablePaymentLink) {
       console.log('📄 PDF generation requested, starting process...');

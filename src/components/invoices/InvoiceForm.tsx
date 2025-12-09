@@ -435,7 +435,7 @@ export default function InvoiceForm({ teamId, organisationId, projectId, organis
               {...register('enablePaymentLink')}
             />
             <Label htmlFor="enablePaymentLink" className="font-normal">
-              Enable "Pay Now" button for online payments
+              Enable payment link (UPI QR will be auto-generated and added to invoice PDF)
             </Label>
           </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FieldSet, Field, FieldLabel, FieldContent, FieldLegend } from '@/components/ui/field';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,32 +10,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { CreditCard, Building2, User, MapPin, Shield, AlertCircle, CheckCircle2, Clock, XCircle, Info } from 'lucide-react';
+import { CreditCard, Building2, User, MapPin, Globe, IndianRupee, Eye, EyeOff, Info, QrCode } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 
-type AccountStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'NEEDS_CLARIFICATION';
-type SettlementSchedule = 'INSTANT' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+type AccountType = 'SAVINGS' | 'CURRENT';
+type DodoMode = 'TEST' | 'LIVE';
 
 interface PaymentSettingsData {
   id?: string;
-  razorpayAccountId?: string | null;
-  accountStatus?: AccountStatus;
-  accountActive?: boolean;
-  accountType?: 'SAVINGS' | 'CURRENT';
-  settlementSchedule?: SettlementSchedule;
-  enableCommission?: boolean;
-  commissionPercent?: number;
-  verificationNotes?: string | null;
   
-  // Bank account details (required for linking)
+  // India Payments - UPI
+  upiId?: string;
+  upiMerchantName?: string;
+  
+  // India Payments - Bank Transfer
   accountHolderName?: string;
   accountNumber?: string;
   ifscCode?: string;
   bankName?: string;
   branchName?: string;
+  accountType?: AccountType;
+  bankTransferThreshold?: number;
   
-  // Business/KYC details
+  // Business Details
   businessName?: string;
   gstNumber?: string;
   panNumber?: string;
@@ -44,20 +41,26 @@ interface PaymentSettingsData {
   state?: string;
   pincode?: string;
   country?: string;
-  contactEmail?: string;  // Fixed: was email
-  contactPhone?: string;  // Fixed: was phone
+  contactEmail?: string;
+  contactPhone?: string;
+  
+  // International Payments - Dodo BYOK
+  enableInternational?: boolean;
+  dodoApiKey?: string;
+  dodoAccountId?: string;
+  dodoMode?: DodoMode;
 }
 
 export function PaymentSettingsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [linking, setLinking] = useState(false);
+  const [showDodoKey, setShowDodoKey] = useState(false);
   const [settings, setSettings] = useState<PaymentSettingsData>({
-    enableCommission: true,
-    commissionPercent: 5.0,
-    settlementSchedule: 'INSTANT',
     accountType: 'SAVINGS',
     country: 'India',
+    dodoMode: 'TEST',
+    enableInternational: false,
+    bankTransferThreshold: 100000, // ₹1,00,000
   });
 
   useEffect(() => {
@@ -84,58 +87,6 @@ export function PaymentSettingsSection() {
       toast.error('Failed to load payment settings');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function createLinkedAccount() {
-    // Validate required fields
-    if (!settings.accountHolderName || !settings.accountNumber || !settings.ifscCode) {
-      toast.error('Please fill in all bank account details');
-      return;
-    }
-    
-    if (!settings.panNumber) {
-      toast.error('PAN number is required for account verification');
-      return;
-    }
-
-    if (!settings.contactEmail || !settings.contactPhone) {
-      toast.error('Email and phone are required');
-      return;
-    }
-
-    setLinking(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error('Authentication required');
-        return;
-      }
-
-      const response = await fetch('/api/payment-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          ...settings,
-          createLinkedAccountNow: true,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success('Linked account created! Verification may take 24-48 hours.');
-        fetchPaymentSettings();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to create linked account');
-      }
-    } catch (error) {
-      console.error('Error creating linked account:', error);
-      toast.error('Failed to create linked account');
-    } finally {
-      setLinking(false);
     }
   }
 
@@ -172,23 +123,8 @@ export function PaymentSettingsSection() {
     }
   }
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: keyof PaymentSettingsData, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const getStatusBadge = (status?: AccountStatus) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
-      case 'PENDING':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending Verification</Badge>;
-      case 'SUSPENDED':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Suspended</Badge>;
-      case 'NEEDS_CLARIFICATION':
-        return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Needs Clarification</Badge>;
-      default:
-        return <Badge variant="outline">Not Linked</Badge>;
-    }
   };
 
   if (loading) {
@@ -199,7 +135,7 @@ export function PaymentSettingsSection() {
             <CreditCard className="h-5 w-5" />
             Payment Settings
           </CardTitle>
-          <CardDescription>Configure Razorpay Route for invoice payments</CardDescription>
+          <CardDescription>Configure your payment methods</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
@@ -212,9 +148,6 @@ export function PaymentSettingsSection() {
     );
   }
 
-  const isAccountLinked = !!settings.razorpayAccountId;
-  const isAccountActive = settings.accountActive === true;
-
   return (
     <Card>
       <CardHeader>
@@ -223,40 +156,251 @@ export function PaymentSettingsSection() {
           Payment Settings
         </CardTitle>
         <CardDescription>
-          Link your bank account to receive payments directly from clients
+          Configure UPI, bank transfers, and international payment options
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Region Notice */}
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>Regional Availability</AlertTitle>
-          <AlertDescription>
-            Razorpay Route is currently available only for users in <strong>India</strong> and <strong>Malaysia</strong>.
-            You need a valid PAN number (India) or equivalent business registration to link your account.
-          </AlertDescription>
-        </Alert>
+      <CardContent>
+        <Tabs defaultValue="india" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="india" className="gap-2">
+              <IndianRupee className="h-4 w-4" />
+              India (UPI/Bank)
+            </TabsTrigger>
+            <TabsTrigger value="international" className="gap-2">
+              <Globe className="h-4 w-4" />
+              International
+            </TabsTrigger>
+            <TabsTrigger value="business" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Business Info
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Account Status */}
-        {isAccountLinked && (
-          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-            <div className="space-y-1">
-              <Label className="text-base">Account Status</Label>
-              <p className="text-sm text-muted-foreground">
-                Account ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">{settings.razorpayAccountId}</code>
-              </p>
-              {settings.verificationNotes && (
-                <p className="text-sm text-amber-600 dark:text-amber-400">
-                  {settings.verificationNotes}
-                </p>
-              )}
+          {/* India Payments Tab */}
+          <TabsContent value="india" className="space-y-6">
+            <Alert>
+              <QrCode className="h-4 w-4" />
+              <AlertTitle>Smart Payment Routing</AlertTitle>
+              <AlertDescription>
+                UPI for amounts under ₹{(settings.bankTransferThreshold || 100000).toLocaleString('en-IN')}.
+                Bank transfer details shown for larger amounts.
+              </AlertDescription>
+            </Alert>
+
+            {/* UPI Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                <h3 className="font-semibold">UPI Payment Details</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="upiId">UPI ID *</Label>
+                  <Input
+                    id="upiId"
+                    placeholder="yourname@paytm"
+                    value={settings.upiId || ''}
+                    onChange={(e) => handleChange('upiId', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your UPI ID will be used to generate QR codes for payments
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="upiMerchantName">Merchant Name (shown in UPI apps)</Label>
+                  <Input
+                    id="upiMerchantName"
+                    placeholder="Your Business Name"
+                    value={settings.upiMerchantName || ''}
+                    onChange={(e) => handleChange('upiMerchantName', e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            {getStatusBadge(settings.accountStatus)}
-          </div>
-        )}
 
-        {!isAccountLinked && (
-          <>
+            {/* Bank Transfer Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                <h3 className="font-semibold">Bank Transfer Details</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                  <Input
+                    id="accountHolderName"
+                    placeholder="Full name as per bank"
+                    value={settings.accountHolderName || ''}
+                    onChange={(e) => handleChange('accountHolderName', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number</Label>
+                  <Input
+                    id="accountNumber"
+                    placeholder="Enter account number"
+                    value={settings.accountNumber || ''}
+                    onChange={(e) => handleChange('accountNumber', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ifscCode">IFSC Code</Label>
+                  <Input
+                    id="ifscCode"
+                    placeholder="SBIN0001234"
+                    value={settings.ifscCode || ''}
+                    onChange={(e) => handleChange('ifscCode', e.target.value.toUpperCase())}
+                    maxLength={11}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bankName">Bank Name</Label>
+                  <Input
+                    id="bankName"
+                    placeholder="State Bank of India"
+                    value={settings.bankName || ''}
+                    onChange={(e) => handleChange('bankName', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="branchName">Branch Name</Label>
+                  <Input
+                    id="branchName"
+                    placeholder="Main Branch"
+                    value={settings.branchName || ''}
+                    onChange={(e) => handleChange('branchName', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accountType">Account Type</Label>
+                  <Select
+                    value={settings.accountType || 'SAVINGS'}
+                    onValueChange={(value: AccountType) => handleChange('accountType', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select account type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SAVINGS">Savings Account</SelectItem>
+                      <SelectItem value="CURRENT">Current Account</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bankTransferThreshold">Bank Transfer Threshold (₹)</Label>
+                <Input
+                  id="bankTransferThreshold"
+                  type="number"
+                  placeholder="100000"
+                  value={settings.bankTransferThreshold || 100000}
+                  onChange={(e) => handleChange('bankTransferThreshold', parseFloat(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Show bank transfer details for amounts above this threshold
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* International Payments Tab */}
+          <TabsContent value="international" className="space-y-6">
+            <Alert>
+              <Globe className="h-4 w-4" />
+              <AlertTitle>Bring Your Own Key (BYOK)</AlertTitle>
+              <AlertDescription>
+                Use your own Dodo Payments account for international payments. Your API keys are encrypted and never shared.
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base">Enable International Payments</Label>
+                <p className="text-sm text-muted-foreground">
+                  Accept payments from international clients via Dodo Payments
+                </p>
+              </div>
+              <Switch
+                checked={settings.enableInternational ?? false}
+                onCheckedChange={(checked) => handleChange('enableInternational', checked)}
+              />
+            </div>
+
+            {settings.enableInternational && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dodoAccountId">Dodo Account ID</Label>
+                  <Input
+                    id="dodoAccountId"
+                    placeholder="acc_xxxxxxxxxxxxxxxx"
+                    value={settings.dodoAccountId || ''}
+                    onChange={(e) => handleChange('dodoAccountId', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dodoApiKey">Dodo API Key</Label>
+                  <div className="relative">
+                    <Input
+                      id="dodoApiKey"
+                      type={showDodoKey ? 'text' : 'password'}
+                      placeholder="sk_test_xxxxxxxxxxxxxxxx"
+                      value={settings.dodoApiKey || ''}
+                      onChange={(e) => handleChange('dodoApiKey', e.target.value)}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowDodoKey(!showDodoKey)}
+                    >
+                      {showDodoKey ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get your API key from your Dodo Payments dashboard
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dodoMode">Mode</Label>
+                  <Select
+                    value={settings.dodoMode || 'TEST'}
+                    onValueChange={(value: DodoMode) => handleChange('dodoMode', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TEST">Test Mode</SelectItem>
+                      <SelectItem value="LIVE">Live Mode</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Use test mode for testing before going live
+                  </p>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Business Info Tab */}
+          <TabsContent value="business" className="space-y-6">
             {/* Contact Information */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -264,176 +408,70 @@ export function PaymentSettingsSection() {
                 <h3 className="font-semibold">Contact Information</h3>
               </div>
               
-              <FieldSet>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field>
-                    <FieldLabel htmlFor="contactEmail">Email *</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="contactEmail"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={settings.contactEmail || ''}
-                        onChange={(e) => handleChange('contactEmail', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="contactPhone">Phone Number *</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="contactPhone"
-                        type="tel"
-                        placeholder="+91XXXXXXXXXX"
-                        value={settings.contactPhone || ''}
-                        onChange={(e) => handleChange('contactPhone', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contactEmail">Email</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={settings.contactEmail || ''}
+                    onChange={(e) => handleChange('contactEmail', e.target.value)}
+                  />
                 </div>
-              </FieldSet>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactPhone">Phone Number</Label>
+                  <Input
+                    id="contactPhone"
+                    type="tel"
+                    placeholder="+91XXXXXXXXXX"
+                    value={settings.contactPhone || ''}
+                    onChange={(e) => handleChange('contactPhone', e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Business/KYC Details */}
+            {/* Business Details */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
                 <h3 className="font-semibold">Business Details</h3>
               </div>
               
-              <FieldSet>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field>
-                    <FieldLabel htmlFor="businessName">Business/Legal Name</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="businessName"
-                        placeholder="Your Business Name"
-                        value={settings.businessName || ''}
-                        onChange={(e) => handleChange('businessName', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="panNumber">PAN Number * (India)</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="panNumber"
-                        placeholder="AAAAA0000A"
-                        value={settings.panNumber || ''}
-                        onChange={(e) => handleChange('panNumber', e.target.value.toUpperCase())}
-                        maxLength={10}
-                      />
-                      <p className="text-xs text-muted-foreground">Required for KYC verification</p>
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="gstNumber">GST Number (Optional)</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="gstNumber"
-                        placeholder="22AAAAA0000A1Z5"
-                        value={settings.gstNumber || ''}
-                        onChange={(e) => handleChange('gstNumber', e.target.value.toUpperCase())}
-                      />
-                    </FieldContent>
-                  </Field>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business/Legal Name</Label>
+                  <Input
+                    id="businessName"
+                    placeholder="Your Business Name"
+                    value={settings.businessName || ''}
+                    onChange={(e) => handleChange('businessName', e.target.value)}
+                  />
                 </div>
-              </FieldSet>
-            </div>
 
-            {/* Bank Account Details */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                <h3 className="font-semibold">Bank Account Details</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="panNumber">PAN Number (India)</Label>
+                  <Input
+                    id="panNumber"
+                    placeholder="AAAAA0000A"
+                    value={settings.panNumber || ''}
+                    onChange={(e) => handleChange('panNumber', e.target.value.toUpperCase())}
+                    maxLength={10}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gstNumber">GST Number (Optional)</Label>
+                  <Input
+                    id="gstNumber"
+                    placeholder="22AAAAA0000A1Z5"
+                    value={settings.gstNumber || ''}
+                    onChange={(e) => handleChange('gstNumber', e.target.value.toUpperCase())}
+                  />
+                </div>
               </div>
-              
-              <FieldSet>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field>
-                    <FieldLabel htmlFor="accountHolderName">Account Holder Name *</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="accountHolderName"
-                        placeholder="Full name as per bank account"
-                        value={settings.accountHolderName || ''}
-                        onChange={(e) => handleChange('accountHolderName', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="accountNumber">Account Number *</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="accountNumber"
-                        placeholder="Enter account number"
-                        value={settings.accountNumber || ''}
-                        onChange={(e) => handleChange('accountNumber', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="ifscCode">IFSC Code *</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="ifscCode"
-                        placeholder="SBIN0001234"
-                        value={settings.ifscCode || ''}
-                        onChange={(e) => handleChange('ifscCode', e.target.value.toUpperCase())}
-                        maxLength={11}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="bankName">Bank Name</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="bankName"
-                        placeholder="State Bank of India"
-                        value={settings.bankName || ''}
-                        onChange={(e) => handleChange('bankName', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="branchName">Branch Name</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="branchName"
-                        placeholder="Main Branch"
-                        value={settings.branchName || ''}
-                        onChange={(e) => handleChange('branchName', e.target.value)}
-                      />
-                    </FieldContent>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="accountType">Account Type *</FieldLabel>
-                    <FieldContent>
-                      <Select
-                        value={settings.accountType || 'SAVINGS'}
-                        onValueChange={(value) => handleChange('accountType', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select account type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SAVINGS">Savings Account</SelectItem>
-                          <SelectItem value="CURRENT">Current Account</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FieldContent>
-                  </Field>
-                </div>
-              </FieldSet>
             </div>
 
             {/* Business Address */}
@@ -443,7 +481,7 @@ export function PaymentSettingsSection() {
                 <h3 className="font-semibold">Business Address</h3>
               </div>
               
-              <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="businessAddress">Address</Label>
                   <Input
@@ -486,94 +524,27 @@ export function PaymentSettingsSection() {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Link Account Button */}
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={createLinkedAccount} disabled={linking} size="lg">
-                {linking ? 'Creating Account...' : 'Link Bank Account'}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {/* Payment Preferences (only shown when account is linked) */}
-        {isAccountLinked && (
-          <>
-            {/* Settlement Schedule */}
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-1">Settlement Schedule</h3>
-                <p className="text-sm text-muted-foreground">
-                  Choose how often you want to receive payments to your bank account
-                </p>
-              </div>
-              
-              <Select
-                value={settings.settlementSchedule || 'INSTANT'}
-                onValueChange={(value) => handleChange('settlementSchedule', value)}
-                disabled={!isAccountActive}
-              >
-                <SelectTrigger className="w-full md:w-[300px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INSTANT">Instant (Real-time transfers)</SelectItem>
-                  <SelectItem value="DAILY">Daily (End of day)</SelectItem>
-                  <SelectItem value="WEEKLY">Weekly (Every Monday)</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly (1st of month)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Platform Commission */}
-            <div className="space-y-4 p-4 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-base">Platform Commission</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {settings.enableCommission 
-                      ? `A ${settings.commissionPercent}% commission will be deducted from your payments`
-                      : 'Commission is currently disabled'}
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.enableCommission ?? true}
-                  onCheckedChange={(checked) => handleChange('enableCommission', checked)}
-                  disabled={!isAccountActive}
-                />
-              </div>
-
-              {settings.enableCommission && (
                 <div className="space-y-2">
-                  <Label htmlFor="commissionPercent">Commission Percentage</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="commissionPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={settings.commissionPercent || 5.0}
-                      onChange={(e) => handleChange('commissionPercent', parseFloat(e.target.value))}
-                      className="w-[120px]"
-                      disabled={!isAccountActive}
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    placeholder="India"
+                    value={settings.country || 'India'}
+                    onChange={(e) => handleChange('country', e.target.value)}
+                  />
                 </div>
-              )}
+              </div>
             </div>
+          </TabsContent>
+        </Tabs>
 
-            {/* Save Button */}
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={savePaymentSettings} disabled={saving || !isAccountActive}>
-                {saving ? 'Saving...' : 'Save Payment Settings'}
-              </Button>
-            </div>
-          </>
-        )}
+        {/* Save Button */}
+        <div className="flex justify-end pt-6 border-t mt-6">
+          <Button onClick={savePaymentSettings} disabled={saving} size="lg">
+            {saving ? 'Saving...' : 'Save Payment Settings'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

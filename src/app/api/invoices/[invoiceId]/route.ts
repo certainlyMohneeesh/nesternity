@@ -49,7 +49,14 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    return NextResponse.json(invoice);
+    // Add payment URL if paymentPageId exists
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const invoiceWithPaymentUrl = {
+      ...invoice,
+      paymentUrl: invoice.paymentPageId ? `${baseUrl}/pay/${invoice.paymentPageId}` : null,
+    };
+
+    return NextResponse.json(invoiceWithPaymentUrl);
   } catch (error) {
     console.error('Error fetching invoice:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
