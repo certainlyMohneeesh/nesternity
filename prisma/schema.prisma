@@ -1,12 +1,11 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider      = "prisma-client"
+  output        = "../src/generated"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -14,6 +13,9 @@ model User {
   email            String           @unique
   displayName      String?          @map("display_name")
   avatarUrl        String?          @map("avatar_url")
+  timezone         String?          @default("Asia/Kolkata")
+  country          String?          @default("India")
+  weekStart        String?          @default("monday") @map("week_start")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
   stripeCustomerId String?          @unique @map("stripe_customer_id")
@@ -153,6 +155,21 @@ model Invoice {
   enablePaymentLink         Boolean            @default(false) @map("enable_payment_link")
   eSignatureUrl             String?            @map("e_signature_url")
   watermarkText             String?            @map("watermark_text")
+  
+  // New Payment System Fields
+  paymentPageId             String?            @unique @map("payment_page_id")
+  paymentMode               PaymentMode?       @map("payment_mode")
+  paymentStatus             PaymentLinkStatus  @default(PENDING) @map("payment_status")
+  paidAt                    DateTime?          @map("paid_at")
+  paidAmount                Float?             @map("paid_amount")
+  paymentReference          String?            @map("payment_reference")
+  
+  // Dodo Payments (International)
+  dodoCheckoutId            String?            @map("dodo_checkout_id")
+  dodoCheckoutUrl           String?            @map("dodo_checkout_url")
+  dodoPaymentId             String?            @map("dodo_payment_id")
+  
+  // Legacy Razorpay fields (for migration)
   razorpayPaymentLinkId     String?            @map("razorpay_payment_link_id")
   razorpayPaymentLinkUrl    String?            @map("razorpay_payment_link_url")
   razorpayPaymentLinkStatus String?            @map("razorpay_payment_link_status")
@@ -179,6 +196,8 @@ model Invoice {
   @@index([status], map: "idx_invoices_status")
   @@index([issuedById, status, issuedDate(sort: Desc)], map: "idx_invoices_user_status")
   @@index([razorpayPaymentLinkId], map: "idx_invoices_razorpay_link_id")
+  @@index([paymentPageId], map: "idx_invoices_payment_page_id")
+  @@index([dodoCheckoutId], map: "idx_invoices_dodo_checkout_id")
   @@index([isRecurring, nextIssueDate], map: "idx_invoices_recurring_next")
   @@index([parentInvoiceId], map: "idx_invoices_parent_id")
   @@index([organisationId], map: "idx_invoices_organisation_id")
@@ -528,39 +547,105 @@ model IssueComment {
 }
 
 model PaymentSettings {
-  id                 String             @id @default(cuid())
-  userId             String             @unique @map("user_id")
-  razorpayAccountId  String?            @unique @map("razorpay_account_id")
-  accountStatus      AccountStatus      @default(PENDING) @map("account_status")
-  accountHolderName  String?            @map("account_holder_name")
-  accountNumber      String?            @map("account_number")
-  ifscCode           String?            @map("ifsc_code")
-  bankName           String?            @map("bank_name")
-  branchName         String?            @map("branch_name")
-  accountType        AccountType?       @map("account_type")
-  panNumber          String?            @map("pan_number")
-  businessName       String?            @map("business_name")
-  gstNumber          String?            @map("gst_number")
-  contactEmail       String?            @map("contact_email")
-  contactPhone       String?            @map("contact_phone")
-  businessAddress    String?            @map("business_address")
-  city               String?
-  state              String?
-  pincode            String?
-  country            String?            @default("India")
-  enableCommission   Boolean            @default(true) @map("enable_commission")
-  commissionPercent  Float?             @default(5.0) @map("commission_percent")
-  settlementSchedule SettlementSchedule @default(INSTANT) @map("settlement_schedule")
-  accountActive      Boolean            @default(false) @map("account_active")
-  verificationNotes  String?            @map("verification_notes")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
-  user               User               @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+  id                       String             @id @default(cuid())
+  userId                   String             @unique @map("user_id")
+  
+  // India Payments - UPI
+  upiId                    String?            @map("upi_id")
+  upiMerchantName          String?            @map("upi_merchant_name")
+  
+  // India Payments - Bank Transfer (for invoices > ₹1,00,000)
+  accountHolderName        String?            @map("account_holder_name")
+  accountNumber            String?            @map("account_number")
+  ifscCode                 String?            @map("ifsc_code")
+  bankName                 String?            @map("bank_name")
+  branchName               String?            @map("branch_name")
+  accountType              AccountType?       @map("account_type")
+  
+  // Business Details
+  panNumber                String?            @map("pan_number")
+  businessName             String?            @map("business_name")
+  gstNumber                String?            @map("gst_number")
+  contactEmail             String?            @map("contact_email")
+  contactPhone             String?            @map("contact_phone")
+  businessAddress          String?            @map("business_address")
+  city                     String?
+  state                    String?
+  pincode                  String?
+  country                  String?            @default("India")
+  
+  // International Payments - Dodo BYOK
+  enableInternational      Boolean            @default(false) @map("enable_international")
+  dodoApiKey               String?            @map("dodo_api_key")
+  dodoAccountId            String?            @map("dodo_account_id")
+  dodoMode                 DodoMode           @default(TEST) @map("dodo_mode")
+  
+  // Payment thresholds
+  bankTransferThreshold    Float              @default(100000) @map("bank_transfer_threshold")
+  
+  // Legacy fields (for migration)
+  razorpayAccountId        String?            @unique @map("razorpay_account_id")
+  accountStatus            AccountStatus      @default(PENDING) @map("account_status")
+  enableCommission         Boolean            @default(true) @map("enable_commission")
+  commissionPercent        Float?             @default(5.0) @map("commission_percent")
+  settlementSchedule       SettlementSchedule @default(INSTANT) @map("settlement_schedule")
+  accountActive            Boolean            @default(false) @map("account_active")
+  verificationNotes        String?            @map("verification_notes")
+  
+  createdAt                DateTime           @default(now()) @map("created_at")
+  updatedAt                DateTime           @updatedAt @map("updated_at")
+  user                     User               @relation("UserPaymentSettings", fields: [userId], references: [id], onDelete: Cascade)
+  upiQrs                   UpiQr[]            @relation("UserUpiQrs")
 
   @@index([userId], map: "idx_payment_settings_user_id")
   @@index([razorpayAccountId], map: "idx_payment_settings_razorpay_account")
   @@index([accountStatus], map: "idx_payment_settings_status")
   @@map("payment_settings")
+}
+
+enum DodoMode {
+  TEST
+  LIVE
+}
+
+// UPI QR Code for India payments
+model UpiQr {
+  id                String          @id @default(cuid())
+  paymentSettingsId String          @map("payment_settings_id")
+  invoiceId         String?         @unique @map("invoice_id")
+  amount            Float?
+  note              String?
+  currency          String          @default("INR")
+  isActive          Boolean         @default(true) @map("is_active")
+  expiresAt         DateTime?       @map("expires_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  
+  paymentSettings   PaymentSettings @relation("UserUpiQrs", fields: [paymentSettingsId], references: [id], onDelete: Cascade)
+  visits            QrVisit[]       @relation("QrVisits")
+
+  @@index([paymentSettingsId], map: "idx_upi_qr_payment_settings_id")
+  @@index([invoiceId], map: "idx_upi_qr_invoice_id")
+  @@index([isActive], map: "idx_upi_qr_is_active")
+  @@map("upi_qrs")
+}
+
+// QR Visit tracking for insights
+model QrVisit {
+  id          String   @id @default(cuid())
+  qrId        String   @map("qr_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  country     String?
+  city        String?
+  referrer    String?
+  visitedAt   DateTime @default(now()) @map("visited_at")
+  
+  qr          UpiQr    @relation("QrVisits", fields: [qrId], references: [id], onDelete: Cascade)
+
+  @@index([qrId], map: "idx_qr_visit_qr_id")
+  @@index([visitedAt], map: "idx_qr_visit_visited_at")
+  @@map("qr_visits")
 }
 
 model Proposal {
@@ -833,6 +918,19 @@ enum SettlementSchedule {
   DAILY
   WEEKLY
   MONTHLY
+}
+
+enum PaymentMode {
+  UPI
+  BANK_TRANSFER
+  DODO
+}
+
+enum PaymentLinkStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
 }
 
 enum ProposalStatus {
