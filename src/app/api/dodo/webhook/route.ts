@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { 
   verifyDodoWebhookSignature, 
@@ -143,7 +144,7 @@ async function handleSubscriptionCreated(event: any) {
     // Create subscription in database
     await prisma.dodoSubscription.create({
       data: {
-        id: `ds_${Date.now()}_${dodoCustomer.userId}`,
+        id: `ds_${crypto.randomUUID()}_${dodoCustomer.userId}`,
         userId: dodoCustomer.userId,
         customerId: dodoCustomer.id,
         dodoSubscriptionId: subscription.subscription_id,
