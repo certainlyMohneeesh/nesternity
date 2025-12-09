@@ -64,6 +64,10 @@ export async function GET(
 
     console.log('✅ Invoice found, generating PDF...')
 
+    // Add payment URL if paymentPageId exists
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const paymentUrl = invoice.paymentPageId ? `${baseUrl}/pay/${invoice.paymentPageId}` : null;
+
     // Transform the data to match our component interface
     const invoiceData = {
       id: invoice.id,
@@ -74,6 +78,8 @@ export async function GET(
       taxRate: invoice.taxRate,
       discount: invoice.discount,
       currency: invoice.currency,
+      enablePaymentLink: !!paymentUrl,
+      paymentUrl: paymentUrl,
       client: {
         name: invoice.client.name,
         email: invoice.client.email,

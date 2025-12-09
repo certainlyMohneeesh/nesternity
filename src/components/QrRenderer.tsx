@@ -39,7 +39,7 @@ export default function QrRenderer({
       height: size,
       type: 'canvas',
       data: upiUrl.toString(),
-      image: '/logo.png', // Optional: Add your logo
+      image: 'https://scmyzihaokadwwszaimd.supabase.co/storage/v1/object/public/nesternity-assets/nesternity_l.png',
       dotsOptions: {
         color: '#000000',
         type: 'rounded',
@@ -50,7 +50,7 @@ export default function QrRenderer({
       imageOptions: {
         crossOrigin: 'anonymous',
         margin: 10,
-        imageSize: 0.4,
+        imageSize: 0.3,
       },
       cornersSquareOptions: {
         type: 'extra-rounded',
@@ -81,7 +81,7 @@ export default function QrRenderer({
     <div className="flex flex-col items-center gap-4">
       <div
         ref={ref}
-        className="rounded-lg border-2 border-gray-200 p-4 bg-white shadow-sm"
+        className="rounded-lg border-2 border-gray-200 dark:border-gray-700 p-4 bg-white shadow-sm"
       />
       {showDownload && (
         <Button onClick={handleDownload} variant="outline" size="sm">

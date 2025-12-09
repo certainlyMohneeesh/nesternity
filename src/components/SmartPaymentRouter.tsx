@@ -27,6 +27,7 @@ interface SmartPaymentRouterProps {
   invoiceId: string;
   clientCountry?: string;
   onPaymentMethodSelected?: (method: 'UPI' | 'BANK_TRANSFER' | 'DODO') => void;
+  onSuccess?: () => void; // Callback to refetch invoice data
 }
 
 export function SmartPaymentRouter({
@@ -35,6 +36,7 @@ export function SmartPaymentRouter({
   invoiceId,
   clientCountry = 'India',
   onPaymentMethodSelected,
+  onSuccess,
 }: SmartPaymentRouterProps) {
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export function SmartPaymentRouter({
         const data = await response.json();
         toast.success('Payment link generated successfully!');
         onPaymentMethodSelected?.('UPI');
+        onSuccess?.(); // Trigger refetch of invoice data
         
         // Don't redirect, just show success message
         // The payment link is now attached to the invoice
