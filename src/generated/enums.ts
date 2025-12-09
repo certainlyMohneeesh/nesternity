@@ -205,7 +205,7 @@ export type OrganisationStatus = (typeof OrganisationStatus)[keyof typeof Organi
 export const SubscriptionStatus = {
   ACTIVE: 'ACTIVE',
   PAST_DUE: 'PAST_DUE',
-  CANCELED: 'CANCELED',
+  CANCELLED: 'CANCELLED',
   INCOMPLETE: 'INCOMPLETE',
   INCOMPLETE_EXPIRED: 'INCOMPLETE_EXPIRED',
   TRIALING: 'TRIALING',

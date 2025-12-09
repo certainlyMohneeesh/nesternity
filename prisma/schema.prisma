@@ -1129,7 +1129,7 @@ model Document {
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
-  CANCELED
+  CANCELLED
   INCOMPLETE
   INCOMPLETE_EXPIRED
   TRIALING
