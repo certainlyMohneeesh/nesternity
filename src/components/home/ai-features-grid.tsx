@@ -22,7 +22,7 @@ export function AIFeaturesGrid() {
                         </Badge>
                         <h2 className="text-4xl md:text-5xl font-bold mb-6">
                             Work smarter with
-                            <span className="bg-gradient-to-r from-primary to-[#A459D1] bg-clip-text text-transparent"> AI assistance</span>
+                            <span className="text-primary"> AI assistance</span>
                         </h2>
                         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                             Let artificial intelligence handle the heavy lifting while you focus on what matters most
