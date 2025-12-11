@@ -14,7 +14,14 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { Space_Mono } from 'next/font/google'
+
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['700'],
+  style: ['italic'],
+  variable: '--font-space-mono',
+})
 
 export function BentoGrid() {
     return (
@@ -28,7 +35,7 @@ export function BentoGrid() {
                 >
                     <h2 className="text-4xl md:text-5xl font-bold mb-4">
                         Everything you need to
-                        <span className="bg-gradient-to-r from-primary to-[#A459D1] bg-clip-text text-transparent"> scale</span>
+                        <span className="text-primary"> scale</span>
                     </h2>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         A complete platform for modern professionals

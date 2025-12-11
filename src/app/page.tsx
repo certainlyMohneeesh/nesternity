@@ -25,6 +25,15 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { TestimonialsMarquee } from "@/components/home/testimonials-marquee";
 import { AIFeaturesGrid } from "@/components/home/ai-features-grid";
 import { Layout, Receipt, Monitor, Briefcase } from "lucide-react";
+import { Space_Mono } from 'next/font/google'
+import { TextLoop } from "@/components/ui/text-loop";
+
+const spaceMono = Space_Mono({
+  subsets: ['latin'],
+  weight: ['700'],
+  style: ['italic'],
+  variable: '--font-space-mono',
+})
 
 export default function HomePage() {
   return (
@@ -47,8 +56,13 @@ export default function HomePage() {
           🚀 Now in Beta
         </Badge>
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
-          The Freelancer's Nest for Clients, Teams & Clarity.
-          Build, Collaborate, Thrive.
+                  <span>The Freelancer's Nest for </span>
+                  <TextLoop className={`text-primary ${spaceMono.className}`} interval={3}>
+                    <span>Connection.</span>
+                    <span>Collaboration.</span>
+                    <span>Cognition.</span>
+                  </TextLoop> <br />
+                  {/* <span>Build, Collaborate, Thrive.</span> */}
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed relative z-10">
           Nesternity is your all-in-one workspace for managing clients, projects, tasks, and invoices — all from one calm, cozy hub.

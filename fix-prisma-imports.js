@@ -6,18 +6,58 @@ const generatedDir = path.join(__dirname, 'src', 'generated');
 
 function fixImports(filePath) {
   let content = fs.readFileSync(filePath, 'utf8');
-  content = content.replace(/from ['"]\.\/([^'"]+)\.js['"]/g, "from './$1'");
-  content = content.replace(/import ['"]\.\/([^'"]+)\.js['"]/g, "import './$1'");
-  content = content.replace(/export \* as \$Enums from ['"]\.\/enums\.js['"]/g, "export * as $Enums from './enums'");
-  content = content.replace(/export \* from ['"]\.\/enums\.js['"]/g, "export * from './enums'");
-  fs.writeFileSync(filePath, content, 'utf8');
-  console.log(`Fixed imports in: ${path.basename(filePath)}`);
+  let modified = false;
+  
+  // Remove .js extensions from relative imports
+  const newContent = content
+    .replace(/from ['"]\.\/([^'"]+)\.js['"]/g, (match, p1) => {
+      modified = true;
+      return `from './${p1}'`;
+    })
+    .replace(/from ['"]\.\.\/([^'"]+)\.js['"]/g, (match, p1) => {
+      modified = true;
+      return `from '../${p1}'`;
+    })
+    .replace(/import ['"]\.\/([^'"]+)\.js['"]/g, (match, p1) => {
+      modified = true;
+      return `import './${p1}'`;
+    })
+    .replace(/export \* as \$Enums from ['"]\.\/enums\.js['"]/g, () => {
+      modified = true;
+      return "export * as $Enums from './enums'";
+    })
+    .replace(/export \* from ['"]\.\/enums\.js['"]/g, () => {
+      modified = true;
+      return "export * from './enums'";
+    });
+  
+  if (modified) {
+    fs.writeFileSync(filePath, newContent, 'utf8');
+    console.log(`✓ Fixed imports in: ${path.relative(__dirname, filePath)}`);
+  }
 }
 
-const clientFile = path.join(generatedDir, 'client.ts');
-if (fs.existsSync(clientFile)) {
-  fixImports(clientFile);
-  console.log('✅ Prisma client imports fixed!');
+function processDirectory(dir) {
+  if (!fs.existsSync(dir)) return;
+  
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    
+    if (entry.isDirectory()) {
+      processDirectory(fullPath);
+    } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+      fixImports(fullPath);
+    }
+  }
+}
+
+if (fs.existsSync(generatedDir)) {
+  console.log('🔧 Fixing Prisma imports for Turbopack compatibility...');
+  processDirectory(generatedDir);
+  console.log('✅ All Prisma imports fixed!');
 } else {
-  console.log('❌ client.ts not found');
+  console.log('❌ Generated directory not found');
+  process.exit(1);
 }

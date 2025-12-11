@@ -405,6 +405,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
               toast.success(`Payment method selected: ${method}`);
               // Optionally track analytics or update invoice
             }}
+            onSuccess={fetchInvoice} // Refetch invoice after successful QR generation
           />
         )}
 
@@ -474,7 +475,7 @@ export default function InvoiceDetailsPage({ params }: { params: Promise<{ id: s
                     dueDate: invoice.dueDate,
                     taxRate: invoice.taxRate,
                     discount: invoice.discount,
-                    enablePaymentLink: invoice.enablePaymentLink,
+                    enablePaymentLink: !!invoice.paymentUrl, // Auto-enable if paymentUrl exists
                     paymentUrl: invoice.paymentUrl,
                     watermarkText: invoice.watermarkText,
                     eSignatureUrl: invoice.eSignatureUrl

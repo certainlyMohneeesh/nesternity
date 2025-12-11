@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Globe, IndianRupee, QrCode, Building2, CreditCard, ArrowRight, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSessionToken } from '@/lib/supabase/client-session';
 
 interface PaymentSettings {
   upiId?: string;
@@ -26,6 +27,7 @@ interface SmartPaymentRouterProps {
   invoiceId: string;
   clientCountry?: string;
   onPaymentMethodSelected?: (method: 'UPI' | 'BANK_TRANSFER' | 'DODO') => void;
+  onSuccess?: () => void; // Callback to refetch invoice data
 }
 
 export function SmartPaymentRouter({
@@ -34,6 +36,7 @@ export function SmartPaymentRouter({
   invoiceId,
   clientCountry = 'India',
   onPaymentMethodSelected,
+  onSuccess,
 }: SmartPaymentRouterProps) {
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,10 +59,24 @@ export function SmartPaymentRouter({
 
   async function fetchPaymentSettings() {
     try {
-      const response = await fetch('/api/payment-settings');
+      const token = await getSessionToken();
+      if (!token) {
+        console.error('No session token available');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/payment-settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
+      } else {
+        console.error('Failed to fetch payment settings:', response.status);
       }
     } catch (error) {
       console.error('Error fetching payment settings:', error);
@@ -90,6 +107,7 @@ export function SmartPaymentRouter({
         const data = await response.json();
         toast.success('Payment link generated successfully!');
         onPaymentMethodSelected?.('UPI');
+        onSuccess?.(); // Trigger refetch of invoice data
         
         // Don't redirect, just show success message
         // The payment link is now attached to the invoice

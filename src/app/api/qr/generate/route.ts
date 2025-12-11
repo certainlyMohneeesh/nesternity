@@ -35,18 +35,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create UPI QR entry
-    const upiQr = await prisma.upiQr.create({
-      data: {
-        paymentSettingsId: paymentSettings.id,
-        invoiceId: invoiceId || null,
-        amount: amount || null,
-        note: note || null,
-        currency: 'INR',
-        isActive: true,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
+    // Check if QR already exists for this invoice
+    let upiQr;
+    if (invoiceId) {
+      const existingQr = await prisma.upiQr.findUnique({
+        where: { invoiceId: invoiceId },
+      });
+
+      if (existingQr) {
+        // Update existing QR instead of creating new one
+        upiQr = await prisma.upiQr.update({
+          where: { id: existingQr.id },
+          data: {
+            amount: amount || null,
+            note: note || null,
+            isActive: true,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+          },
+        });
+      } else {
+        // Create new QR
+        upiQr = await prisma.upiQr.create({
+          data: {
+            paymentSettingsId: paymentSettings.id,
+            invoiceId: invoiceId,
+            amount: amount || null,
+            note: note || null,
+            currency: 'INR',
+            isActive: true,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+          },
+        });
+      }
+    } else {
+      // Create QR without invoice association
+      upiQr = await prisma.upiQr.create({
+        data: {
+          paymentSettingsId: paymentSettings.id,
+          invoiceId: null,
+          amount: amount || null,
+          note: note || null,
+          currency: 'INR',
+          isActive: true,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+        },
+      });
+    }
 
     // Generate payment page URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
