@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { FixedSizeList as List } from "react-window";
+import { VirtualizedList } from "@/components/ui/virtualized-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -323,7 +323,7 @@ export default function ProjectDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             {recentTasks.length > 0 ? (
-              <List
+              <VirtualizedList
                 height={200}
                 itemCount={recentTasks.length}
                 itemSize={56}
@@ -366,7 +366,7 @@ export default function ProjectDashboard() {
                     </div>
                   );
                 }}
-              </List>
+              </VirtualizedList>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <p className="text-sm">No recent tasks</p>
