@@ -83,7 +83,8 @@ export function InvoicesPageClient({ orgId, projectId }: InvoicesPageClientProps
 
       if (response.ok) {
         const data = await response.json()
-        setOrganisation(data)
+        // API returns { organisation: {...} } so extract the organisation object
+        setOrganisation(data.organisation || data)
       }
     } catch (error) {
       console.error('[InvoicesPage] Error fetching organisation:', error)

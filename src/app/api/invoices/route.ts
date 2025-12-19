@@ -135,52 +135,104 @@ export async function POST(req: NextRequest) {
       projectId,
     } = body;
 
-    if (!invoiceNumber || !clientId || !dueDate || !items || items.length === 0) {
+    if (!invoiceNumber || !dueDate || !items || items.length === 0) {
       console.error('❌ Missing required fields:', {
         hasInvoiceNumber: !!invoiceNumber,
-        hasClientId: !!clientId,
+        hasOrganisationId: !!organisationId,
         hasDueDate: !!dueDate,
         hasItems: !!items,
         itemCount: items?.length || 0
       });
       return NextResponse.json(
-        { error: 'Invoice number, client, due date, and items are required' },
+        { error: 'Invoice number, due date, and items are required' },
         { status: 400 }
       );
     }
 
-    // Verify client belongs to user (either directly or through team access)
-    console.log('🔍 Verifying client access for clientId:', clientId);
-    const client = await prisma.client.findFirst({
-      where: {
-        id: clientId,
-        OR: [
-          // Direct ownership
-          { createdBy: user.id },
-          // Access through team projects
-          {
-            projects: {
-              some: {
-                team: {
-                  members: {
-                    some: {
-                      userId: user.id
+    if (!organisationId && !clientId) {
+      console.error('❌ Either organisationId or clientId is required');
+      return NextResponse.json(
+        { error: 'Either organisation or client must be specified' },
+        { status: 400 }
+      );
+    }
+
+    // Get or create client based on organisationId or verify clientId
+    let client;
+    let finalClientId = clientId;
+
+    if (clientId) {
+      // Verify client belongs to user (either directly or through team access)
+      console.log('🔍 Verifying client access for clientId:', clientId);
+      client = await prisma.client.findFirst({
+        where: {
+          id: clientId,
+          OR: [
+            // Direct ownership
+            { createdBy: user.id },
+            // Access through team projects
+            {
+              projects: {
+                some: {
+                  team: {
+                    members: {
+                      some: {
+                        userId: user.id
+                      }
                     }
                   }
                 }
               }
             }
+          ]
+        },
+      });
+
+      if (!client) {
+        console.error('❌ Client not found or access denied for clientId:', clientId);
+        return NextResponse.json({ error: 'Client not found or access denied' }, { status: 404 });
+      }
+      console.log('✅ Client access verified:', client.name);
+    } else if (organisationId) {
+      // Get or create a default client for the organisation
+      console.log('🔍 Looking for default client for organisationId:', organisationId);
+      
+      // Get organisation details
+      const organisation = await prisma.organisation.findUnique({
+        where: { id: organisationId }
+      });
+
+      if (!organisation) {
+        console.error('❌ Organisation not found:', organisationId);
+        return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+      }
+
+      // Find or create default client for organisation
+      client = await prisma.client.findFirst({
+        where: {
+          organisationId: organisationId,
+          email: organisation.email
+        }
+      });
+
+      if (!client) {
+        console.log('📝 Creating default client for organisation:', organisation.name);
+        client = await prisma.client.create({
+          data: {
+            name: organisation.name,
+            email: organisation.email,
+            organisationId: organisationId,
+            createdBy: user.id,
+            status: 'ACTIVE'
           }
-        ]
-      },
-    });
-
-    if (!client) {
-      console.error('❌ Client not found or access denied for clientId:', clientId);
-      return NextResponse.json({ error: 'Client not found or access denied' }, { status: 404 });
+        });
+        console.log('✅ Default client created:', client.id);
+      } else {
+        console.log('✅ Found existing client for organisation:', client.name);
+      }
+      
+      finalClientId = client.id;
     }
-
-    console.log('✅ Client access verified:', client.name);
 
     // Calculate totals for each item
     const processedItems = items.map((item: any) => ({
@@ -207,7 +259,7 @@ export async function POST(req: NextRequest) {
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
-        clientId,
+        clientId: finalClientId,
         issuedById: user.id,
         organisationId: organisationId || client.organisationId || null,
         projectId: projectId || null,
@@ -238,9 +290,13 @@ export async function POST(req: NextRequest) {
     if (enablePaymentLink) {
       console.log('💳 Auto-generating UPI payment link...');
       try {
-        // Get user's payment settings
-        const paymentSettings = await prisma.paymentSettings.findUnique({
-          where: { userId: user.id },
+        // Get payment settings for the organisation (or user as fallback)
+        const paymentSettings = await prisma.paymentSettings.findFirst({
+          where: organisationId ? {
+            organisationId: organisationId
+          } : {
+            userId: user.id
+          },
         });
 
         if (paymentSettings?.upiId) {
