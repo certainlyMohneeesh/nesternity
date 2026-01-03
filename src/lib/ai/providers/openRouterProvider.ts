@@ -4,7 +4,13 @@ import { extractJSON, repairJSON } from '@/lib/ai/utils';
 
 export class OpenRouterProvider implements IProvider {
     private apiKey = process.env.OPENROUTER_API_KEY || '';
-    private defaultModel = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp';
+    private defaultModel = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
+    private fallbackModels = [
+        'meta-llama/llama-3.1-8b-instruct:free',
+        'google/gemini-2.0-flash-exp:free',
+        'qwen/qwen-2-7b-instruct:free',
+        'microsoft/phi-3-mini-128k-instruct:free',
+    ];
     private siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     private siteName = 'Nesternity';
 
@@ -13,60 +19,83 @@ export class OpenRouterProvider implements IProvider {
             throw new Error('OPENROUTER_API_KEY is not set');
         }
 
-        const model = options.model || this.defaultModel;
+        const requestedModel = options.model || this.defaultModel;
         const temperature = options.temperature ?? 0.7;
         const maxTokens = options.maxTokens;
 
-        const headers: Record<string, string> = {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'HTTP-Referer': this.siteUrl,
-            'X-Title': this.siteName,
-            'Content-Type': 'application/json',
-        };
+        // Try requested model and fallbacks
+        const modelsToTry = [requestedModel, ...this.fallbackModels.filter(m => m !== requestedModel)];
+        let lastError: Error | null = null;
 
-        const body: any = {
-            model,
-            messages,
-            temperature,
-        };
+        for (const model of modelsToTry) {
+            try {
+                const headers: Record<string, string> = {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'HTTP-Referer': this.siteUrl,
+                    'X-Title': this.siteName,
+                    'Content-Type': 'application/json',
+                };
 
-        if (maxTokens) {
-            body.max_tokens = maxTokens;
-        }
+                const body: any = {
+                    model,
+                    messages,
+                    temperature,
+                };
 
-        if (options.responseFormat) {
-            body.response_format = options.responseFormat;
-        }
+                if (maxTokens) {
+                    body.max_tokens = maxTokens;
+                }
 
-        try {
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(body),
-            });
+                if (options.responseFormat) {
+                    body.response_format = options.responseFormat;
+                }
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    const error = new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
+                    
+                    // If it's a 404 or model-specific error, try next model
+                    if (response.status === 404 || errorText.includes('data policy') || errorText.includes('No endpoints found')) {
+                        lastError = error;
+                        console.warn(`⚠️ Model ${model} failed, trying fallback...`);
+                        continue;
+                    }
+                    
+                    throw error;
+                }
+
+                const data = await response.json();
+                const choice = data.choices?.[0];
+                const content = choice?.message?.content || '';
+
+                return {
+                    content,
+                    usage: {
+                        promptTokens: data.usage?.prompt_tokens || 0,
+                        completionTokens: data.usage?.completion_tokens || 0,
+                        totalTokens: data.usage?.total_tokens || 0,
+                    },
+                    model: data.model || model,
+                };
+            } catch (error) {
+                lastError = error as Error;
+                if (model !== modelsToTry[modelsToTry.length - 1]) {
+                    console.warn(`⚠️ Error with model ${model}, trying fallback...`);
+                    continue;
+                }
+                throw error;
             }
-
-            const data = await response.json();
-            const choice = data.choices?.[0];
-            const content = choice?.message?.content || '';
-
-            return {
-                content,
-                usage: {
-                    promptTokens: data.usage?.prompt_tokens || 0,
-                    completionTokens: data.usage?.completion_tokens || 0,
-                    totalTokens: data.usage?.total_tokens || 0,
-                },
-                model: data.model || model,
-            };
-        } catch (error) {
-            console.error('❌ OpenRouter completion error:', error);
-            throw error;
         }
+
+        // If all models failed
+        console.error('❌ OpenRouter completion error - all models failed:', lastError);
+        throw lastError || new Error('All models failed');
     }
 
     async generateStructuredCompletion<T = unknown>(
