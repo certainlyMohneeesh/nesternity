@@ -58,9 +58,9 @@ export default function HomePage() {
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent leading-tight relative z-10">
                   <span>The Freelancer's Nest for </span>
                   <TextLoop className={`text-primary ${spaceMono.className}`} interval={3}>
-                    <span>Connection.</span>
-                    <span>Collaboration.</span>
-                    <span>Cognition.</span>
+                    <span>Clients.</span>
+                    <span>Contracts.</span>
+                    <span>Clarity.</span>
                   </TextLoop> <br />
                   {/* <span>Build, Collaborate, Thrive.</span> */}
         </h1>
